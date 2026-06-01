@@ -75,6 +75,33 @@ Item {
                     onClicked: { searchField.text = ""; dropdown.close() }
                 }
             }
+
+            // Content-search toggle pill. Always visible (works even when the
+            // results dropdown is suppressed on mobile). "Aa" = match inside
+            // content blocks, not just the word/tag name.
+            Rectangle {
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: 30
+                implicitHeight: Platform.isMobile ? 32 : 22
+                radius: Platform.radius - 1
+                color: appVM.entryVM.searchInContent ? Platform.accent : Platform.surfaceAlt
+                border.color: appVM.entryVM.searchInContent ? Platform.accent : Platform.border
+                border.width: 1
+                Text {
+                    anchors.centerIn: parent
+                    text: "Aa"
+                    font.pixelSize: Platform.fontBase - 2
+                    font.bold: true
+                    color: appVM.entryVM.searchInContent ? Platform.textOnDark : Platform.textMuted
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: appVM.entryVM.searchInContent = !appVM.entryVM.searchInContent
+                    ToolTip.visible: pressed
+                    ToolTip.text: "Also search content blocks"
+                }
+            }
         }
     }
 
@@ -214,6 +241,7 @@ Item {
         }
     }
 }
+
 
 
 

@@ -343,7 +343,9 @@ Rectangle {
 
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: Math.max(editField.implicitHeight + 12, Platform.touchTarget * 2)
+                implicitHeight: Math.min(
+                    Math.max(editField.implicitHeight + 12, Platform.touchTarget * 2),
+                    Platform.isMobile ? 320 : 480)
                 color: Platform.bg
                 radius: Platform.radius - 2
                 border.color: editField.activeFocus ? Platform.accent : Platform.border
@@ -590,9 +592,12 @@ Rectangle {
 
             FileDialog {
                 id: mediaFileDialog
-                title: "Select media file"
+                title: "Select media (photo library or files)"
+                // image/* and video/* MIME types surface the Photos library on
+                // iOS in addition to Files; the explicit extensions cover desktop.
                 nameFilters: [
-                    "Media (*.png *.jpg *.jpeg *.gif *.bmp *.webp *.svg *.mp4 *.webm *.mkv *.mov *.mp3 *.wav *.ogg *.flac *.m4a)",
+                    "Images & video (*.png *.jpg *.jpeg *.gif *.heic *.bmp *.webp *.svg *.mp4 *.webm *.mkv *.mov)",
+                    "Audio (*.mp3 *.wav *.ogg *.flac *.m4a)",
                     "All files (*)"
                 ]
                 onAccepted: {

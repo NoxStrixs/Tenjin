@@ -3,40 +3,55 @@ import QtQuick.Controls
 import TenjinView
 
 // A themed Dialog base: dark background, themed header bar, themed OK/Cancel
-// footer (no white system button bar), and — on mobile — it lifts above the
-// on-screen keyboard instead of being covered by it. Keeps the dialog centered
-// horizontally; vertically it sits in the upper area when the keyboard is up.
+// footer (no white system button bar), and — when the on-screen keyboard is up —
+// it caps its own height and sits in the top region so its buttons are never
+// covered by the keyboard. Stays horizontally centered.
 //
 // Usage: set `title`, optionally `okText`/`cancelText`, put content as children,
-// and handle onAccepted/onRejected as usual.
+// handle onAccepted/onRejected. Tapping the dimmed area outside dismisses the
+// keyboard (and, per closePolicy, can close the dialog).
 Dialog {
     id: root
     modal: true
 
     property string okText: "OK"
     property string cancelText: "Cancel"
+    standardButtons: Dialog.Ok | Dialog.Cancel
 
-    // Horizontal centering always; vertical position reacts to the keyboard.
+    // Tapping the dimmed area outside (CloseOnPressOutside is default for modal)
+    // dismisses the keyboard too.
+    onClosed: Qt.inputMethod.hide()
+
+    // Keyboard height in device-independent px (0 when hidden).
+    readonly property real _kb: Qt.inputMethod.visible
+        ? Qt.inputMethod.keyboardRectangle.height / Screen.devicePixelRatio
+        : 0
+
+    // Sit near the top when the keyboard is up; otherwise vertically centered.
     x: Math.round((parent.width - width) / 2)
-    y: {
-        const kb = Qt.inputMethod.visible
-                   ? Qt.inputMethod.keyboardRectangle.height / Screen.devicePixelRatio
-                   : 0
-        if (kb > 0) {
-            // Keyboard up: sit in the upper area, fully above the keyboard.
-            const avail = parent.height - kb
-            return Math.max(Platform.headerHeight,
-                            Math.round(avail / 2 - height / 2))
-        }
-        return Math.round((parent.height - height) / 2)
-    }
-    Behavior on y { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+    y: _kb > 0
+       ? Platform.headerHeight
+       : Math.round((parent.height - height) / 2)
+
+    // Never let the dialog extend under the keyboard: cap height to the space
+    // above it. The content scrolls if it doesn't fit.
+    readonly property real _avail: (parent ? parent.height : 0) - _kb - Platform.headerHeight * 2
+    height: Math.min(implicitHeight, _avail > 120 ? _avail : implicitHeight)
+
+    Behavior on y { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
     background: Rectangle {
         color: Platform.bg
         radius: Platform.radiusLarge
         border.color: Platform.border
         border.width: 1
+        // Tapping anywhere on the dialog body that isn't an input drops focus,
+        // hiding the keyboard without saving. Inputs sit above this and grab
+        // their own taps, so this only fires on empty space.
+        MouseArea {
+            anchors.fill: parent
+            onClicked: { root.forceActiveFocus(); Qt.inputMethod.hide() }
+        }
     }
 
     header: Rectangle {
@@ -55,26 +70,22 @@ Dialog {
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Platform.border }
     }
 
+    // Themed OK/Cancel. With standardButtons (no explicit Button children) the
+    // delegate IS applied to every generated button — that's the fix for the
+    // previously-white system buttons.
     footer: DialogButtonBox {
         padding: 16
         spacing: 8
         alignment: Qt.AlignRight
         background: Rectangle { color: "transparent" }
 
-        Button {
-            text: root.cancelText
-            DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
-        }
-        Button {
-            text: root.okText
-            DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
-        }
-
         delegate: Button {
             id: _btn
             implicitHeight: Platform.touchTarget
+            implicitWidth: Math.max(88, _btnText.implicitWidth + 28)
             padding: 10
             contentItem: Text {
+                id: _btnText
                 text: _btn.text
                 color: _btn.down ? Platform.textOnDark : Platform.textPrimary
                 font.pixelSize: Platform.fontBase

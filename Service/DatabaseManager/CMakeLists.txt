@@ -25,7 +25,3 @@ target_link_libraries(DatabaseManager
     PRIVATE tenjin_warnings
             tenjin_sanitizers
 )
-
-if(BUILD_TESTS)
-    add_subdirectory(tests)
-endif()

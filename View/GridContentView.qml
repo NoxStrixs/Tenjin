@@ -25,7 +25,13 @@ Flickable {
     // Never let content collapse below the viewport, otherwise the centered
     // empty-state text is positioned against a zero-height content rect and
     // gets clipped at the top.
-    contentHeight: Math.max(bands.implicitHeight, height)
+    // Add the keyboard's height as extra scrollable space when it's up, so a
+    // focused block (e.g. a definition editor near the bottom) can be scrolled
+    // clear of the on-screen keyboard instead of sitting under it.
+    readonly property real _kb: Qt.inputMethod.visible
+        ? Qt.inputMethod.keyboardRectangle.height / Screen.devicePixelRatio
+        : 0
+    contentHeight: Math.max(bands.implicitHeight + _kb, height)
     clip: true
     boundsBehavior: Flickable.StopAtBounds
     ScrollBar.vertical: ScrollBar {

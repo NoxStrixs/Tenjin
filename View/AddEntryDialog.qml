@@ -19,6 +19,7 @@ ThemedDialog {
     }
 
     ColumnLayout {
+        id: _col
         width: parent.width
         spacing: 14
 
