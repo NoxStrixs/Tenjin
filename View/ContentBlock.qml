@@ -543,6 +543,12 @@ Rectangle {
                     HoverHandler { id: imgHover }
                     ToolTip.visible: imgHover.hovered && root.blockContent.length > 0
                     ToolTip.text: root.blockContent
+
+                    // Tap to view fullscreen.
+                    TapHandler {
+                        enabled: preview.status === Image.Ready
+                        onTapped: mediaViewer.openSource(preview.source, root.mediaKind === "gif")
+                    }
                 }
             }
 
@@ -699,5 +705,61 @@ Rectangle {
             }
         }
     }
+
+    // Fullscreen media viewer — tap an image/gif to open; tap anywhere or the
+    // close button to dismiss. Parented to the window overlay so it covers all.
+    Popup {
+        id: mediaViewer
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        width: parent ? parent.width : 0
+        height: parent ? parent.height : 0
+        padding: 0
+
+        property url currentSource: ""
+        property bool isGif: false
+        function openSource(src, gif) {
+            currentSource = src
+            isGif = gif === true
+            open()
+        }
+
+        background: Rectangle { color: "#000000"; opacity: 0.92 }
+
+        contentItem: Item {
+            AnimatedImage {
+                id: fullImg
+                anchors.fill: parent
+                anchors.margins: 12
+                source: mediaViewer.currentSource
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+                cache: false
+                playing: mediaViewer.isGif
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: mediaViewer.close()
+            }
+            Rectangle {
+                anchors { top: parent.top; right: parent.right; margins: 16 }
+                width: 40; height: 40; radius: 20
+                color: Platform.surface
+                border.color: Platform.border
+                border.width: 1
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u2715"
+                    color: Platform.textPrimary
+                    font.pixelSize: 20
+                    font.bold: true
+                }
+                MouseArea { anchors.fill: parent; onClicked: mediaViewer.close() }
+            }
+        }
+    }
 }
+
 

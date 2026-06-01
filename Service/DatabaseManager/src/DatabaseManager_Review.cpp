@@ -49,7 +49,6 @@ Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
                     .lastReviewDate = q.value(7).toString().toStdString()};
 }
 
-
 Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int quality)
 {
     // Fetch current state
@@ -128,14 +127,14 @@ Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int q
                     .lastReviewDate = today.toStdString()};
 }
 
-
 Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
-              "next_review_date, last_review_date "
-              "FROM review WHERE deck_id = :deckId AND next_review_date <= date('now', 'localtime') "
-              "ORDER BY next_review_date ASC;");
+    q.prepare(
+        "SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
+        "next_review_date, last_review_date "
+        "FROM review WHERE deck_id = :deckId AND next_review_date <= date('now', 'localtime') "
+        "ORDER BY next_review_date ASC;");
     q.bindValue(":deckId", QVariant::fromValue(deckId));
 
     if (!q.exec())
@@ -154,7 +153,6 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
     }
     return reviews;
 }
-
 
 Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
 {
@@ -197,7 +195,6 @@ Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
     return stats;
 }
 
-
 Result_t<DeckAnalytics_t> DatabaseManager::GetDeckAnalytics(ID_t deckId)
 {
     DeckAnalytics_t a;
@@ -232,7 +229,6 @@ Result_t<DeckAnalytics_t> DatabaseManager::GetDeckAnalytics(ID_t deckId)
     return a;
 }
 
-
 Result_t<std::vector<EntryReviewEvent_t>> DatabaseManager::GetEntryHistory(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
@@ -247,9 +243,9 @@ Result_t<std::vector<EntryReviewEvent_t>> DatabaseManager::GetEntryHistory(ID_t 
     std::vector<EntryReviewEvent_t> events;
     while (q.next()) {
         events.push_back(EntryReviewEvent_t{q.value(0).toLongLong(),
-                                           q.value(1).toInt(),
-                                           q.value(2).toDouble(),
-                                           q.value(3).toInt()});
+                                            q.value(1).toInt(),
+                                            q.value(2).toDouble(),
+                                            q.value(3).toInt()});
     }
     return events;
 }

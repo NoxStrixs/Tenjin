@@ -3,71 +3,17 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-Dialog {
+ThemedDialog {
     id: root
     title: "Create Tag"
-    modal: true
-    anchors.centerIn: parent
     width: Platform.isMobile ? Math.min(parent.width - 32, 340) : 320
     padding: 20
-    standardButtons: Dialog.Ok | Dialog.Cancel
 
-    onAboutToShow: tagNameInput.text = ""
+    onAboutToShow: { tagNameInput.text = ""; tagNameInput.forceActiveFocus() }
     onAccepted: {
         const name = tagNameInput.text.trim()
         if (name.length > 0)
             appVM.entryVM.createTag(name)
-    }
-
-    background: Rectangle {
-        color: Platform.bg
-        radius: Platform.radiusLarge
-        border.color: Platform.border
-        border.width: 1
-    }
-
-    // Themed title bar (matches ConfirmDialog).
-    header: Rectangle {
-        color: Platform.surface
-        radius: Platform.radiusLarge
-        implicitHeight: tagTitle.implicitHeight + 24
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: parent.radius; color: Platform.surface }
-        Text {
-            id: tagTitle
-            anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 20 }
-            text: root.title
-            color: Platform.textPrimary
-            font.pixelSize: Platform.fontLarge
-            font.bold: true
-        }
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Platform.border }
-    }
-
-    footer: DialogButtonBox {
-        padding: 16
-        spacing: 8
-        alignment: Qt.AlignRight
-        background: Rectangle { color: "transparent" }
-        delegate: Button {
-            id: tagBtn
-            implicitHeight: Platform.touchTarget
-            padding: 10
-            contentItem: Text {
-                text: tagBtn.text
-                color: tagBtn.down ? Platform.textOnDark : Platform.textPrimary
-                font.pixelSize: Platform.fontBase
-                font.bold: true
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-            }
-            background: Rectangle {
-                radius: Platform.radius
-                color: tagBtn.down ? Platform.accent
-                     : tagBtn.hovered ? Platform.surfaceAlt : Platform.surface
-                border.color: Platform.border
-                border.width: 1
-            }
-        }
     }
 
     ColumnLayout {
@@ -96,3 +42,4 @@ Dialog {
         }
     }
 }
+

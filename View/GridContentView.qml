@@ -195,61 +195,12 @@ Flickable {
                                         onClicked: appVM.entryVM.deleteContentBlock(cell.modelData.id)
                                     }
                                 }
-                                Dialog {
+                                ThemedDialog {
                                     id: divNameDialog
                                     parent: Overlay.overlay
                                     title: "Divider label"
-                                    modal: true
                                     padding: 20
-                                    standardButtons: Dialog.Ok | Dialog.Cancel
-                                    anchors.centerIn: parent
                                     width: 300
-
-                                    background: Rectangle {
-                                        color: Platform.bg; radius: Platform.radiusLarge
-                                        border.color: Platform.border; border.width: 1
-                                    }
-                                    header: Rectangle {
-                                        color: Platform.surface
-                                        radius: Platform.radiusLarge
-                                        implicitHeight: divTitle.implicitHeight + 24
-                                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: parent.radius; color: Platform.surface }
-                                        Text {
-                                            id: divTitle
-                                            anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 20 }
-                                            text: divNameDialog.title
-                                            color: Platform.textPrimary
-                                            font.pixelSize: Platform.fontLarge
-                                            font.bold: true
-                                        }
-                                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Platform.border }
-                                    }
-                                    footer: DialogButtonBox {
-                                        padding: 16
-                                        spacing: 8
-                                        alignment: Qt.AlignRight
-                                        background: Rectangle { color: "transparent" }
-                                        delegate: Button {
-                                            id: divBtn
-                                            implicitHeight: Platform.touchTarget
-                                            padding: 10
-                                            contentItem: Text {
-                                                text: divBtn.text
-                                                color: divBtn.down ? Platform.textOnDark : Platform.textPrimary
-                                                font.pixelSize: Platform.fontBase
-                                                font.bold: true
-                                                horizontalAlignment: Text.AlignHCenter
-                                                verticalAlignment: Text.AlignVCenter
-                                            }
-                                            background: Rectangle {
-                                                radius: Platform.radius
-                                                color: divBtn.down ? Platform.accent
-                                                     : divBtn.hovered ? Platform.surfaceAlt : Platform.surface
-                                                border.color: Platform.border
-                                                border.width: 1
-                                            }
-                                        }
-                                    }
 
                                     TextField {
                                         id: divNameField

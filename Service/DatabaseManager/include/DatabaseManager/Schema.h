@@ -17,7 +17,7 @@ namespace Schema {
 
 // The version the application code expects. A freshly created DB jumps straight
 // to this; an older DB is migrated up to it.
-inline constexpr int kSchemaVersion = 3;
+inline constexpr int kSchemaVersion = 1;
 
 // Brings `db` from its current user_version up to kSchemaVersion. Throws
 // std::runtime_error on failure (transaction is rolled back first).

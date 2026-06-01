@@ -29,7 +29,6 @@ Result_t<Entry_t> DatabaseManager::AddEntry(const std::string& word)
     return Entry_t{.id = q.lastInsertId().toLongLong(), .word = word, .createdAt = {}};
 }
 
-
 Result_t<Entry_t> DatabaseManager::GetEntry(const std::string& word)
 {
     QSqlQuery q(m_db);
@@ -43,10 +42,9 @@ Result_t<Entry_t> DatabaseManager::GetEntry(const std::string& word)
         return std::unexpected("Word not found: " + std::string(word));
 
     return Entry_t{.id        = q.value(0).toLongLong(),
-                  .word      = q.value(1).toString().toStdString(),
-                  .createdAt = q.value(2).toString().toStdString()};
+                   .word      = q.value(1).toString().toStdString(),
+                   .createdAt = q.value(2).toString().toStdString()};
 }
-
 
 Result_t<std::vector<Entry_t>> DatabaseManager::GetAllEntries()
 {
@@ -57,12 +55,11 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetAllEntries()
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
-
 
 Result_t<bool> DatabaseManager::DeleteEntry(ID_t id)
 {

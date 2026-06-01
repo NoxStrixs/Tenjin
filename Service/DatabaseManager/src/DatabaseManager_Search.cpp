@@ -23,11 +23,12 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntries(const std::string&
     const QString ftsQuery = QString::fromStdString(query) + "*";
 
     QSqlQuery q(m_db);
-    q.prepare("SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
-              "JOIN entry_content_fts fts ON fts.rowid = (SELECT id FROM entry_content WHERE entry_id "
-              "= w.id LIMIT 1) "
-              "WHERE entry_content_fts MATCH :query "
-              "ORDER BY w.title ASC;");
+    q.prepare(
+        "SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
+        "JOIN entry_content_fts fts ON fts.rowid = (SELECT id FROM entry_content WHERE entry_id "
+        "= w.id LIMIT 1) "
+        "WHERE entry_content_fts MATCH :query "
+        "ORDER BY w.title ASC;");
     q.bindValue(":query", ftsQuery);
 
     if (!q.exec())
@@ -36,12 +37,11 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntries(const std::string&
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
-
 
 Result_t<std::vector<ContentBlock_t>> DatabaseManager::SearchContent(const std::string& query)
 {
@@ -74,7 +74,6 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::SearchContent(const std::
 
 // ── Substring search (LIKE) ───────────────────────────────────────────────────
 
-
 Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByName(const std::string& substring)
 {
     QSqlQuery q(m_db);
@@ -91,12 +90,11 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByName(const std::s
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
-
 
 Result_t<std::vector<Tag_t>> DatabaseManager::SearchTagsByName(const std::string& substring)
 {
@@ -119,7 +117,6 @@ Result_t<std::vector<Tag_t>> DatabaseManager::SearchTagsByName(const std::string
     return tags;
 }
 
-
 Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByContent(const std::string& substring)
 {
     QSqlQuery q(m_db);
@@ -137,8 +134,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByContent(const std
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }

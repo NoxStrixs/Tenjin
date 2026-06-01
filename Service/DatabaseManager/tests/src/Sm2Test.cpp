@@ -18,13 +18,13 @@ struct Fixture {
 Fixture makeFixture(TempDb& tmp)
 {
     Fixture f;
-    f.db        = std::make_shared<DatabaseManager>(tmp.path());
-    auto w      = f.db->AddEntry("kanji");
+    f.db   = std::make_shared<DatabaseManager>(tmp.path());
+    auto w = f.db->AddEntry("kanji");
     EXPECT_TRUE(w.has_value());
-    f.wordId    = w->id;
-    auto d      = f.db->AddDeck("Deck", /*smart=*/false, FilterMode_t::And);
+    f.wordId = w->id;
+    auto d   = f.db->AddDeck("Deck", /*smart=*/false, FilterMode_t::And);
     EXPECT_TRUE(d.has_value());
-    f.deckId    = d->id;
+    f.deckId = d->id;
     EXPECT_TRUE(f.db->AddEntryToDeck(f.deckId, f.wordId).has_value());
     EXPECT_TRUE(f.db->InitReview(f.deckId, f.wordId).has_value());
     return f;
@@ -62,14 +62,14 @@ TEST(Db, FormulaBlockPersistsKind)
     auto            w = db.AddEntry("integral");
     ASSERT_TRUE(w.has_value());
 
-    ContentBlock_t blk{.wordId = w->id,
+    ContentBlock_t blk{.wordId  = w->id,
                        .type    = ContentType_t::Formula,
                        .content = "\\int_0^1 x^2\\,dx",
                        .row     = 0,
                        .col     = 0,
                        .rowSpan = 1,
                        .colSpan = 1};
-    auto cb = db.AddContentBlock(blk);
+    auto           cb = db.AddContentBlock(blk);
     ASSERT_TRUE(cb.has_value()) << (cb ? "" : cb.error());
 
     auto blocks = db.GetContentForEntry(w->id);
@@ -108,8 +108,8 @@ TEST(Sm2, ThirdSuccessMultipliesByEase)
 {
     TempDb tmp;
     auto   f = makeFixture(tmp);
-    f.db->SubmitReview(f.deckId, f.wordId, 5); // -> 1
-    f.db->SubmitReview(f.deckId, f.wordId, 5); // -> 6
+    f.db->SubmitReview(f.deckId, f.wordId, 5);          // -> 1
+    f.db->SubmitReview(f.deckId, f.wordId, 5);          // -> 6
     auto r = f.db->SubmitReview(f.deckId, f.wordId, 5); // -> round(6 * EF)
     ASSERT_TRUE(r.has_value());
     EXPECT_EQ(r->repetitions, 3);
@@ -134,8 +134,8 @@ TEST(Sm2, FailureResetsStreak)
 // repeated low (but passing) grades.
 TEST(Sm2, EaseFactorFloorIsRespected)
 {
-    TempDb tmp;
-    auto   f = makeFixture(tmp);
+    TempDb   tmp;
+    auto     f = makeFixture(tmp);
     Review_t last{};
     for (int i = 0; i < 20; ++i) {
         auto r = f.db->SubmitReview(f.deckId, f.wordId, 3); // minimum passing

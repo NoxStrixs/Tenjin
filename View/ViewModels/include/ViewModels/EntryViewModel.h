@@ -48,6 +48,15 @@ public:
 
     Q_INVOKABLE void moveBlock(int from, int to);
 
+    // Append a new block to the end of the model only (no DB write). Assigns a
+    // temporary negative id so it's distinguishable from persisted rows; the
+    // real id is assigned by the DB on saveEdit() via SaveContentLayout's
+    // insert path. Returns the temp id.
+    Service::ID_t appendBlock(Service::ContentBlock_t block);
+
+    // Remove a block from the model only (no DB write). Persisted on saveEdit().
+    void removeBlockById(Service::ID_t id);
+
     // Stage a text edit in the model only (no DB write). Persisted later by
     // EntryViewModel::saveEdit(). This lets cancelEdit() truly revert.
     void setBlockContent(Service::ID_t id, const QString& content);
@@ -66,6 +75,9 @@ public:
 
 private:
     std::vector<Service::ContentBlock_t> m_blocks;
+    // Decreasing counter for temporary ids of not-yet-persisted blocks added
+    // during an edit session. Negative so they never collide with DB ids (>0).
+    Service::ID_t m_nextTempId = -1;
 };
 
 // ── EntryViewModel ─────────────────────────────────────────────────────────────

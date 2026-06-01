@@ -66,7 +66,8 @@ Result_t<DeckAnalytics_t> DeckService::GetDeckAnalytics(ID_t deckId) const
     return m_db->GetDeckAnalytics(deckId);
 }
 
-Result_t<std::vector<EntryReviewEvent_t>> DeckService::GetEntryHistory(ID_t deckId, ID_t wordId) const
+Result_t<std::vector<EntryReviewEvent_t>> DeckService::GetEntryHistory(ID_t deckId,
+                                                                       ID_t wordId) const
 {
     return m_db->GetEntryHistory(deckId, wordId);
 }

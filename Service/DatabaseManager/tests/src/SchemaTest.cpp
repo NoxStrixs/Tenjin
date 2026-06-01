@@ -25,7 +25,7 @@ int userVersion(QSqlDatabase& db)
 QSqlDatabase openConn(const QString& path)
 {
     const QString name = QUuid::createUuid().toString();
-    QSqlDatabase db    = QSqlDatabase::addDatabase("QSQLITE", name);
+    QSqlDatabase  db   = QSqlDatabase::addDatabase("QSQLITE", name);
     db.setDatabaseName(path);
     db.open();
     return db;
@@ -96,7 +96,7 @@ TEST(Schema, LegacyMigrationPreservesDataAndIds)
         QSqlQuery q(db);
         q.exec("INSERT INTO word(id, word) VALUES (42, 'ephemeral');");
         q.exec("INSERT INTO word_content(id, word_id, type, content, row, col) "
-                "VALUES (1, 42, 0, 'lasting a very short time', 0, 0);");
+               "VALUES (1, 42, 0, 'lasting a very short time', 0, 0);");
         db.close();
     }
 
@@ -127,7 +127,7 @@ TEST(Schema, LegacyMigrationRebuildsFtsIndex)
         QSqlQuery q(db);
         q.exec("INSERT INTO word(id, word) VALUES (1, 'verbose');");
         q.exec("INSERT INTO word_content(id, word_id, type, content, row, col) "
-                "VALUES (1, 1, 0, 'using many words', 0, 0);");
+               "VALUES (1, 1, 0, 'using many words', 0, 0);");
         db.close();
     }
 
@@ -155,7 +155,8 @@ TEST(Schema, V3BackfillsContentKindFromType)
         // one block of each legacy type 0..3
         for (int t = 0; t <= 3; ++t)
             q.exec(QStringLiteral("INSERT INTO word_content(word_id, type, content, row, col) "
-                                  "VALUES (1, %1, 'c', 0, 0);").arg(t));
+                                  "VALUES (1, %1, 'c', 0, 0);")
+                       .arg(t));
         db.close();
     }
 

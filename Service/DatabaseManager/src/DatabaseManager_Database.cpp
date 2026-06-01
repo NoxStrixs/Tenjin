@@ -46,7 +46,6 @@ DatabaseManager::DatabaseManager(const std::string& filepath)
     backfillGuids();
 }
 
-
 DatabaseManager::~DatabaseManager()
 {
     const QString connName = m_db.connectionName();
@@ -54,7 +53,6 @@ DatabaseManager::~DatabaseManager()
     m_db = QSqlDatabase(); // release handle before removeDatabase
     QSqlDatabase::removeDatabase(connName);
 }
-
 
 void DatabaseManager::backfillGuids()
 {

@@ -157,8 +157,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForTag(ID_t tagId)
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }

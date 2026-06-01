@@ -115,33 +115,84 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::GetContentForEntry(ID_t w
 
 Result_t<bool> DatabaseManager::SaveContentLayout(const std::vector<ContentBlock_t>& blocks)
 {
-    // Transaction — all blocks update atomically or none do
+    // Full reconcile against entry_content for this entry, atomically:
+    //   • blocks with id <= 0  → INSERT (added during an edit session)
+    //   • blocks with id  > 0  → UPDATE
+    //   • existing rows not in `blocks` → DELETE (removed during the session)
+    // This lets edit mode stage adds/removes/text/layout entirely in-model and
+    // commit them all on Save; Cancel reverts by simply never calling here.
+    if (blocks.empty())
+        return true; // no known entry id to reconcile against; treat as no-op
+
     if (!m_db.transaction())
         return std::unexpected("Failed to begin transaction.");
 
-    QSqlQuery q(m_db);
-    // Persist type and content as well as layout. Previously only the
-    // row/col/span columns were written, so staged text edits made in edit
-    // mode were never saved — blocks survived but their content did not.
-    q.prepare(
-        "UPDATE entry_content SET type = :type, kind = :kind, content = :content, pos = :pos, "
-        "row = :row, col = :col, row_span = :rowSpan, col_span = :colSpan "
-        "WHERE id = :id;");
+    const ID_t entryId = blocks.front().wordId;
+
+    // 1. DELETE rows for this entry whose ids are not in the incoming set.
+    QString keepList;
+    for (const auto& b : blocks) {
+        if (b.id > 0) {
+            if (!keepList.isEmpty())
+                keepList += ',';
+            keepList += QString::number(b.id);
+        }
+    }
+    {
+        QSqlQuery     del(m_db);
+        const QString sql = keepList.isEmpty()
+                                ? QStringLiteral("DELETE FROM entry_content WHERE entry_id = :eid;")
+                                : QStringLiteral("DELETE FROM entry_content WHERE entry_id = :eid "
+                                                 "AND id NOT IN (%1);")
+                                      .arg(keepList);
+        del.prepare(sql);
+        del.bindValue(":eid", QVariant::fromValue(entryId));
+        if (!del.exec()) {
+            m_db.rollback();
+            return std::unexpected(del.lastError().text().toStdString());
+        }
+    }
+
+    // 2. UPDATE existing (id > 0) and INSERT new (id <= 0).
+    QSqlQuery upd(m_db);
+    upd.prepare("UPDATE entry_content SET type = :type, kind = :kind, content = :content, "
+                "pos = :pos, row = :row, col = :col, row_span = :rowSpan, col_span = :colSpan "
+                "WHERE id = :id;");
+
+    QSqlQuery ins(m_db);
+    ins.prepare("INSERT INTO entry_content "
+                "(entry_id, type, kind, content, pos, row, col, row_span, col_span) "
+                "VALUES (:eid, :type, :kind, :content, :pos, :row, :col, :rowSpan, :colSpan);");
 
     for (const auto& block : blocks) {
-        q.bindValue(":type", static_cast<int>(block.type));
-        q.bindValue(":kind", QString::fromStdString(ToKindString(block.type)));
-        q.bindValue(":content", QString::fromStdString(block.content));
-        q.bindValue(":pos", QString::fromStdString(block.pos));
-        q.bindValue(":row", block.row);
-        q.bindValue(":col", block.col);
-        q.bindValue(":rowSpan", block.rowSpan);
-        q.bindValue(":colSpan", block.colSpan);
-        q.bindValue(":id", QVariant::fromValue(block.id));
-
-        if (!q.exec()) {
-            m_db.rollback();
-            return std::unexpected(q.lastError().text().toStdString());
+        if (block.id > 0) {
+            upd.bindValue(":type", static_cast<int>(block.type));
+            upd.bindValue(":kind", QString::fromStdString(ToKindString(block.type)));
+            upd.bindValue(":content", QString::fromStdString(block.content));
+            upd.bindValue(":pos", QString::fromStdString(block.pos));
+            upd.bindValue(":row", block.row);
+            upd.bindValue(":col", block.col);
+            upd.bindValue(":rowSpan", block.rowSpan);
+            upd.bindValue(":colSpan", block.colSpan);
+            upd.bindValue(":id", QVariant::fromValue(block.id));
+            if (!upd.exec()) {
+                m_db.rollback();
+                return std::unexpected(upd.lastError().text().toStdString());
+            }
+        } else {
+            ins.bindValue(":eid", QVariant::fromValue(block.wordId));
+            ins.bindValue(":type", static_cast<int>(block.type));
+            ins.bindValue(":kind", QString::fromStdString(ToKindString(block.type)));
+            ins.bindValue(":content", QString::fromStdString(block.content));
+            ins.bindValue(":pos", QString::fromStdString(block.pos));
+            ins.bindValue(":row", block.row);
+            ins.bindValue(":col", block.col);
+            ins.bindValue(":rowSpan", block.rowSpan);
+            ins.bindValue(":colSpan", block.colSpan);
+            if (!ins.exec()) {
+                m_db.rollback();
+                return std::unexpected(ins.lastError().text().toStdString());
+            }
         }
     }
 

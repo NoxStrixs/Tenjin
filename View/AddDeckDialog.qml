@@ -3,21 +3,11 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-Dialog {
+ThemedDialog {
     id: root
     title: "Create Deck"
-    modal: true
-    anchors.centerIn: parent
     width: Platform.isMobile ? Math.min(parent.width - 32, 340) : 320
     padding: 20
-    standardButtons: Dialog.Ok | Dialog.Cancel
-
-    background: Rectangle {
-        color: Platform.bg
-        radius: Platform.radiusLarge
-        border.color: Platform.border
-        border.width: 1
-    }
 
     onAboutToShow: {
         deckNameInput.text = ""
@@ -186,3 +176,4 @@ Dialog {
         }
     }
 }
+

@@ -94,6 +94,38 @@ void ContentBlockModel::moveBlock(int from, int to)
     endMoveRows();
 }
 
+Service::ID_t ContentBlockModel::appendBlock(Service::ContentBlock_t block)
+{
+    const int row = static_cast<int>(m_blocks.size());
+    block.id      = m_nextTempId--; // temporary negative id until persisted
+    block.row     = row;            // append at the end as a single cell
+    block.col     = 0;
+    block.rowSpan = 1;
+    block.colSpan = 1;
+
+    beginInsertRows({}, row, row);
+    m_blocks.push_back(std::move(block));
+    endInsertRows();
+    return m_blocks.back().id;
+}
+
+void ContentBlockModel::removeBlockById(Service::ID_t id)
+{
+    auto it =
+        std::find_if(m_blocks.begin(), m_blocks.end(), [id](const auto& b) { return b.id == id; });
+    if (it == m_blocks.end())
+        return;
+
+    const int row = static_cast<int>(std::distance(m_blocks.begin(), it));
+    beginRemoveRows({}, row, row);
+    m_blocks.erase(it);
+    endRemoveRows();
+
+    // Keep row indices contiguous after removal.
+    for (int i = 0; i < static_cast<int>(m_blocks.size()); ++i)
+        m_blocks[i].row = i;
+}
+
 const Service::ContentBlock_t* ContentBlockModel::findById(Service::ID_t id) const
 {
     for (const auto& b : m_blocks)
@@ -194,6 +226,9 @@ void EntryViewModel::saveEdit()
     }
     m_editMode = false;
     emit editModeChanged();
+    // The model may hold temp negative ids for blocks just inserted; reload so
+    // it reflects the real DB ids (and the canonical persisted state).
+    reloadContent();
 }
 
 void EntryViewModel::cancelEdit()
@@ -234,18 +269,28 @@ bool EntryViewModel::addContentBlock(int type, const QString& content)
 {
     if (m_selectedWordId < 0)
         return false;
-    // Append at the end: next row index, single cell.
-    const int               nextRow = rowCountForLayout();
+
     Service::ContentBlock_t block{.id      = 0,
                                   .wordId  = m_selectedWordId,
                                   .type    = static_cast<Service::ContentType_t>(type),
                                   .content = content.toStdString(),
-                                  .row     = nextRow,
+                                  .row     = 0, // set by append/DB
                                   .col     = 0,
                                   .rowSpan = 1,
                                   .colSpan = 1,
                                   .pos     = ""};
-    auto                    result = m_entryService->AddContentBlock(block);
+
+    // In an edit session, stage in the model only (temp id) so saveEdit()
+    // persists it and cancelEdit() drops it — without a reload that would wipe
+    // other blocks' unsaved text.
+    if (m_editMode) {
+        m_contentModel->appendBlock(block);
+        return true;
+    }
+
+    // Outside edit mode (defensive): persist immediately.
+    block.row   = rowCountForLayout();
+    auto result = m_entryService->AddContentBlock(block);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -346,6 +391,13 @@ int EntryViewModel::rowCountForLayout() const
 
 bool EntryViewModel::deleteContentBlock(qint64 id)
 {
+    // In an edit session, remove from the model only; saveEdit() reconciles the
+    // deletion to the DB and cancelEdit() restores it.
+    if (m_editMode) {
+        m_contentModel->removeBlockById(id);
+        return true;
+    }
+
     auto result = m_entryService->DeleteContentBlock(id);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
@@ -378,38 +430,72 @@ QString mediaDir()
 
 QString EntryViewModel::importMedia(const QString& sourceUrl)
 {
-    // Accept either a file:// URL (from FileDialog) or a plain local path.
-    QString src = sourceUrl;
-    if (src.startsWith(QStringLiteral("file:")))
-        src = QUrl(src).toLocalFile();
+    // On iOS the document/photo picker returns a security-scoped URL whose path
+    // QFileInfo::exists() cannot stat directly. Rather than testing existence on
+    // a converted path, open the source through QFile (which accepts the URL's
+    // local path) and copy its bytes. We resolve the local path from the URL but
+    // do NOT gate on QFileInfo::exists(); we let the read attempt be the test.
+    const QUrl url(sourceUrl);
+    QString    srcPath = url.isLocalFile() ? url.toLocalFile()
+                         : sourceUrl.startsWith(QStringLiteral("file:"))
+                             ? QUrl(sourceUrl).toLocalFile()
+                             : sourceUrl;
 
-    const QFileInfo info(src);
-    if (!info.exists() || !info.isFile()) {
-        emit errorOccurred(QStringLiteral("File not found: %1").arg(src));
+    QFile in(srcPath);
+    if (!in.open(QIODevice::ReadOnly)) {
+        emit errorOccurred(QStringLiteral("Cannot open media file: %1").arg(srcPath));
         return {};
     }
+
+    // Derive a name/suffix from the source path.
+    const QFileInfo info(srcPath);
+    const QString   baseName =
+        info.completeBaseName().isEmpty() ? QStringLiteral("media") : info.completeBaseName();
+    const QString suffix =
+        info.suffix().isEmpty() ? QString() : QStringLiteral(".") + info.suffix();
 
     const QString dir = mediaDir();
     if (!QDir().mkpath(dir)) {
         emit errorOccurred(QStringLiteral("Could not create media directory."));
+        in.close();
         return {};
     }
 
-    // Build a unique destination name to avoid clobbering existing files.
-    const QString baseName = info.completeBaseName();
-    const QString suffix =
-        info.suffix().isEmpty() ? QString() : QStringLiteral(".") + info.suffix();
-    QString fileName = info.fileName();
+    QString fileName = baseName + suffix;
     QString dest     = dir + QStringLiteral("/") + fileName;
     for (int n = 1; QFile::exists(dest); ++n) {
         fileName = QStringLiteral("%1_%2%3").arg(baseName).arg(n).arg(suffix);
         dest     = dir + QStringLiteral("/") + fileName;
     }
 
-    if (!QFile::copy(src, dest)) {
-        emit errorOccurred(QStringLiteral("Failed to copy media file."));
+    QFile out(dest);
+    if (!out.open(QIODevice::WriteOnly)) {
+        emit errorOccurred(QStringLiteral("Failed to create destination file."));
+        in.close();
         return {};
     }
+
+    // Stream the copy so it works regardless of how the source URL is backed.
+    constexpr qint64 chunk = 1 << 16;
+    while (!in.atEnd()) {
+        const QByteArray buf = in.read(chunk);
+        if (buf.isEmpty() && !in.atEnd()) {
+            emit errorOccurred(QStringLiteral("Failed to read media file."));
+            in.close();
+            out.close();
+            QFile::remove(dest);
+            return {};
+        }
+        if (out.write(buf) != buf.size()) {
+            emit errorOccurred(QStringLiteral("Failed to write media file."));
+            in.close();
+            out.close();
+            QFile::remove(dest);
+            return {};
+        }
+    }
+    in.close();
+    out.close();
 
     // Store only the relative file name so the DB stays portable.
     return fileName;
@@ -487,7 +573,7 @@ void EntryViewModel::rebuildSearchResults()
                             if (idx >= 0) {
                                 // ~60-char window around the match.
                                 const int start = std::max(0, idx - 20);
-                                snippet = (start > 0 ? QStringLiteral("…") : QString()) +
+                                snippet         = (start > 0 ? QStringLiteral("…") : QString()) +
                                           c.mid(start, 60).simplified() +
                                           (c.size() > start + 60 ? QStringLiteral("…") : QString());
                                 break;

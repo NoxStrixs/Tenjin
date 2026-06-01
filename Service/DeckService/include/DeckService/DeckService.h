@@ -38,8 +38,8 @@ public:
 
     // Resolves manual or smart deck membership to a concrete word list.
     Result_t<std::vector<Entry_t>>            GetEntriesForDeck(ID_t deckId) const;
-    Result_t<DeckStats_t>                    GetDeckStats(ID_t deckId) const;
-    Result_t<DeckAnalytics_t>                GetDeckAnalytics(ID_t deckId) const;
+    Result_t<DeckStats_t>                     GetDeckStats(ID_t deckId) const;
+    Result_t<DeckAnalytics_t>                 GetDeckAnalytics(ID_t deckId) const;
     Result_t<std::vector<EntryReviewEvent_t>> GetEntryHistory(ID_t deckId, ID_t wordId) const;
 
     // ── Review session ───────────────────────────────────────────────────────

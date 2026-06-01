@@ -216,8 +216,8 @@ Result_t<Entry_t> DatabaseManager::GetEntry(const std::string& word)
         return std::unexpected("Word not found: " + std::string(word));
 
     return Entry_t{.id        = q.value(0).toLongLong(),
-                  .word      = q.value(1).toString().toStdString(),
-                  .createdAt = q.value(2).toString().toStdString()};
+                   .word      = q.value(1).toString().toStdString(),
+                   .createdAt = q.value(2).toString().toStdString()};
 }
 
 Result_t<std::vector<Entry_t>> DatabaseManager::GetAllEntries()
@@ -229,8 +229,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetAllEntries()
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
@@ -370,8 +370,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForTag(ID_t tagId)
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
@@ -526,8 +526,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntries(const std::string&
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
@@ -579,8 +579,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByName(const std::s
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
@@ -623,8 +623,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByContent(const std
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
@@ -643,9 +643,9 @@ DatabaseManager::AddEntryRelation(ID_t wordId, ID_t relatedId, const std::string
         return std::unexpected(q.lastError().text().toStdString());
 
     return EntryRelation_t{.id             = q.lastInsertId().toLongLong(),
-                          .wordId         = wordId,
-                          .wordRelationId = relatedId,
-                          .relationType   = type};
+                           .wordId         = wordId,
+                           .wordRelationId = relatedId,
+                           .relationType   = type};
 }
 
 Result_t<bool> DatabaseManager::RemoveEntryRelation(ID_t id)
@@ -676,9 +676,9 @@ Result_t<std::vector<EntryRelation_t>> DatabaseManager::GetRelationsForEntry(ID_
     std::vector<EntryRelation_t> relations;
     while (q.next()) {
         relations.push_back(EntryRelation_t{.id             = q.value(0).toLongLong(),
-                                           .wordId         = q.value(1).toLongLong(),
-                                           .wordRelationId = q.value(2).toLongLong(),
-                                           .relationType   = q.value(3).toString().toStdString()});
+                                            .wordId         = q.value(1).toLongLong(),
+                                            .wordRelationId = q.value(2).toLongLong(),
+                                            .relationType   = q.value(3).toString().toStdString()});
     }
     return relations;
 }
@@ -1066,9 +1066,9 @@ Result_t<std::vector<EntryReviewEvent_t>> DatabaseManager::GetEntryHistory(ID_t 
     std::vector<EntryReviewEvent_t> events;
     while (q.next()) {
         events.push_back(EntryReviewEvent_t{q.value(0).toLongLong(),
-                                           q.value(1).toInt(),
-                                           q.value(2).toDouble(),
-                                           q.value(3).toInt()});
+                                            q.value(1).toInt(),
+                                            q.value(2).toDouble(),
+                                            q.value(3).toInt()});
     }
     return events;
 }
@@ -1094,8 +1094,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
         std::vector<Entry_t> words;
         while (q.next()) {
             words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                                   .word      = q.value(1).toString().toStdString(),
-                                   .createdAt = q.value(2).toString().toStdString()});
+                                    .word      = q.value(1).toString().toStdString(),
+                                    .createdAt = q.value(2).toString().toStdString()});
         }
         return words;
     }
@@ -1114,7 +1114,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
 }
 
 Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vector<ID_t>& tagIds,
-                                                              FilterMode_t             mode)
+                                                                 FilterMode_t             mode)
 {
     if (tagIds.empty())
         return std::vector<Entry_t>{};

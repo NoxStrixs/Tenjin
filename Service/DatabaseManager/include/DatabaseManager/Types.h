@@ -37,21 +37,30 @@ enum class ContentType_t : int {
 inline std::string ToKindString(ContentType_t t)
 {
     switch (t) {
-    case ContentType_t::Definition: return "definition";
-    case ContentType_t::Media:      return "media";
-    case ContentType_t::Note:       return "note";
-    case ContentType_t::Divider:    return "divider";
-    case ContentType_t::Formula:    return "formula";
+    case ContentType_t::Definition:
+        return "definition";
+    case ContentType_t::Media:
+        return "media";
+    case ContentType_t::Note:
+        return "note";
+    case ContentType_t::Divider:
+        return "divider";
+    case ContentType_t::Formula:
+        return "formula";
     }
     return "note";
 }
 
 inline ContentType_t FromKindString(std::string_view s)
 {
-    if (s == "definition") return ContentType_t::Definition;
-    if (s == "media")      return ContentType_t::Media;
-    if (s == "divider")    return ContentType_t::Divider;
-    if (s == "formula")    return ContentType_t::Formula;
+    if (s == "definition")
+        return ContentType_t::Definition;
+    if (s == "media")
+        return ContentType_t::Media;
+    if (s == "divider")
+        return ContentType_t::Divider;
+    if (s == "formula")
+        return ContentType_t::Formula;
     return ContentType_t::Note;
 }
 
@@ -78,9 +87,9 @@ struct Tag_t {
 // only meaningful for definition blocks. row/col/span describe its placement
 // in the page grid.
 struct ContentBlock_t {
-    ID_t          id      = 0;
-    ID_t          wordId  = 0;
-    ContentType_t type    = ContentType_t::Note;
+    ID_t          id     = 0;
+    ID_t          wordId = 0;
+    ContentType_t type   = ContentType_t::Note;
     std::string   content;
     int           row     = 0;
     int           col     = 0;
@@ -98,7 +107,7 @@ struct EntryRelation_t {
 };
 
 struct Deck_t {
-    ID_t         id         = 0;
+    ID_t         id = 0;
     std::string  name;
     bool         bIsSmart   = false;
     FilterMode_t filterMode = FilterMode_t::And;
@@ -107,14 +116,14 @@ struct Deck_t {
 
 // SM-2 scheduling state for one (deck, word) pair.
 struct Review_t {
-    ID_t        id           = 0;
-    ID_t        deckId       = 0;
-    ID_t        wordId       = 0;
-    float       easeFactor   = 2.5f;
+    ID_t          id           = 0;
+    ID_t          deckId       = 0;
+    ID_t          wordId       = 0;
+    float         easeFactor   = 2.5f;
     std::uint16_t intervalDays = 1;
     std::uint16_t repetitions  = 0;
-    std::string nextReviewDate;
-    std::string lastReviewDate;
+    std::string   nextReviewDate;
+    std::string   lastReviewDate;
 };
 
 // At-a-glance deck progress.

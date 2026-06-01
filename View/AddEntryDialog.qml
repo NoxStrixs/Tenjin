@@ -3,47 +3,11 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Dialog {
+ThemedDialog {
     id: root
-    modal: true
-    anchors.centerIn: parent
+    title: "Add Word"
     width: Platform.isMobile ? Math.min(parent.width - 32, 400) : 400
     padding: 24
-    topPadding: 0
-    standardButtons: Dialog.Ok | Dialog.Cancel
-
-    background: Rectangle {
-        color: Platform.bg
-        radius: Platform.radiusLarge
-        border.color: Platform.border
-        border.width: 1
-        layer.enabled: true
-        layer.effect: null
-    }
-
-    header: Rectangle {
-        width: parent.width
-        height: 50
-        color: Platform.surface
-        radius: Platform.radiusLarge
-        // Square off bottom corners
-        Rectangle {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-            height: Platform.radiusLarge
-            color: Platform.surface
-        }
-        Rectangle {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-            height: 1; color: Platform.border
-        }
-        Text {
-            anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 20 }
-            text: "Add Word"
-            font.pixelSize: 15
-            font.bold: true
-            color: Platform.textPrimary
-        }
-    }
 
     onAboutToShow: {
         wordInput.text = ""
@@ -67,7 +31,7 @@ Dialog {
 
         Rectangle {
             Layout.fillWidth: true
-            height: 42
+            height: Platform.touchTarget
             radius: Platform.radius
             color: Platform.bg
             border.color: wordInput.activeFocus ? Platform.accent : Platform.border
@@ -77,7 +41,7 @@ Dialog {
                 id: wordInput
                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                 placeholderText: "e.g. ephemeral"
-                font.pixelSize: 15
+                font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
                 background: Rectangle { color: "transparent" }
                 Keys.onReturnPressed: root.accept()
@@ -93,6 +57,4 @@ Dialog {
         }
     }
 }
-
-
 

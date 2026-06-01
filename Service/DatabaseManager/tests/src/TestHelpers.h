@@ -11,10 +11,19 @@
 class TempDb
 {
 public:
-    TempDb() : m_dir() { m_path = m_dir.path() + "/tenjin-test.db"; }
+    TempDb() : m_dir()
+    {
+        m_path = m_dir.path() + "/tenjin-test.db";
+    }
 
-    [[nodiscard]] std::string path() const { return m_path.toStdString(); }
-    [[nodiscard]] QString     qpath() const { return m_path; }
+    [[nodiscard]] std::string path() const
+    {
+        return m_path.toStdString();
+    }
+    [[nodiscard]] QString qpath() const
+    {
+        return m_path;
+    }
 
 private:
     QTemporaryDir m_dir;

@@ -77,6 +77,7 @@ qt_add_qml_module(TenjinView
         TagChip.qml
         SearchBox.qml
         ConfirmDialog.qml
+        ThemedDialog.qml
         AddTagDialog.qml
         AddEntryDialog.qml
         AddDeckDialog.qml

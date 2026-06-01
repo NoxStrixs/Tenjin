@@ -182,7 +182,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
         return std::unexpected(deck.error());
 
     if (!deck->bIsSmart) {
-        // Manual deck — read directly from deck_word junction
+        // Manual deck — read directly from deck_entry junction
         QSqlQuery q(m_db);
         q.prepare("SELECT w.id, w.title, w.created_at FROM entry w "
                   "JOIN deck_entry dw ON dw.entry_id = w.id "
@@ -196,8 +196,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
         std::vector<Entry_t> words;
         while (q.next()) {
             words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                                   .word      = q.value(1).toString().toStdString(),
-                                   .createdAt = q.value(2).toString().toStdString()});
+                                    .word      = q.value(1).toString().toStdString(),
+                                    .createdAt = q.value(2).toString().toStdString()});
         }
         return words;
     }
@@ -216,7 +216,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
 }
 
 Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vector<ID_t>& tagIds,
-                                                              FilterMode_t             mode)
+                                                                 FilterMode_t             mode)
 {
     if (tagIds.empty())
         return std::vector<Entry_t>{};
@@ -257,8 +257,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vect
     std::vector<Entry_t> words;
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
