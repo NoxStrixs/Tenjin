@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+: "${QT_VERSION:=6.8.3}"
+: "${QT_TARGET_PATH:=/opt/Qt/${QT_VERSION}/mingw_64}"
+
+# Per-run prefix in a writable, user-owned location. The baked /opt/wineprefix
+# is root-owned and unusable under --user. Seed it from the target Qt so the
+# PE loader finds Qt6*.dll.
+export WINEPREFIX="${HOME:-/tmp}/.wine-tenjin"
+export WINEDEBUG=-all
+export WINEDLLOVERRIDES="mscoree,mshtml="
+export DISPLAY=
+export WINEPATH="Z:${QT_TARGET_PATH}\\bin"
+
+# Initialize prefix once if absent (quiet, no Mono/Gecko prompts).
+if [ ! -d "${WINEPREFIX}" ]; then
+    wineboot -i >/dev/null 2>&1 || true
+    wineserver -w || true
+fi
+
+exec wine "${QT_TARGET_PATH}/bin/windeployqt.exe" \
+    --qtpaths "${QT_TARGET_PATH}/bin/qtpaths.exe" \
+    "$@"

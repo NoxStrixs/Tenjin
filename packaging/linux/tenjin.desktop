@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Tenjin
+GenericName=Vocabulary
+Comment=Personal vocabulary and spaced-repetition app
+Exec=Tenjin
+Icon=tenjin
+Terminal=false
+Categories=Education;Languages;
+StartupWMClass=Tenjin
+Keywords=vocabulary;flashcards;learning;languages;

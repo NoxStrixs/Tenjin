@@ -1,0 +1,3 @@
+add_subdirectory(DatabaseManager)
+add_subdirectory(WordService)
+add_subdirectory(DeckService)

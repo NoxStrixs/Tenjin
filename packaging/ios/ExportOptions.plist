@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- For App Store: change to "app-store" and provide a provisioning profile. -->
+    <key>method</key>
+    <string>development</string>
+
+    <key>signingStyle</key>
+    <string>automatic</string>
+
+    <!-- Set teamID at the xcodebuild command line if not stamped at build configure. -->
+    <key>stripSwiftSymbols</key>
+    <true/>
+
+    <key>uploadSymbols</key>
+    <true/>
+
+    <key>uploadBitcode</key>
+    <false/>
+</dict>
+</plist>

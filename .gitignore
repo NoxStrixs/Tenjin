@@ -1,0 +1,16 @@
+build/
+*.user
+*.user.*
+.DS_Store
+.cache/
+compile_commands.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+*.swp
