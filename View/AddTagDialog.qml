@@ -16,7 +16,7 @@ Dialog {
     onAccepted: {
         const name = tagNameInput.text.trim()
         if (name.length > 0)
-            appVM.wordVM.createTag(name)
+            appVM.entryVM.createTag(name)
     }
 
     background: Rectangle {

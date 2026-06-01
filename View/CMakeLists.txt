@@ -68,9 +68,9 @@ qt_add_qml_module(TenjinView
         ActionButton.qml
         Sidebar.qml
         Platform.qml
-        WordPage.qml
-        WordDetailView.qml
-        WordListPanel.qml
+        EntryPage.qml
+        EntryDetailView.qml
+        EntryListPanel.qml
         TagsPage.qml
         RenameTagDialog.qml
         MobileDrawer.qml
@@ -87,7 +87,7 @@ qt_add_qml_module(TenjinView
         SearchBox.qml
         ConfirmDialog.qml
         AddTagDialog.qml
-        AddWordDialog.qml
+        AddEntryDialog.qml
         AddDeckDialog.qml
         IconBtn.qml
         ${_TENJIN_MEDIA_QML}

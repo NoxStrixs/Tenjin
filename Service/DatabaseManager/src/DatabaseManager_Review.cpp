@@ -160,7 +160,7 @@ Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
 {
     DeckStats_t stats;
 
-    auto words = GetWordsForDeck(deckId);
+    auto words = GetEntriesForDeck(deckId);
     if (!words)
         return std::unexpected(words.error());
     stats.total = static_cast<int>(words->size());
@@ -233,7 +233,7 @@ Result_t<DeckAnalytics_t> DatabaseManager::GetDeckAnalytics(ID_t deckId)
 }
 
 
-Result_t<std::vector<WordReviewEvent_t>> DatabaseManager::GetWordHistory(ID_t deckId, ID_t wordId)
+Result_t<std::vector<EntryReviewEvent_t>> DatabaseManager::GetEntryHistory(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT reviewed_at, quality, ease_factor, interval_days "
@@ -244,9 +244,9 @@ Result_t<std::vector<WordReviewEvent_t>> DatabaseManager::GetWordHistory(ID_t de
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<WordReviewEvent_t> events;
+    std::vector<EntryReviewEvent_t> events;
     while (q.next()) {
-        events.push_back(WordReviewEvent_t{q.value(0).toLongLong(),
+        events.push_back(EntryReviewEvent_t{q.value(0).toLongLong(),
                                            q.value(1).toInt(),
                                            q.value(2).toDouble(),
                                            q.value(3).toInt()});

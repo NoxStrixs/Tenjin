@@ -1,6 +1,6 @@
 #include <DeckService/DeckService.h>
+#include <EntryService/EntryService.h>
 #include <ViewModels/DeckViewModel.h>
-#include <WordService/WordService.h>
 
 // ---- DeckListModel --------------------------------------------------
 
@@ -51,11 +51,11 @@ QHash<int, QByteArray> DeckListModel::roleNames() const
 
 // ---- DeckViewModel --------------------------------------------------
 
-DeckViewModel::DeckViewModel(std::shared_ptr<Service::DeckService> deckService,
-                             std::shared_ptr<Service::WordService> wordService,
-                             QObject*                              parent)
-    : QObject(parent), m_deckService(std::move(deckService)), m_wordService(std::move(wordService)),
-      m_deckModel(std::make_unique<DeckListModel>(this))
+DeckViewModel::DeckViewModel(std::shared_ptr<Service::DeckService>  deckService,
+                             std::shared_ptr<Service::EntryService> wordService,
+                             QObject*                               parent)
+    : QObject(parent), m_deckService(std::move(deckService)),
+      m_entryService(std::move(wordService)), m_deckModel(std::make_unique<DeckListModel>(this))
 {
     reloadDecks();
 }
@@ -170,7 +170,7 @@ QVariantMap DeckViewModel::deckAnalytics(qint64 deckId)
 QVariantList DeckViewModel::wordHistory(qint64 deckId, qint64 wordId)
 {
     QVariantList out;
-    auto         result = m_deckService->GetWordHistory(deckId, wordId);
+    auto         result = m_deckService->GetEntryHistory(deckId, wordId);
     if (!result)
         return out;
     for (const auto& e : *result) {
@@ -199,7 +199,7 @@ bool DeckViewModel::deleteDeck(qint64 deckId)
 
 bool DeckViewModel::addWordToDeck(qint64 deckId, qint64 wordId)
 {
-    auto result = m_deckService->AddWordToDeck(deckId, wordId);
+    auto result = m_deckService->AddEntryToDeck(deckId, wordId);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -211,7 +211,7 @@ bool DeckViewModel::addWordToDeck(qint64 deckId, qint64 wordId)
 
 bool DeckViewModel::removeWordFromDeck(qint64 deckId, qint64 wordId)
 {
-    auto result = m_deckService->RemoveWordFromDeck(deckId, wordId);
+    auto result = m_deckService->RemoveEntryFromDeck(deckId, wordId);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -268,7 +268,7 @@ void DeckViewModel::reloadTagFilters()
 
 QVariantList DeckViewModel::allWords()
 {
-    auto result = m_wordService->GetAllWords();
+    auto result = m_entryService->GetAllEntries();
     if (!result)
         return {};
     QVariantList out;
@@ -283,7 +283,7 @@ QVariantList DeckViewModel::allWords()
 
 QVariantList DeckViewModel::allTags()
 {
-    auto result = m_wordService->GetAllTags();
+    auto result = m_entryService->GetAllTags();
     if (!result)
         return {};
     QVariantList out;
@@ -300,7 +300,7 @@ void DeckViewModel::reloadDeckWords()
 {
     if (m_selectedDeckId < 0)
         return;
-    auto result = m_deckService->GetWordsForDeck(m_selectedDeckId);
+    auto result = m_deckService->GetEntriesForDeck(m_selectedDeckId);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return;

@@ -12,7 +12,7 @@ import TenjinView
 // - Media Path         → a file path with a "Browse…" picker; if the path points
 //                        to an image it is rendered inline.
 //
-// Reordering is handled by the draggable wrapper in WordPage.qml; this component
+// Reordering is handled by the draggable wrapper in EntryPage.qml; this component
 // renders its content and emits edit/delete intents.
 //
 // Layout note: the root height is driven by content via implicitHeight and the
@@ -521,7 +521,7 @@ Rectangle {
                     id: preview
                     anchors.fill: parent
                     anchors.margins: 6
-                    source: previewBox.visible ? appVM.wordVM.resolveMediaUrl(root.blockContent) : ""
+                    source: previewBox.visible ? appVM.entryVM.resolveMediaUrl(root.blockContent) : ""
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     cache: false
@@ -590,7 +590,7 @@ Rectangle {
                     "All files (*)"
                 ]
                 onAccepted: {
-                    const stored = appVM.wordVM.importMedia(mediaFileDialog.selectedFile)
+                    const stored = appVM.entryVM.importMedia(mediaFileDialog.selectedFile)
                     if (stored.length > 0)
                         root.contentEdited(root.blockId, stored)
                 }
@@ -607,7 +607,7 @@ Rectangle {
             source: Qt.resolvedUrl("MediaPlayerView.qml")
             onLoaded: {
                 if (item) {
-                    item.source = appVM.wordVM.resolveMediaUrl(root.blockContent)
+                    item.source = appVM.entryVM.resolveMediaUrl(root.blockContent)
                     item.isVideo = root.mediaKind === "video"
                     item.tooltipText = root.blockContent
                 }
@@ -631,7 +631,7 @@ Rectangle {
                 anchors.fill: parent
                 anchors.margins: 4
                 source: Qt.resolvedUrl("WebEmbed.qml")
-                onLoaded: if (item) item.url = appVM.wordVM.resolveMediaUrl(root.blockContent)
+                onLoaded: if (item) item.url = appVM.entryVM.resolveMediaUrl(root.blockContent)
             }
         }
     }
@@ -695,7 +695,7 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: Qt.openUrlExternally(appVM.wordVM.resolveMediaUrl(root.blockContent))
+                onClicked: Qt.openUrlExternally(appVM.entryVM.resolveMediaUrl(root.blockContent))
             }
         }
     }

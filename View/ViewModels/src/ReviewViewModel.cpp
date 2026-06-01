@@ -1,13 +1,13 @@
+#include <EntryService/EntryService.h>
 #include <ViewModels/ReviewViewModel.h>
-#include <WordService/WordService.h>
 
 #include <QRegularExpression>
 #include <QStringList>
 
-ReviewViewModel::ReviewViewModel(std::shared_ptr<Service::DeckService> deckService,
-                                 std::shared_ptr<Service::WordService> wordService,
-                                 QObject*                              parent)
-    : QObject(parent), m_deckService(std::move(deckService)), m_wordService(std::move(wordService))
+ReviewViewModel::ReviewViewModel(std::shared_ptr<Service::DeckService>  deckService,
+                                 std::shared_ptr<Service::EntryService> wordService,
+                                 QObject*                               parent)
+    : QObject(parent), m_deckService(std::move(deckService)), m_entryService(std::move(wordService))
 {
 }
 
@@ -40,7 +40,7 @@ QString ReviewViewModel::currentWord() const
     if (wid < 0)
         return {};
     // Walk all words to resolve name — acceptable for small-to-moderate sets
-    auto words = m_wordService->GetAllWords();
+    auto words = m_entryService->GetAllEntries();
     if (!words)
         return {};
     for (const auto& w : *words)
@@ -54,7 +54,7 @@ QString ReviewViewModel::currentAnswer() const
     qint64 wid = currentWordId();
     if (wid < 0)
         return {};
-    auto blocks = m_wordService->GetContentForWord(wid);
+    auto blocks = m_entryService->GetContentForEntry(wid);
     if (!blocks)
         return {};
 

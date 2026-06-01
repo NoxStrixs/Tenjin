@@ -9,9 +9,9 @@ import TenjinView
 //
 // Edit mode : a LaTeX text field plus a palette of buttons that insert snippets
 //             at the cursor — the user never has to know LaTeX syntax.
-// View mode : the formula rendered via KaTeX inside a WebEngineView when
-//             WEBVIEW_SUPPORT was compiled in; otherwise a monospaced raw-LaTeX
-//             fallback so the block is still legible.
+// View mode : the formula rendered natively via appVM.renderFormula() (a
+//             LaTeX-subset → Qt rich-text converter). No WebView, no external
+//             assets, fully offline.
 //
 // Presentational only: it emits contentEdited(bid, newLatex) and deleteRequested
 // exactly like the other block delegates; persistence is the ViewModel's job.
@@ -26,12 +26,6 @@ Rectangle {
 
     signal deleteRequested(int bid)
     signal contentEdited(int bid, string newContent)
-
-    // Whether offline LaTeX rendering (QtWebView + bundled KaTeX) is available,
-    // set by the app via appVM. When false we show a raw-LaTeX text fallback.
-    property bool renderAvailable: (typeof appVM !== "undefined"
-                                    && appVM.formulaRenderingAvailable !== undefined)
-                                   ? appVM.formulaRenderingAvailable : false
 
     // Palette: label shown on the button, and the LaTeX snippet inserted.
     // "$1" (if present) marks where the caret should land after insertion.
@@ -144,38 +138,53 @@ Rectangle {
 
             Repeater {
                 model: root.palette
-                delegate: Button {
+                // Themed palette button, matching the note/definition toolbar's
+                // FmtBtn treatment (Platform colors, hover, touch sizing). Width
+                // grows with the label since entries vary ("x\u00B2" vs "lim").
+                delegate: Rectangle {
+                    id: palBtn
                     required property var modelData
-                    text: modelData.label
-                    font.pixelSize: 13
-                    implicitHeight: 28
-                    onClicked: root.insertSnippet(modelData.snippet)
-                    ToolTip.visible: hovered
-                    ToolTip.text: modelData.snippet.replace("$1", "")
+                    height: Platform.isMobile ? 34 : 26
+                    implicitWidth: Math.max(height, palLabel.implicitWidth + 14)
+                    radius: Platform.radius - 2
+                    color: palArea.containsMouse ? Platform.accent : Platform.surface
+                    border.color: Platform.border
+                    border.width: 1
+
+                    Text {
+                        id: palLabel
+                        anchors.centerIn: parent
+                        text: palBtn.modelData.label
+                        color: palArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
+                        font.pixelSize: Platform.fontBase
+                        font.bold: true
+                    }
+                    MouseArea {
+                        id: palArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        // Keep the editor's selection/caret while clicking.
+                        onPressed: (m) => m.accepted = true
+                        onClicked: root.insertSnippet(palBtn.modelData.snippet)
+                        ToolTip.visible: containsMouse
+                        ToolTip.text: palBtn.modelData.snippet.replace("$1", "")
+                    }
                 }
             }
         }
 
-        // ── View mode: rendered formula ───────────────────────────────────────
-        // KaTeX renderer when WebEngine is available.
-        Loader {
-            id: katexLoader
-            visible: !root.editMode && root.renderAvailable && root.blockContent.length > 0
-            active: visible
-            Layout.fillWidth: true
-            sourceComponent: FormulaWebView {
-                latex: root.blockContent
-            }
-        }
-
-        // Fallback: raw LaTeX when WebEngine isn't compiled in.
+        // ── View mode: natively-rendered formula ──────────────────────────────
+        // FormulaRenderer (C++) converts the LaTeX subset to Qt rich text — no
+        // WebView, no external assets, fully offline.
         Text {
-            visible: !root.editMode && !root.renderAvailable && root.blockContent.length > 0
+            visible: !root.editMode && root.blockContent.length > 0
             Layout.fillWidth: true
-            text: root.blockContent
-            font.family: "monospace"
+            textFormat: Text.RichText
+            text: appVM.renderFormula(root.blockContent)
             color: Platform.textPrimary
-            wrapMode: Text.WrapAnywhere
+            font.pixelSize: Platform.fontLarge
+            wrapMode: Text.WordWrap
         }
 
         // Empty hint.
@@ -187,3 +196,4 @@ Rectangle {
         }
     }
 }
+

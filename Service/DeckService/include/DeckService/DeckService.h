@@ -28,8 +28,8 @@ public:
     Result_t<bool>                DeleteDeck(ID_t deckId);
 
     // ── Manual decks ─────────────────────────────────────────────────────────
-    Result_t<bool> AddWordToDeck(ID_t deckId, ID_t wordId);
-    Result_t<bool> RemoveWordFromDeck(ID_t deckId, ID_t wordId);
+    Result_t<bool> AddEntryToDeck(ID_t deckId, ID_t wordId);
+    Result_t<bool> RemoveEntryFromDeck(ID_t deckId, ID_t wordId);
 
     // ── Smart deck filters ───────────────────────────────────────────────────
     Result_t<bool>               AddTagFilter(ID_t deckId, ID_t tagId);
@@ -37,10 +37,10 @@ public:
     Result_t<std::vector<Tag_t>> GetTagFilters(ID_t deckId) const;
 
     // Resolves manual or smart deck membership to a concrete word list.
-    Result_t<std::vector<Word_t>>            GetWordsForDeck(ID_t deckId) const;
+    Result_t<std::vector<Entry_t>>            GetEntriesForDeck(ID_t deckId) const;
     Result_t<DeckStats_t>                    GetDeckStats(ID_t deckId) const;
     Result_t<DeckAnalytics_t>                GetDeckAnalytics(ID_t deckId) const;
-    Result_t<std::vector<WordReviewEvent_t>> GetWordHistory(ID_t deckId, ID_t wordId) const;
+    Result_t<std::vector<EntryReviewEvent_t>> GetEntryHistory(ID_t deckId, ID_t wordId) const;
 
     // ── Review session ───────────────────────────────────────────────────────
     Result_t<ReviewSession_t> StartSession(ID_t deckId);

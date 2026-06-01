@@ -1,7 +1,7 @@
 #pragma once
 
 #include <DeckService/DeckService.h>
-#include <WordService/WordService.h>
+#include <EntryService/EntryService.h>
 
 #include <QObject>
 #include <QString>
@@ -24,9 +24,9 @@ class ReviewViewModel : public QObject
     Q_PROPERTY(bool showingAnswer READ showingAnswer NOTIFY showingAnswerChanged)
 
 public:
-    ReviewViewModel(std::shared_ptr<Service::DeckService> deckService,
-                    std::shared_ptr<Service::WordService> wordService,
-                    QObject*                              parent = nullptr);
+    ReviewViewModel(std::shared_ptr<Service::DeckService>  deckService,
+                    std::shared_ptr<Service::EntryService> wordService,
+                    QObject*                               parent = nullptr);
 
     bool active() const
     {
@@ -55,8 +55,8 @@ signals:
     void errorOccurred(const QString& msg);
 
 private:
-    std::shared_ptr<Service::DeckService> m_deckService;
-    std::shared_ptr<Service::WordService> m_wordService;
+    std::shared_ptr<Service::DeckService>  m_deckService;
+    std::shared_ptr<Service::EntryService> m_entryService;
 
     std::optional<Service::ReviewSession_t> m_session;
     bool                                    m_showingAnswer = false;

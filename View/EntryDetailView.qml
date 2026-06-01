@@ -8,7 +8,7 @@ import QtQml
 import QtQml.Models
 
 // The full editor for a single word: title, action buttons, tags, the row/column
-// content grid, and the add-content buttons. Extracted from WordPage so both the
+// content grid, and the add-content buttons. Extracted from EntryPage so both the
 // desktop detail pane and the mobile list→detail stack render one definition.
 //
 //   showBack — when true (mobile), shows a "‹" button that emits backRequested()
@@ -42,7 +42,7 @@ Item {
                 }
 
                 Text {
-                    text: appVM.wordVM.selectedWord
+                    text: appVM.entryVM.selectedWord
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontTitle
                     font.bold: true
@@ -51,30 +51,30 @@ Item {
                 }
 
                 ActionButton {
-                    visible: !appVM.wordVM.editMode
+                    visible: !appVM.entryVM.editMode
                     text: "Edit"
                     variant: "neutral"
-                    onClicked: appVM.wordVM.beginEdit()
+                    onClicked: appVM.entryVM.beginEdit()
                 }
 
                 // Desktop: Save/Cancel/Delete inline with the title.
                 Row {
-                    visible: appVM.wordVM.editMode && !Platform.isMobile
+                    visible: appVM.entryVM.editMode && !Platform.isMobile
                     spacing: 8
-                    ActionButton { text: "Save";        variant: "success"; onClicked: appVM.wordVM.saveEdit() }
-                    ActionButton { text: "Cancel";      variant: "neutral"; onClicked: appVM.wordVM.cancelEdit() }
-                    ActionButton { text: "Delete Word"; variant: "danger";  onClicked: deleteWordConfirm.open() }
+                    ActionButton { text: "Save";        variant: "success"; onClicked: appVM.entryVM.saveEdit() }
+                    ActionButton { text: "Cancel";      variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
+                    ActionButton { text: "Delete Word"; variant: "danger";  onClicked: deleteEntryConfirm.open() }
                 }
             }
 
             // Mobile edit actions — full-width second row.
             RowLayout {
-                visible: appVM.wordVM.editMode && Platform.isMobile
+                visible: appVM.entryVM.editMode && Platform.isMobile
                 Layout.fillWidth: true
                 spacing: 8
-                ActionButton { Layout.fillWidth: true; text: "Save";   variant: "success"; onClicked: appVM.wordVM.saveEdit() }
-                ActionButton { Layout.fillWidth: true; text: "Cancel"; variant: "neutral"; onClicked: appVM.wordVM.cancelEdit() }
-                ActionButton { Layout.fillWidth: true; text: "Delete"; variant: "danger";  onClicked: deleteWordConfirm.open() }
+                ActionButton { Layout.fillWidth: true; text: "Save";   variant: "success"; onClicked: appVM.entryVM.saveEdit() }
+                ActionButton { Layout.fillWidth: true; text: "Cancel"; variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
+                ActionButton { Layout.fillWidth: true; text: "Delete"; variant: "danger";  onClicked: deleteEntryConfirm.open() }
             }
         }
 
@@ -90,20 +90,20 @@ Item {
                 spacing: 6
 
                 Repeater {
-                    model: appVM.wordVM.wordTags
+                    model: appVM.entryVM.wordTags
                     delegate: TagChip {
                         required property var modelData
                         tagName: modelData.name
                         tagId: modelData.id
-                        editable: appVM.wordVM.editMode
-                        onRemoveClicked: (tid) => appVM.wordVM.detachTag(appVM.wordVM.selectedWordId, tid)
+                        editable: appVM.entryVM.editMode
+                        onRemoveClicked: (tid) => appVM.entryVM.detachTag(appVM.entryVM.selectedEntryId, tid)
                     }
                 }
 
                 // "+ tag" → popup to create-or-attach.
                 Rectangle {
                     id: addTagButton
-                    visible: appVM.wordVM.editMode
+                    visible: appVM.entryVM.editMode
                     width: addTagText.implicitWidth + 24
                     height: Platform.isMobile ? 36 : 24
                     radius: height / 2
@@ -124,7 +124,7 @@ Item {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            tagPopup.allTags = appVM.wordVM.getAllTags()
+                            tagPopup.allTags = appVM.entryVM.getAllTags()
                             newTagField.text = ""
                             tagPopup.open()
                             newTagField.forceActiveFocus()
@@ -167,7 +167,7 @@ Item {
                                     background: null
                                     onAccepted: {
                                         if (text.trim().length > 0
-                                            && appVM.wordVM.createAndAttachTag(text)) {
+                                            && appVM.entryVM.createAndAttachTag(text)) {
                                             text = ""
                                             tagPopup.close()
                                         }
@@ -206,7 +206,7 @@ Item {
                                         leftPadding: 6
                                     }
                                     onClicked: {
-                                        appVM.wordVM.attachTag(appVM.wordVM.selectedWordId, modelData.id)
+                                        appVM.entryVM.attachTag(appVM.entryVM.selectedEntryId, modelData.id)
                                         tagPopup.close()
                                     }
                                 }
@@ -235,7 +235,7 @@ Item {
             id: blockGrid
             Layout.fillWidth: true
             Layout.fillHeight: true
-            editMode: appVM.wordVM.editMode
+            editMode: appVM.entryVM.editMode
         }
 
         // ── Add content buttons (wrap on narrow screens) ─────────────
@@ -243,7 +243,7 @@ Item {
         // fallback when offline rendering isn't compiled in.
         Flow {
             Layout.fillWidth: true
-            visible: appVM.wordVM.editMode
+            visible: appVM.entryVM.editMode
             spacing: 8
 
             Repeater {
@@ -276,7 +276,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: appVM.wordVM.addContentBlock(parent.modelData.type)
+                        onClicked: appVM.entryVM.addContentBlock(parent.modelData.type)
                     }
                 }
             }
@@ -284,11 +284,13 @@ Item {
     }
 
     ConfirmDialog {
-        id: deleteWordConfirm
-        message: "Delete \"" + appVM.wordVM.selectedWord + "\"? This cannot be undone."
+        id: deleteEntryConfirm
+        message: "Delete \"" + appVM.entryVM.selectedWord + "\"? This cannot be undone."
         onConfirmed: {
-            appVM.wordVM.deleteWord(appVM.wordVM.selectedWordId)
+            appVM.entryVM.deleteEntry(appVM.entryVM.selectedEntryId)
             if (detailRoot.showBack) detailRoot.backRequested()
         }
     }
 }
+
+

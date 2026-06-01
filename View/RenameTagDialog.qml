@@ -26,7 +26,7 @@ Dialog {
     onAccepted: {
         const name = renameField.text.trim()
         if (name.length > 0 && tagId >= 0)
-            appVM.wordVM.renameTag(tagId, name)
+            appVM.entryVM.renameTag(tagId, name)
     }
 
     background: Rectangle {
@@ -78,3 +78,4 @@ Dialog {
         }
     }
 }
+

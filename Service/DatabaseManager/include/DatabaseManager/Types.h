@@ -62,7 +62,7 @@ enum class FilterMode_t {
 };
 
 // ── Value types ──────────────────────────────────────────────────────────────
-struct Word_t {
+struct Entry_t {
     ID_t        id = 0;
     std::string word;
     std::string createdAt;
@@ -90,7 +90,7 @@ struct ContentBlock_t {
 };
 
 // A directed relation from one word to another (synonym, antonym, …).
-struct WordRelation_t {
+struct EntryRelation_t {
     ID_t        id             = 0;
     ID_t        wordId         = 0;
     ID_t        wordRelationId = 0; // the related word's id
@@ -140,7 +140,7 @@ struct DeckAnalytics_t {
 
 // One historical review event for a word (for per-word history charts). Built
 // positionally: { reviewedAt, quality, easeFactor, intervalDays }.
-struct WordReviewEvent_t {
+struct EntryReviewEvent_t {
     std::int64_t reviewedAt   = 0; // epoch milliseconds
     int          quality      = 0;
     double       easeFactor   = 0.0;

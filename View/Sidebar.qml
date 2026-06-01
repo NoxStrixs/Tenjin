@@ -8,7 +8,7 @@ Rectangle {
     id: sidebarRoot
     color: Platform.surface
 
-    signal addWordRequested()
+    signal addEntryRequested()
     signal addDeckRequested()
     signal addTagRequested()
 
@@ -110,7 +110,7 @@ Rectangle {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (sidebarMode === 0) sidebarRoot.addWordRequested()
+                        if (sidebarMode === 0) sidebarRoot.addEntryRequested()
                         else if (sidebarMode === 1) sidebarRoot.addTagRequested()
                         else sidebarRoot.addDeckRequested()
                     }
@@ -128,26 +128,26 @@ Rectangle {
             ListView {
                 id: wordListView
                 clip: true
-                model: appVM.wordVM.getAllWords()
+                model: appVM.entryVM.getAllEntries()
 
                 Connections {
-                    target: appVM.wordVM
-                    function onWordListChanged() {
-                        wordListView.model = appVM.wordVM.getAllWords()
+                    target: appVM.entryVM
+                    function onEntryListChanged() {
+                        wordListView.model = appVM.entryVM.getAllEntries()
                     }
                 }
 
                 delegate: Rectangle {
                     width: ListView.view.width
                     height: 38
-                    color: appVM.wordVM.selectedWordId === modelData.wordId
+                    color: appVM.entryVM.selectedEntryId === modelData.wordId
                            ? Platform.surfaceAlt : "transparent"
 
                     Rectangle {
                         anchors { left: parent.left; bottom: parent.bottom }
                         width: 3; height: parent.height
                         color: Platform.accent
-                        visible: appVM.wordVM.selectedWordId === modelData.wordId
+                        visible: appVM.entryVM.selectedEntryId === modelData.wordId
                     }
 
                     Text {
@@ -169,7 +169,7 @@ Rectangle {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            appVM.wordVM.selectWord(modelData.wordId)
+                            appVM.entryVM.selectEntry(modelData.wordId)
                             appVM.currentPage = 0
                         }
                     }
@@ -234,7 +234,7 @@ Rectangle {
                                     anchors.margins: -6
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: appVM.wordVM.deleteTag(model.itemId)
+                                    onClicked: appVM.entryVM.deleteTag(model.itemId)
                                 }
                             }
                         }
@@ -250,7 +250,7 @@ Rectangle {
                                 if (model.isTag)
                                     appVM.sidebarVM.model.toggleExpanded(index)
                                 else {
-                                    appVM.wordVM.selectWord(model.itemId)
+                                    appVM.entryVM.selectEntry(model.itemId)
                                     appVM.currentPage = 0
                                 }
                             }
@@ -418,3 +418,4 @@ Rectangle {
     // Mode state
     property int sidebarMode: 0
 }
+

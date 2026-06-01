@@ -240,7 +240,7 @@ Item {
                     }
                 }
                 background: Rectangle { color: hovered ? Platform.surfaceAlt : "transparent"; radius: Platform.radius - 2 }
-                onClicked: { appVM.wordVM.selectWord(wd.modelData.id); appVM.currentPage = 0 }
+                onClicked: { appVM.entryVM.selectEntry(wd.modelData.id); appVM.currentPage = 0 }
             }
 
             Text {

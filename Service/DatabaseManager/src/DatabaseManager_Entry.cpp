@@ -17,7 +17,7 @@
 
 namespace Service {
 
-Result_t<Word_t> DatabaseManager::AddWord(const std::string& word)
+Result_t<Entry_t> DatabaseManager::AddEntry(const std::string& word)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO entry (title) VALUES (:title);");
@@ -26,11 +26,11 @@ Result_t<Word_t> DatabaseManager::AddWord(const std::string& word)
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    return Word_t{.id = q.lastInsertId().toLongLong(), .word = word, .createdAt = {}};
+    return Entry_t{.id = q.lastInsertId().toLongLong(), .word = word, .createdAt = {}};
 }
 
 
-Result_t<Word_t> DatabaseManager::GetWord(const std::string& word)
+Result_t<Entry_t> DatabaseManager::GetEntry(const std::string& word)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, title, created_at FROM entry WHERE title = :title;");
@@ -42,21 +42,21 @@ Result_t<Word_t> DatabaseManager::GetWord(const std::string& word)
     if (!q.next())
         return std::unexpected("Word not found: " + std::string(word));
 
-    return Word_t{.id        = q.value(0).toLongLong(),
+    return Entry_t{.id        = q.value(0).toLongLong(),
                   .word      = q.value(1).toString().toStdString(),
                   .createdAt = q.value(2).toString().toStdString()};
 }
 
 
-Result_t<std::vector<Word_t>> DatabaseManager::GetAllWords()
+Result_t<std::vector<Entry_t>> DatabaseManager::GetAllEntries()
 {
     QSqlQuery q(m_db);
     if (!q.exec("SELECT id, title, created_at FROM entry ORDER BY title ASC;"))
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }
@@ -64,7 +64,7 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetAllWords()
 }
 
 
-Result_t<bool> DatabaseManager::DeleteWord(ID_t id)
+Result_t<bool> DatabaseManager::DeleteEntry(ID_t id)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM entry WHERE id = :id;");

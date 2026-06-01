@@ -1,5 +1,5 @@
-#include <ViewModels/WordViewModel.h>
-#include <WordService/WordService.h>
+#include <EntryService/EntryService.h>
+#include <ViewModels/EntryViewModel.h>
 
 #include <QDir>
 #include <QFile>
@@ -33,7 +33,7 @@ QVariant ContentBlockModel::data(const QModelIndex& index, int role) const
     switch (role) {
     case IdRole:
         return QVariant::fromValue(b.id);
-    case WordIdRole:
+    case EntryIdRole:
         return QVariant::fromValue(b.wordId);
     case TypeRole:
         return static_cast<int>(b.type);
@@ -57,7 +57,7 @@ QHash<int, QByteArray> ContentBlockModel::roleNames() const
 {
     return {
         {IdRole, "blockId"},
-        {WordIdRole, "wordId"},
+        {EntryIdRole, "wordId"},
         {TypeRole, "blockType"},
         {ContentRole, "content"},
         {RowRole, "row"},
@@ -141,18 +141,18 @@ void ContentBlockModel::setBlockPos(Service::ID_t id, const QString& pos)
     }
 }
 
-// ── WordViewModel ─────────────────────────────────────────────────────────────
+// ── EntryViewModel ─────────────────────────────────────────────────────────────
 
-WordViewModel::WordViewModel(std::shared_ptr<Service::WordService> wordService, QObject* parent)
-    : QObject(parent), m_wordService(std::move(wordService)),
+EntryViewModel::EntryViewModel(std::shared_ptr<Service::EntryService> wordService, QObject* parent)
+    : QObject(parent), m_entryService(std::move(wordService)),
       m_contentModel(std::make_unique<ContentBlockModel>(this))
 {
 }
 
-void WordViewModel::selectWord(qint64 wordId)
+void EntryViewModel::selectEntry(qint64 wordId)
 {
     m_selectedWordId = wordId;
-    auto words       = m_wordService->GetAllWords();
+    auto words       = m_entryService->GetAllEntries();
     if (words) {
         for (const auto& w : *words) {
             if (w.id == wordId) {
@@ -163,31 +163,31 @@ void WordViewModel::selectWord(qint64 wordId)
     }
     reloadContent();
     reloadTags();
-    emit selectedWordChanged();
+    emit selectedEntryChanged();
 }
 
-void WordViewModel::clearSelection()
+void EntryViewModel::clearSelection()
 {
     m_selectedWordId = -1;
     m_selectedWord.clear();
     m_contentModel->setBlocks({});
     m_wordTags.clear();
     emit wordTagsChanged();
-    emit selectedWordChanged();
+    emit selectedEntryChanged();
 }
 
-void WordViewModel::beginEdit()
+void EntryViewModel::beginEdit()
 {
     m_editSnapshot = m_contentModel->blocks();
     m_editMode     = true;
     emit editModeChanged();
 }
 
-void WordViewModel::saveEdit()
+void EntryViewModel::saveEdit()
 {
     if (!m_editMode)
         return;
-    auto result = m_wordService->SaveContentLayout(m_contentModel->blocks());
+    auto result = m_entryService->SaveContentLayout(m_contentModel->blocks());
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return;
@@ -196,7 +196,7 @@ void WordViewModel::saveEdit()
     emit editModeChanged();
 }
 
-void WordViewModel::cancelEdit()
+void EntryViewModel::cancelEdit()
 {
     if (!m_editMode)
         return;
@@ -206,31 +206,31 @@ void WordViewModel::cancelEdit()
     emit editModeChanged();
 }
 
-bool WordViewModel::addWord(const QString& word)
+bool EntryViewModel::addWord(const QString& word)
 {
-    auto result = m_wordService->CreateWord(word.toStdString());
+    auto result = m_entryService->CreateWord(word.toStdString());
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
     }
-    emit wordListChanged();
+    emit entryListChanged();
     return true;
 }
 
-bool WordViewModel::deleteWord(qint64 wordId)
+bool EntryViewModel::deleteEntry(qint64 wordId)
 {
-    auto result = m_wordService->DeleteWord(wordId);
+    auto result = m_entryService->DeleteEntry(wordId);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
     }
     if (m_selectedWordId == wordId)
         clearSelection();
-    emit wordListChanged();
+    emit entryListChanged();
     return true;
 }
 
-bool WordViewModel::addContentBlock(int type, const QString& content)
+bool EntryViewModel::addContentBlock(int type, const QString& content)
 {
     if (m_selectedWordId < 0)
         return false;
@@ -245,7 +245,7 @@ bool WordViewModel::addContentBlock(int type, const QString& content)
                                   .rowSpan = 1,
                                   .colSpan = 1,
                                   .pos     = ""};
-    auto                    result = m_wordService->AddContentBlock(block);
+    auto                    result = m_entryService->AddContentBlock(block);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -254,7 +254,7 @@ bool WordViewModel::addContentBlock(int type, const QString& content)
     return true;
 }
 
-bool WordViewModel::updateContentBlock(
+bool EntryViewModel::updateContentBlock(
     qint64 id, int type, const QString& content, int row, int col, int rowSpan, int colSpan)
 {
     Service::ContentBlock_t block{.id      = id,
@@ -266,7 +266,7 @@ bool WordViewModel::updateContentBlock(
                                   .rowSpan = rowSpan,
                                   .colSpan = colSpan,
                                   .pos     = ""};
-    auto                    result = m_wordService->UpdateContentBlock(block);
+    auto                    result = m_entryService->UpdateContentBlock(block);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -275,7 +275,7 @@ bool WordViewModel::updateContentBlock(
     return true;
 }
 
-bool WordViewModel::updateContentBlockText(qint64 id, const QString& content)
+bool EntryViewModel::updateContentBlockText(qint64 id, const QString& content)
 {
     // During an edit session, stage the change in the model only so cancelEdit()
     // can revert; saveEdit() persists everything via SaveContentLayout().
@@ -293,7 +293,7 @@ bool WordViewModel::updateContentBlockText(qint64 id, const QString& content)
     Service::ContentBlock_t block = *existing;
     block.content                 = content.toStdString();
 
-    auto result = m_wordService->UpdateContentBlock(block);
+    auto result = m_entryService->UpdateContentBlock(block);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -302,12 +302,12 @@ bool WordViewModel::updateContentBlockText(qint64 id, const QString& content)
     return true;
 }
 
-void WordViewModel::moveContentBlock(int from, int to)
+void EntryViewModel::moveContentBlock(int from, int to)
 {
     m_contentModel->moveBlock(from, to);
 }
 
-void WordViewModel::setBlockPosition(qint64 id, int row, int col)
+void EntryViewModel::setBlockPosition(qint64 id, int row, int col)
 {
     const auto* b = m_contentModel->findById(id);
     if (!b)
@@ -317,7 +317,7 @@ void WordViewModel::setBlockPosition(qint64 id, int row, int col)
         saveLayout();
 }
 
-void WordViewModel::setBlockSpan(qint64 id, int rowSpan, int colSpan)
+void EntryViewModel::setBlockSpan(qint64 id, int rowSpan, int colSpan)
 {
     const auto* b = m_contentModel->findById(id);
     if (!b)
@@ -327,7 +327,7 @@ void WordViewModel::setBlockSpan(qint64 id, int rowSpan, int colSpan)
         saveLayout();
 }
 
-void WordViewModel::setBlockPartOfSpeech(qint64 id, const QString& pos)
+void EntryViewModel::setBlockPartOfSpeech(qint64 id, const QString& pos)
 {
     if (!m_contentModel->findById(id))
         return;
@@ -336,7 +336,7 @@ void WordViewModel::setBlockPartOfSpeech(qint64 id, const QString& pos)
         saveLayout();
 }
 
-int WordViewModel::rowCountForLayout() const
+int EntryViewModel::rowCountForLayout() const
 {
     int maxRow = -1;
     for (const auto& b : m_contentModel->blocks())
@@ -344,9 +344,9 @@ int WordViewModel::rowCountForLayout() const
     return maxRow + 1;
 }
 
-bool WordViewModel::deleteContentBlock(qint64 id)
+bool EntryViewModel::deleteContentBlock(qint64 id)
 {
-    auto result = m_wordService->DeleteContentBlock(id);
+    auto result = m_entryService->DeleteContentBlock(id);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -355,9 +355,9 @@ bool WordViewModel::deleteContentBlock(qint64 id)
     return true;
 }
 
-bool WordViewModel::saveLayout()
+bool EntryViewModel::saveLayout()
 {
-    auto result = m_wordService->SaveContentLayout(m_contentModel->blocks());
+    auto result = m_entryService->SaveContentLayout(m_contentModel->blocks());
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -376,7 +376,7 @@ QString mediaDir()
 }
 } // namespace
 
-QString WordViewModel::importMedia(const QString& sourceUrl)
+QString EntryViewModel::importMedia(const QString& sourceUrl)
 {
     // Accept either a file:// URL (from FileDialog) or a plain local path.
     QString src = sourceUrl;
@@ -415,7 +415,7 @@ QString WordViewModel::importMedia(const QString& sourceUrl)
     return fileName;
 }
 
-QString WordViewModel::resolveMediaUrl(const QString& storedPath) const
+QString EntryViewModel::resolveMediaUrl(const QString& storedPath) const
 {
     if (storedPath.isEmpty())
         return {};
@@ -431,7 +431,7 @@ QString WordViewModel::resolveMediaUrl(const QString& storedPath) const
     return QUrl::fromLocalFile(abs).toString();
 }
 
-void WordViewModel::setSearchQuery(const QString& q)
+void EntryViewModel::setSearchQuery(const QString& q)
 {
     if (m_searchQuery == q)
         return;
@@ -441,7 +441,7 @@ void WordViewModel::setSearchQuery(const QString& q)
     applySearch();
 }
 
-void WordViewModel::setSearchInContent(bool on)
+void EntryViewModel::setSearchInContent(bool on)
 {
     if (m_searchInContent == on)
         return;
@@ -451,14 +451,14 @@ void WordViewModel::setSearchInContent(bool on)
     applySearch();
 }
 
-void WordViewModel::rebuildSearchResults()
+void EntryViewModel::rebuildSearchResults()
 {
     m_searchResults.clear();
 
     const std::string q = m_searchQuery.trimmed().toStdString();
     if (!q.empty()) {
         // Tag suggestions first (clicking filters the word list).
-        if (auto tags = m_wordService->SearchTagsByName(q)) {
+        if (auto tags = m_entryService->SearchTagsByName(q)) {
             for (const auto& t : *tags) {
                 QVariantMap m;
                 m["kind"]  = QStringLiteral("tag");
@@ -468,7 +468,7 @@ void WordViewModel::rebuildSearchResults()
             }
         }
         // Word suggestions (clicking opens that word).
-        if (auto words = m_wordService->SearchWordsByName(q, m_searchInContent)) {
+        if (auto words = m_entryService->SearchEntriesByName(q, m_searchInContent)) {
             const QString ql = m_searchQuery.trimmed().toLower();
             for (const auto& w : *words) {
                 QVariantMap m;
@@ -480,7 +480,7 @@ void WordViewModel::rebuildSearchResults()
                 // contain the query, surface the matching content line.
                 QString snippet;
                 if (m_searchInContent && !QString::fromStdString(w.word).toLower().contains(ql)) {
-                    if (auto blocks = m_wordService->GetContentForWord(w.id)) {
+                    if (auto blocks = m_entryService->GetContentForEntry(w.id)) {
                         for (const auto& b : *blocks) {
                             const QString c   = QString::fromStdString(b.content);
                             const int     idx = c.toLower().indexOf(ql);
@@ -503,7 +503,7 @@ void WordViewModel::rebuildSearchResults()
     emit searchResultsChanged();
 }
 
-void WordViewModel::filterByTag(qint64 tagId, const QString& tagName)
+void EntryViewModel::filterByTag(qint64 tagId, const QString& tagName)
 {
     // Clear text search, set a single tag filter, refresh the list.
     m_searchQuery.clear();
@@ -517,7 +517,7 @@ void WordViewModel::filterByTag(qint64 tagId, const QString& tagName)
     applySearch();
 }
 
-bool WordViewModel::createAndAttachTag(const QString& name)
+bool EntryViewModel::createAndAttachTag(const QString& name)
 {
     if (m_selectedWordId < 0)
         return false;
@@ -525,23 +525,23 @@ bool WordViewModel::createAndAttachTag(const QString& name)
     if (trimmed.isEmpty())
         return false;
 
-    auto tag = m_wordService->GetOrCreateTag(trimmed.toStdString());
+    auto tag = m_entryService->GetOrCreateTag(trimmed.toStdString());
     if (!tag) {
         emit errorOccurred(QString::fromStdString(tag.error()));
         return false;
     }
 
-    auto attached = m_wordService->AddTagToWord(m_selectedWordId, tag->id);
+    auto attached = m_entryService->AddTagToEntry(m_selectedWordId, tag->id);
     if (!attached) {
         emit errorOccurred(QString::fromStdString(attached.error()));
         return false;
     }
     reloadTags();
-    emit wordListChanged(); // tag list in sidebar may have grown
+    emit entryListChanged(); // tag list in sidebar may have grown
     return true;
 }
 
-void WordViewModel::addTagFilter(qint64 tagId)
+void EntryViewModel::addTagFilter(qint64 tagId)
 {
     if (!isTagFiltered(tagId)) {
         m_tagFilters.append(QVariant::fromValue(tagId));
@@ -550,7 +550,7 @@ void WordViewModel::addTagFilter(qint64 tagId)
     }
 }
 
-void WordViewModel::removeTagFilter(qint64 tagId)
+void EntryViewModel::removeTagFilter(qint64 tagId)
 {
     for (int i = m_tagFilters.size() - 1; i >= 0; --i)
         if (m_tagFilters.at(i).toLongLong() == tagId)
@@ -559,16 +559,16 @@ void WordViewModel::removeTagFilter(qint64 tagId)
     applySearch();
 }
 
-void WordViewModel::clearTagFilters()
+void EntryViewModel::clearTagFilters()
 {
     m_tagFilters.clear();
     emit tagFiltersChanged();
     applySearch();
 }
 
-bool WordViewModel::attachTag(qint64 wordId, qint64 tagId)
+bool EntryViewModel::attachTag(qint64 wordId, qint64 tagId)
 {
-    auto result = m_wordService->AddTagToWord(wordId, tagId);
+    auto result = m_entryService->AddTagToEntry(wordId, tagId);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -578,9 +578,9 @@ bool WordViewModel::attachTag(qint64 wordId, qint64 tagId)
     return true;
 }
 
-bool WordViewModel::detachTag(qint64 wordId, qint64 tagId)
+bool EntryViewModel::detachTag(qint64 wordId, qint64 tagId)
 {
-    auto result = m_wordService->RemoveTagFromWord(wordId, tagId);
+    auto result = m_entryService->RemoveTagFromEntry(wordId, tagId);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -590,11 +590,11 @@ bool WordViewModel::detachTag(qint64 wordId, qint64 tagId)
     return true;
 }
 
-QVariantList WordViewModel::getTagsForWord(qint64 wordId)
+QVariantList EntryViewModel::getTagsForEntry(qint64 wordId)
 {
     if (wordId < 0)
         return {};
-    auto result = m_wordService->GetTagsForWord(wordId);
+    auto result = m_entryService->GetTagsForEntry(wordId);
     if (!result)
         return {};
     QVariantList out;
@@ -607,38 +607,38 @@ QVariantList WordViewModel::getTagsForWord(qint64 wordId)
     return out;
 }
 
-QVariantList WordViewModel::getAllWords()
+QVariantList EntryViewModel::getAllEntries()
 {
     // Build search params from current query + tag filters so the sidebar word
     // list reflects the active filter state.
-    Service::WordService::SearchParams_t params;
+    Service::EntryService::SearchParams_t params;
     params.query = m_searchQuery.trimmed().toStdString();
     for (const auto& v : m_tagFilters)
         params.tagIds.push_back(v.toLongLong());
 
-    std::vector<Service::Word_t> words;
+    std::vector<Service::Entry_t> words;
     if (params.query.empty() && params.tagIds.empty()) {
-        auto result = m_wordService->GetAllWords();
+        auto result = m_entryService->GetAllEntries();
         if (!result)
             return {};
         words = *result;
     } else if (!params.tagIds.empty() && params.query.empty()) {
-        auto result = m_wordService->Search(params);
+        auto result = m_entryService->Search(params);
         if (!result)
             return {};
         words = *result;
     } else {
         // Text query (optionally + tag filters): use substring/content search,
         // then intersect with tag filters if any.
-        auto result = m_wordService->SearchWordsByName(params.query, m_searchInContent);
+        auto result = m_entryService->SearchEntriesByName(params.query, m_searchInContent);
         if (!result)
             return {};
         words = *result;
         if (!params.tagIds.empty()) {
             params.query.clear();
-            auto tagged = m_wordService->Search(params);
+            auto tagged = m_entryService->Search(params);
             if (tagged) {
-                std::vector<Service::Word_t> filtered;
+                std::vector<Service::Entry_t> filtered;
                 for (const auto& w : words)
                     for (const auto& tw : *tagged)
                         if (tw.id == w.id) {
@@ -660,9 +660,9 @@ QVariantList WordViewModel::getAllWords()
     return out;
 }
 
-QVariantList WordViewModel::getAllTags()
+QVariantList EntryViewModel::getAllTags()
 {
-    auto result = m_wordService->GetAllTags();
+    auto result = m_entryService->GetAllTags();
     if (!result)
         return {};
     QVariantList out;
@@ -675,47 +675,47 @@ QVariantList WordViewModel::getAllTags()
     return out;
 }
 
-bool WordViewModel::createTag(const QString& name)
+bool EntryViewModel::createTag(const QString& name)
 {
-    auto result = m_wordService->CreateTag(name.toStdString());
+    auto result = m_entryService->CreateTag(name.toStdString());
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
     }
-    emit wordListChanged();
+    emit entryListChanged();
     return true;
 }
 
-bool WordViewModel::deleteTag(qint64 tagId)
+bool EntryViewModel::deleteTag(qint64 tagId)
 {
-    auto result = m_wordService->DeleteTag(tagId);
+    auto result = m_entryService->DeleteTag(tagId);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
     }
-    emit wordListChanged();
+    emit entryListChanged();
     return true;
 }
 
-bool WordViewModel::renameTag(qint64 tagId, const QString& name)
+bool EntryViewModel::renameTag(qint64 tagId, const QString& name)
 {
     const QString trimmed = name.trimmed();
     if (trimmed.isEmpty()) {
         emit errorOccurred(QStringLiteral("Tag name cannot be empty."));
         return false;
     }
-    auto result = m_wordService->RenameTag(tagId, trimmed.toStdString());
+    auto result = m_entryService->RenameTag(tagId, trimmed.toStdString());
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
     }
     // The selected word's chips and any tag-driven lists may show the old name.
     reloadTags();
-    emit wordListChanged();
+    emit entryListChanged();
     return true;
 }
 
-bool WordViewModel::isTagFiltered(qint64 tagId) const
+bool EntryViewModel::isTagFiltered(qint64 tagId) const
 {
     for (const auto& v : m_tagFilters)
         if (v.toLongLong() == tagId)
@@ -723,24 +723,24 @@ bool WordViewModel::isTagFiltered(qint64 tagId) const
     return false;
 }
 
-void WordViewModel::reloadContent()
+void EntryViewModel::reloadContent()
 {
     if (m_selectedWordId < 0) {
         m_contentModel->setBlocks({});
         return;
     }
-    auto result = m_wordService->GetContentForWord(m_selectedWordId);
+    auto result = m_entryService->GetContentForEntry(m_selectedWordId);
     if (result)
         m_contentModel->setBlocks(*result);
     else
         emit errorOccurred(QString::fromStdString(result.error()));
 }
 
-void WordViewModel::reloadTags()
+void EntryViewModel::reloadTags()
 {
     m_wordTags.clear();
     if (m_selectedWordId >= 0) {
-        auto result = m_wordService->GetTagsForWord(m_selectedWordId);
+        auto result = m_entryService->GetTagsForEntry(m_selectedWordId);
         if (result) {
             for (const auto& t : *result) {
                 QVariantMap m;
@@ -753,7 +753,7 @@ void WordViewModel::reloadTags()
     emit wordTagsChanged();
 }
 
-void WordViewModel::applySearch()
+void EntryViewModel::applySearch()
 {
-    emit wordListChanged();
+    emit entryListChanged();
 }

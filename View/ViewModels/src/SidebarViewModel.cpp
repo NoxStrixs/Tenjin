@@ -1,5 +1,5 @@
+#include <EntryService/EntryService.h>
 #include <ViewModels/SidebarViewModel.h>
-#include <WordService/WordService.h>
 
 // ---- SidebarModel ---------------------------------------------------
 
@@ -17,8 +17,8 @@ void SidebarModel::rebuildRows()
     }
 }
 
-void SidebarModel::setData(const std::vector<Service::Tag_t>&                         tags,
-                           std::function<std::vector<Service::Word_t>(Service::ID_t)> wordFetcher)
+void SidebarModel::setData(const std::vector<Service::Tag_t>&                          tags,
+                           std::function<std::vector<Service::Entry_t>(Service::ID_t)> wordFetcher)
 {
     beginResetModel();
     m_tags.clear();
@@ -112,9 +112,9 @@ void SidebarModel::toggleExpanded(int tagRow)
 
 // ---- SidebarViewModel -----------------------------------------------
 
-SidebarViewModel::SidebarViewModel(std::shared_ptr<Service::WordService> wordService,
-                                   QObject*                              parent)
-    : QObject(parent), m_wordService(std::move(wordService)),
+SidebarViewModel::SidebarViewModel(std::shared_ptr<Service::EntryService> wordService,
+                                   QObject*                               parent)
+    : QObject(parent), m_entryService(std::move(wordService)),
       m_model(std::make_unique<SidebarModel>(this))
 {
     reload();
@@ -139,7 +139,7 @@ void SidebarViewModel::setCollapsed(bool v)
 
 void SidebarViewModel::reload()
 {
-    auto tagsResult = m_wordService->GetAllTags();
+    auto tagsResult = m_entryService->GetAllTags();
     if (!tagsResult)
         return;
 
@@ -151,15 +151,15 @@ void SidebarViewModel::reload()
             filtered.push_back(t);
     }
 
-    m_model->setData(filtered, [this](Service::ID_t tagId) -> std::vector<Service::Word_t> {
-        auto result = m_wordService->GetWordsForTag(tagId);
-        return result ? *result : std::vector<Service::Word_t>{};
+    m_model->setData(filtered, [this](Service::ID_t tagId) -> std::vector<Service::Entry_t> {
+        auto result = m_entryService->GetEntriesForTag(tagId);
+        return result ? *result : std::vector<Service::Entry_t>{};
     });
 }
 
-void SidebarViewModel::onWordSelected(qint64 wordId)
+void SidebarViewModel::onEntrySelected(qint64 wordId)
 {
-    emit wordSelected(wordId);
+    emit entrySelected(wordId);
 }
 
 void SidebarViewModel::onTagSelected(qint64 tagId)

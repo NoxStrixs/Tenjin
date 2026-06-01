@@ -17,8 +17,8 @@
 
 namespace Service {
 
-Result_t<WordRelation_t>
-DatabaseManager::AddWordRelation(ID_t wordId, ID_t relatedId, const std::string& type)
+Result_t<EntryRelation_t>
+DatabaseManager::AddEntryRelation(ID_t wordId, ID_t relatedId, const std::string& type)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO entry_relation (entry_id, related_entry_id, relation_type) "
@@ -30,14 +30,14 @@ DatabaseManager::AddWordRelation(ID_t wordId, ID_t relatedId, const std::string&
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    return WordRelation_t{.id             = q.lastInsertId().toLongLong(),
+    return EntryRelation_t{.id             = q.lastInsertId().toLongLong(),
                           .wordId         = wordId,
                           .wordRelationId = relatedId,
                           .relationType   = type};
 }
 
 
-Result_t<bool> DatabaseManager::RemoveWordRelation(ID_t id)
+Result_t<bool> DatabaseManager::RemoveEntryRelation(ID_t id)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM entry_relation WHERE id = :id;");
@@ -53,7 +53,7 @@ Result_t<bool> DatabaseManager::RemoveWordRelation(ID_t id)
 }
 
 
-Result_t<std::vector<WordRelation_t>> DatabaseManager::GetRelationsForWord(ID_t wordId)
+Result_t<std::vector<EntryRelation_t>> DatabaseManager::GetRelationsForEntry(ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, entry_id, related_entry_id, relation_type "
@@ -63,9 +63,9 @@ Result_t<std::vector<WordRelation_t>> DatabaseManager::GetRelationsForWord(ID_t 
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<WordRelation_t> relations;
+    std::vector<EntryRelation_t> relations;
     while (q.next()) {
-        relations.push_back(WordRelation_t{.id             = q.value(0).toLongLong(),
+        relations.push_back(EntryRelation_t{.id             = q.value(0).toLongLong(),
                                            .wordId         = q.value(1).toLongLong(),
                                            .wordRelationId = q.value(2).toLongLong(),
                                            .relationType   = q.value(3).toString().toStdString()});

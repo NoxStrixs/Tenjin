@@ -12,12 +12,12 @@ import TenjinView
 Item {
     id: tagsPageRoot
 
-    property var allTags: appVM.wordVM.getAllTags()
-    function refresh() { allTags = appVM.wordVM.getAllTags() }
+    property var allTags: appVM.entryVM.getAllTags()
+    function refresh() { allTags = appVM.entryVM.getAllTags() }
 
     Connections {
-        target: appVM.wordVM
-        function onWordListChanged() { tagsPageRoot.refresh() }
+        target: appVM.entryVM
+        function onEntryListChanged() { tagsPageRoot.refresh() }
     }
 
     ColumnLayout {
@@ -66,7 +66,7 @@ Item {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                appVM.wordVM.filterByTag(tagRow.modelData.id, tagRow.modelData.name)
+                                appVM.entryVM.filterByTag(tagRow.modelData.id, tagRow.modelData.name)
                                 appVM.currentPage = 0   // jump to Words, filtered
                             }
                         }
@@ -134,6 +134,8 @@ Item {
         property int pendingId: -1
         property string pendingName: ""
         message: "Delete tag \"" + pendingName + "\"? It will be removed from all words."
-        onConfirmed: if (pendingId >= 0) appVM.wordVM.deleteTag(pendingId)
+        onConfirmed: if (pendingId >= 0) appVM.entryVM.deleteTag(pendingId)
     }
 }
+
+

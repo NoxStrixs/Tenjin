@@ -17,7 +17,7 @@
 
 namespace Service {
 
-Result_t<std::vector<Word_t>> DatabaseManager::SearchWords(const std::string& query)
+Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntries(const std::string& query)
 {
     // Append * for prefix matching so partial input works (e.g. "ephe" matches "ephemeral")
     const QString ftsQuery = QString::fromStdString(query) + "*";
@@ -33,9 +33,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::SearchWords(const std::string& qu
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }
@@ -75,7 +75,7 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::SearchContent(const std::
 // ── Substring search (LIKE) ───────────────────────────────────────────────────
 
 
-Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByName(const std::string& substring)
+Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByName(const std::string& substring)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, title, created_at FROM entry "
@@ -88,9 +88,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByName(const std::stri
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }
@@ -120,7 +120,7 @@ Result_t<std::vector<Tag_t>> DatabaseManager::SearchTagsByName(const std::string
 }
 
 
-Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByContent(const std::string& substring)
+Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByContent(const std::string& substring)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
@@ -134,9 +134,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByContent(const std::s
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }

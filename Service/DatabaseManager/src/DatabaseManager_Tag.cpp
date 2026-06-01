@@ -29,7 +29,6 @@ Result_t<Tag_t> DatabaseManager::AddTag(const std::string& name)
     return Tag_t{.id = q.lastInsertId().toLongLong(), .name = name};
 }
 
-
 Result_t<Tag_t> DatabaseManager::GetTag(std::string_view name)
 {
     QSqlQuery q(m_db);
@@ -45,7 +44,6 @@ Result_t<Tag_t> DatabaseManager::GetTag(std::string_view name)
     return Tag_t{.id = q.value(0).toLongLong(), .name = q.value(1).toString().toStdString()};
 }
 
-
 Result_t<std::vector<Tag_t>> DatabaseManager::GetAllTags()
 {
     QSqlQuery q(m_db);
@@ -59,7 +57,6 @@ Result_t<std::vector<Tag_t>> DatabaseManager::GetAllTags()
     }
     return tags;
 }
-
 
 Result_t<bool> DatabaseManager::DeleteTag(ID_t id)
 {
@@ -75,7 +72,6 @@ Result_t<bool> DatabaseManager::DeleteTag(ID_t id)
 
     return true;
 }
-
 
 Result_t<bool> DatabaseManager::RenameTag(ID_t id, const std::string& name)
 {
@@ -97,8 +93,7 @@ Result_t<bool> DatabaseManager::RenameTag(ID_t id, const std::string& name)
     return true;
 }
 
-
-Result_t<bool> DatabaseManager::AddTagToWord(ID_t wordId, ID_t tagId)
+Result_t<bool> DatabaseManager::AddTagToEntry(ID_t wordId, ID_t tagId)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO entry_tag (entry_id, tag_id) VALUES (:wordId, :tagId);");
@@ -111,8 +106,7 @@ Result_t<bool> DatabaseManager::AddTagToWord(ID_t wordId, ID_t tagId)
     return true;
 }
 
-
-Result_t<bool> DatabaseManager::RemoveTagFromWord(ID_t wordId, ID_t tagId)
+Result_t<bool> DatabaseManager::RemoveTagFromEntry(ID_t wordId, ID_t tagId)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM entry_tag WHERE entry_id = :wordId AND tag_id = :tagId;");
@@ -128,8 +122,7 @@ Result_t<bool> DatabaseManager::RemoveTagFromWord(ID_t wordId, ID_t tagId)
     return true;
 }
 
-
-Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForWord(ID_t wordId)
+Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForEntry(ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT t.id, t.name FROM tag t "
@@ -149,8 +142,7 @@ Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForWord(ID_t wordId)
     return tags;
 }
 
-
-Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForTag(ID_t tagId)
+Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForTag(ID_t tagId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT w.id, w.title, w.created_at FROM entry w "
@@ -162,9 +154,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForTag(ID_t tagId)
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }

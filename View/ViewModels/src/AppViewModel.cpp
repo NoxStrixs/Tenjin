@@ -1,11 +1,12 @@
 #include <DatabaseManager/DatabaseManager.h>
 #include <DeckService/DeckService.h>
+#include <EntryService/EntryService.h>
 #include <ViewModels/AppViewModel.h>
 #include <ViewModels/DeckViewModel.h>
+#include <ViewModels/EntryViewModel.h>
+#include <ViewModels/FormulaRenderer.h>
 #include <ViewModels/ReviewViewModel.h>
 #include <ViewModels/SidebarViewModel.h>
-#include <ViewModels/WordViewModel.h>
-#include <WordService/WordService.h>
 
 #include <QDir>
 #include <QSettings>
@@ -20,23 +21,23 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
 
     auto db = std::make_shared<Service::DatabaseManager>(dbPath);
 
-    m_wordService = std::make_shared<Service::WordService>(db);
-    m_deckService = std::make_shared<Service::DeckService>(db);
+    m_entryService = std::make_shared<Service::EntryService>(db);
+    m_deckService  = std::make_shared<Service::DeckService>(db);
 
-    m_wordVM    = std::make_unique<WordViewModel>(m_wordService, this);
-    m_deckVM    = std::make_unique<DeckViewModel>(m_deckService, m_wordService, this);
-    m_sidebarVM = std::make_unique<SidebarViewModel>(m_wordService, this);
-    m_reviewVM  = std::make_unique<ReviewViewModel>(m_deckService, m_wordService, this);
+    m_entryVM   = std::make_unique<EntryViewModel>(m_entryService, this);
+    m_deckVM    = std::make_unique<DeckViewModel>(m_deckService, m_entryService, this);
+    m_sidebarVM = std::make_unique<SidebarViewModel>(m_entryService, this);
+    m_reviewVM  = std::make_unique<ReviewViewModel>(m_deckService, m_entryService, this);
 
     // Sidebar word selection → word VM
     connect(m_sidebarVM.get(),
-            &SidebarViewModel::wordSelected,
-            m_wordVM.get(),
-            &WordViewModel::selectWord);
+            &SidebarViewModel::entrySelected,
+            m_entryVM.get(),
+            &EntryViewModel::selectEntry);
 
     // Word changes → sidebar reload
-    connect(m_wordVM.get(),
-            &WordViewModel::wordListChanged,
+    connect(m_entryVM.get(),
+            &EntryViewModel::entryListChanged,
             m_sidebarVM.get(),
             &SidebarViewModel::reload);
 
@@ -72,7 +73,7 @@ void AppViewModel::setTheme(int theme)
 bool AppViewModel::exportData(const QString& fileUrl)
 {
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
-    auto          result = m_wordService->ExportToJson(path);
+    auto          result = m_entryService->ExportToJson(path);
     if (!result) {
         setStatusMessage(QStringLiteral("Export failed: ") +
                          QString::fromStdString(result.error()));
@@ -85,7 +86,7 @@ bool AppViewModel::exportData(const QString& fileUrl)
 bool AppViewModel::importData(const QString& fileUrl)
 {
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
-    auto          result = m_wordService->ImportFromJson(path);
+    auto          result = m_entryService->ImportFromJson(path);
     if (!result) {
         setStatusMessage(QStringLiteral("Import failed: ") +
                          QString::fromStdString(result.error()));
@@ -96,4 +97,9 @@ bool AppViewModel::importData(const QString& fileUrl)
     m_deckVM->reloadDecks();
     setStatusMessage(QStringLiteral("Import complete."));
     return true;
+}
+
+QString AppViewModel::renderFormula(const QString& latex) const
+{
+    return Tenjin::FormulaRenderer::toRichText(latex);
 }

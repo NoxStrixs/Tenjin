@@ -191,7 +191,7 @@ DatabaseManager::~DatabaseManager()
     QSqlDatabase::removeDatabase(connName);
 }
 
-Result_t<Word_t> DatabaseManager::AddWord(const std::string& word)
+Result_t<Entry_t> DatabaseManager::AddEntry(const std::string& word)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO word (word) VALUES (:word);");
@@ -200,10 +200,10 @@ Result_t<Word_t> DatabaseManager::AddWord(const std::string& word)
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    return Word_t{.id = q.lastInsertId().toLongLong(), .word = word, .createdAt = {}};
+    return Entry_t{.id = q.lastInsertId().toLongLong(), .word = word, .createdAt = {}};
 }
 
-Result_t<Word_t> DatabaseManager::GetWord(const std::string& word)
+Result_t<Entry_t> DatabaseManager::GetEntry(const std::string& word)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, word, created_at FROM word WHERE word = :word;");
@@ -215,27 +215,27 @@ Result_t<Word_t> DatabaseManager::GetWord(const std::string& word)
     if (!q.next())
         return std::unexpected("Word not found: " + std::string(word));
 
-    return Word_t{.id        = q.value(0).toLongLong(),
+    return Entry_t{.id        = q.value(0).toLongLong(),
                   .word      = q.value(1).toString().toStdString(),
                   .createdAt = q.value(2).toString().toStdString()};
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::GetAllWords()
+Result_t<std::vector<Entry_t>> DatabaseManager::GetAllEntries()
 {
     QSqlQuery q(m_db);
     if (!q.exec("SELECT id, word, created_at FROM word ORDER BY word ASC;"))
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
 
-Result_t<bool> DatabaseManager::DeleteWord(ID_t id)
+Result_t<bool> DatabaseManager::DeleteEntry(ID_t id)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM word WHERE id = :id;");
@@ -306,7 +306,7 @@ Result_t<bool> DatabaseManager::DeleteTag(ID_t id)
     return true;
 }
 
-Result_t<bool> DatabaseManager::AddTagToWord(ID_t wordId, ID_t tagId)
+Result_t<bool> DatabaseManager::AddTagToEntry(ID_t wordId, ID_t tagId)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO word_tag (word_id, tag_id) VALUES (:wordId, :tagId);");
@@ -319,7 +319,7 @@ Result_t<bool> DatabaseManager::AddTagToWord(ID_t wordId, ID_t tagId)
     return true;
 }
 
-Result_t<bool> DatabaseManager::RemoveTagFromWord(ID_t wordId, ID_t tagId)
+Result_t<bool> DatabaseManager::RemoveTagFromEntry(ID_t wordId, ID_t tagId)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM word_tag WHERE word_id = :wordId AND tag_id = :tagId;");
@@ -335,7 +335,7 @@ Result_t<bool> DatabaseManager::RemoveTagFromWord(ID_t wordId, ID_t tagId)
     return true;
 }
 
-Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForWord(ID_t wordId)
+Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForEntry(ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT t.id, t.name FROM tag t "
@@ -355,7 +355,7 @@ Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForWord(ID_t wordId)
     return tags;
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForTag(ID_t tagId)
+Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForTag(ID_t tagId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT w.id, w.word, w.created_at FROM word w "
@@ -367,9 +367,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForTag(ID_t tagId)
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }
@@ -443,7 +443,7 @@ Result_t<bool> DatabaseManager::DeleteContentBlock(ID_t id)
     return true;
 }
 
-Result_t<std::vector<ContentBlock_t>> DatabaseManager::GetContentForWord(ID_t wordId)
+Result_t<std::vector<ContentBlock_t>> DatabaseManager::GetContentForEntry(ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, word_id, type, content, row, col, row_span, col_span, pos "
@@ -507,7 +507,7 @@ Result_t<bool> DatabaseManager::SaveContentLayout(const std::vector<ContentBlock
     return true;
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::SearchWords(const std::string& query)
+Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntries(const std::string& query)
 {
     // Append * for prefix matching so partial input works (e.g. "ephe" matches "ephemeral")
     const QString ftsQuery = QString::fromStdString(query) + "*";
@@ -523,9 +523,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::SearchWords(const std::string& qu
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }
@@ -563,7 +563,7 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::SearchContent(const std::
 
 // ── Substring search (LIKE) ───────────────────────────────────────────────────
 
-Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByName(const std::string& substring)
+Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByName(const std::string& substring)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, word, created_at FROM word "
@@ -576,9 +576,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByName(const std::stri
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }
@@ -606,7 +606,7 @@ Result_t<std::vector<Tag_t>> DatabaseManager::SearchTagsByName(const std::string
     return tags;
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByContent(const std::string& substring)
+Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByContent(const std::string& substring)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT DISTINCT w.id, w.word, w.created_at FROM word w "
@@ -620,17 +620,17 @@ Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByContent(const std::s
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }
     return words;
 }
 
-Result_t<WordRelation_t>
-DatabaseManager::AddWordRelation(ID_t wordId, ID_t relatedId, const std::string& type)
+Result_t<EntryRelation_t>
+DatabaseManager::AddEntryRelation(ID_t wordId, ID_t relatedId, const std::string& type)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO word_relation (word_id, related_word_id, relation_type) "
@@ -642,13 +642,13 @@ DatabaseManager::AddWordRelation(ID_t wordId, ID_t relatedId, const std::string&
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    return WordRelation_t{.id             = q.lastInsertId().toLongLong(),
+    return EntryRelation_t{.id             = q.lastInsertId().toLongLong(),
                           .wordId         = wordId,
                           .wordRelationId = relatedId,
                           .relationType   = type};
 }
 
-Result_t<bool> DatabaseManager::RemoveWordRelation(ID_t id)
+Result_t<bool> DatabaseManager::RemoveEntryRelation(ID_t id)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM word_relation WHERE id = :id;");
@@ -663,7 +663,7 @@ Result_t<bool> DatabaseManager::RemoveWordRelation(ID_t id)
     return true;
 }
 
-Result_t<std::vector<WordRelation_t>> DatabaseManager::GetRelationsForWord(ID_t wordId)
+Result_t<std::vector<EntryRelation_t>> DatabaseManager::GetRelationsForEntry(ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, word_id, related_word_id, relation_type "
@@ -673,9 +673,9 @@ Result_t<std::vector<WordRelation_t>> DatabaseManager::GetRelationsForWord(ID_t 
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<WordRelation_t> relations;
+    std::vector<EntryRelation_t> relations;
     while (q.next()) {
-        relations.push_back(WordRelation_t{.id             = q.value(0).toLongLong(),
+        relations.push_back(EntryRelation_t{.id             = q.value(0).toLongLong(),
                                            .wordId         = q.value(1).toLongLong(),
                                            .wordRelationId = q.value(2).toLongLong(),
                                            .relationType   = q.value(3).toString().toStdString()});
@@ -763,7 +763,7 @@ Result_t<bool> DatabaseManager::DeleteDeck(ID_t id)
     return true;
 }
 
-Result_t<bool> DatabaseManager::AddWordToDeck(ID_t deckId, ID_t wordId)
+Result_t<bool> DatabaseManager::AddEntryToDeck(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO deck_word (deck_id, word_id) VALUES (:deckId, :wordId);");
@@ -776,7 +776,7 @@ Result_t<bool> DatabaseManager::AddWordToDeck(ID_t deckId, ID_t wordId)
     return true;
 }
 
-Result_t<bool> DatabaseManager::RemoveWordFromDeck(ID_t deckId, ID_t wordId)
+Result_t<bool> DatabaseManager::RemoveEntryFromDeck(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM deck_word WHERE deck_id = :deckId AND word_id = :wordId;");
@@ -981,7 +981,7 @@ Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
 {
     DeckStats_t stats;
 
-    auto words = GetWordsForDeck(deckId);
+    auto words = GetEntriesForDeck(deckId);
     if (!words)
         return std::unexpected(words.error());
     stats.total = static_cast<int>(words->size());
@@ -1052,7 +1052,7 @@ Result_t<DeckAnalytics_t> DatabaseManager::GetDeckAnalytics(ID_t deckId)
     return a;
 }
 
-Result_t<std::vector<WordReviewEvent_t>> DatabaseManager::GetWordHistory(ID_t deckId, ID_t wordId)
+Result_t<std::vector<EntryReviewEvent_t>> DatabaseManager::GetEntryHistory(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT reviewed_at, quality, ease_factor, interval_days "
@@ -1063,9 +1063,9 @@ Result_t<std::vector<WordReviewEvent_t>> DatabaseManager::GetWordHistory(ID_t de
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<WordReviewEvent_t> events;
+    std::vector<EntryReviewEvent_t> events;
     while (q.next()) {
-        events.push_back(WordReviewEvent_t{q.value(0).toLongLong(),
+        events.push_back(EntryReviewEvent_t{q.value(0).toLongLong(),
                                            q.value(1).toInt(),
                                            q.value(2).toDouble(),
                                            q.value(3).toInt()});
@@ -1073,7 +1073,7 @@ Result_t<std::vector<WordReviewEvent_t>> DatabaseManager::GetWordHistory(ID_t de
     return events;
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForDeck(ID_t deckId)
+Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
 {
     auto deck = GetDeck(deckId);
     if (!deck)
@@ -1091,9 +1091,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForDeck(ID_t deckId)
         if (!q.exec())
             return std::unexpected(q.lastError().text().toStdString());
 
-        std::vector<Word_t> words;
+        std::vector<Entry_t> words;
         while (q.next()) {
-            words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+            words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                    .word      = q.value(1).toString().toStdString(),
                                    .createdAt = q.value(2).toString().toStdString()});
         }
@@ -1110,14 +1110,14 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForDeck(ID_t deckId)
     for (const auto& tag : *tags)
         tagIds.push_back(tag.id);
 
-    return GetWordsByTags(tagIds, deck->filterMode);
+    return GetEntriesByTags(tagIds, deck->filterMode);
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::GetWordsByTags(const std::vector<ID_t>& tagIds,
+Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vector<ID_t>& tagIds,
                                                               FilterMode_t             mode)
 {
     if (tagIds.empty())
-        return std::vector<Word_t>{};
+        return std::vector<Entry_t>{};
 
     // Build the IN clause placeholder list: (:t0, :t1, :t2 ...)
     QStringList placeholders;
@@ -1152,7 +1152,7 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsByTags(const std::vector<
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
         words.emplace_back(q.value(0).toLongLong(),
                            q.value(1).toString().toStdString(),

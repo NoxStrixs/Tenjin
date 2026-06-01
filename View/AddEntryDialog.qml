@@ -51,7 +51,7 @@ Dialog {
     }
     onAccepted: {
         const w = wordInput.text.trim()
-        if (w.length > 0) appVM.wordVM.addWord(w)
+        if (w.length > 0) appVM.entryVM.addWord(w)
     }
 
     ColumnLayout {
@@ -93,4 +93,6 @@ Dialog {
         }
     }
 }
+
+
 

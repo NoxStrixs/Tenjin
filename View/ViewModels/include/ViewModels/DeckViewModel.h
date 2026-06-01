@@ -2,7 +2,7 @@
 
 #include <DatabaseManager/DatabaseManager.h>
 #include <DeckService/DeckService.h>
-#include <WordService/WordService.h>
+#include <EntryService/EntryService.h>
 
 #include <QAbstractListModel>
 #include <QObject>
@@ -52,9 +52,9 @@ class DeckViewModel : public QObject
     Q_PROPERTY(QVariantList tagFilters READ tagFilters NOTIFY tagFiltersChanged)
 
 public:
-    DeckViewModel(std::shared_ptr<Service::DeckService> deckService,
-                  std::shared_ptr<Service::WordService> wordService,
-                  QObject*                              parent = nullptr);
+    DeckViewModel(std::shared_ptr<Service::DeckService>  deckService,
+                  std::shared_ptr<Service::EntryService> wordService,
+                  QObject*                               parent = nullptr);
 
     DeckListModel* deckModel() const
     {
@@ -124,9 +124,9 @@ private:
     void reloadDeckWords();
     void reloadTagFilters();
 
-    std::shared_ptr<Service::DeckService> m_deckService;
-    std::shared_ptr<Service::WordService> m_wordService;
-    std::unique_ptr<DeckListModel>        m_deckModel;
+    std::shared_ptr<Service::DeckService>  m_deckService;
+    std::shared_ptr<Service::EntryService> m_entryService;
+    std::unique_ptr<DeckListModel>         m_deckModel;
 
     qint64       m_selectedDeckId = -1;
     QString      m_selectedDeckName;

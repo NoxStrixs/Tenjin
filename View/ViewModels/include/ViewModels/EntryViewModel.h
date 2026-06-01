@@ -1,7 +1,7 @@
 #pragma once
 
 #include <DatabaseManager/DatabaseManager.h>
-#include <WordService/WordService.h>
+#include <EntryService/EntryService.h>
 
 #include <QAbstractListModel>
 #include <QObject>
@@ -21,7 +21,7 @@ class ContentBlockModel : public QAbstractListModel
 public:
     enum Role_t {
         IdRole = Qt::UserRole + 1,
-        WordIdRole,
+        EntryIdRole,
         TypeRole,
         ContentRole,
         RowRole,
@@ -35,7 +35,7 @@ public:
 
     void setBlocks(const std::vector<Service::ContentBlock_t>& blocks);
 
-    // Live snapshot of the underlying storage — used by WordViewModel to commit
+    // Live snapshot of the underlying storage — used by EntryViewModel to commit
     // layout changes through to the service layer.
     const std::vector<Service::ContentBlock_t>& blocks() const
     {
@@ -49,7 +49,7 @@ public:
     Q_INVOKABLE void moveBlock(int from, int to);
 
     // Stage a text edit in the model only (no DB write). Persisted later by
-    // WordViewModel::saveEdit(). This lets cancelEdit() truly revert.
+    // EntryViewModel::saveEdit(). This lets cancelEdit() truly revert.
     void setBlockContent(Service::ID_t id, const QString& content);
 
     // Stage a grid-position change (row/col/span) in the model only; persisted
@@ -68,14 +68,14 @@ private:
     std::vector<Service::ContentBlock_t> m_blocks;
 };
 
-// ── WordViewModel ─────────────────────────────────────────────────────────────
-class WordViewModel : public QObject
+// ── EntryViewModel ─────────────────────────────────────────────────────────────
+class EntryViewModel : public QObject
 {
     Q_OBJECT
 
     Q_PROPERTY(ContentBlockModel* contentModel READ contentModel CONSTANT)
-    Q_PROPERTY(qint64 selectedWordId READ selectedWordId NOTIFY selectedWordChanged)
-    Q_PROPERTY(QString selectedWord READ selectedWord NOTIFY selectedWordChanged)
+    Q_PROPERTY(qint64 selectedEntryId READ selectedEntryId NOTIFY selectedEntryChanged)
+    Q_PROPERTY(QString selectedWord READ selectedWord NOTIFY selectedEntryChanged)
     Q_PROPERTY(bool editMode READ editMode NOTIFY editModeChanged)
     Q_PROPERTY(QString searchQuery READ searchQuery WRITE setSearchQuery NOTIFY searchQueryChanged)
     // When true, the search dropdown also matches words by their content blocks.
@@ -90,14 +90,14 @@ class WordViewModel : public QObject
     Q_PROPERTY(QVariantList wordTags READ wordTags NOTIFY wordTagsChanged)
 
 public:
-    explicit WordViewModel(std::shared_ptr<Service::WordService> wordService,
-                           QObject*                              parent = nullptr);
+    explicit EntryViewModel(std::shared_ptr<Service::EntryService> wordService,
+                            QObject*                               parent = nullptr);
 
     ContentBlockModel* contentModel() const
     {
         return m_contentModel.get();
     }
-    qint64 selectedWordId() const
+    qint64 selectedEntryId() const
     {
         return m_selectedWordId;
     }
@@ -132,7 +132,7 @@ public:
 
 public slots:
     // Selection
-    void selectWord(qint64 wordId);
+    void selectEntry(qint64 wordId);
     void clearSelection();
 
     // Edit mode
@@ -142,7 +142,7 @@ public slots:
 
     // Word CRUD
     bool addWord(const QString& word);
-    bool deleteWord(qint64 wordId);
+    bool deleteEntry(qint64 wordId);
 
     // Content block CRUD
     // Appends a new block of `type` at the end of the current list. The caller
@@ -200,12 +200,12 @@ public slots:
     // Tag attach/detach (word-level)
     bool         attachTag(qint64 wordId, qint64 tagId);
     bool         detachTag(qint64 wordId, qint64 tagId);
-    QVariantList getTagsForWord(qint64 wordId);
+    QVariantList getTagsForEntry(qint64 wordId);
     // Create the tag if it doesn't exist, then attach it to the selected word.
     Q_INVOKABLE bool createAndAttachTag(const QString& name);
 
     // List helpers for QML
-    QVariantList getAllWords();
+    QVariantList getAllEntries();
     QVariantList getAllTags();
 
     // Global tag CRUD
@@ -218,14 +218,14 @@ public slots:
     Q_INVOKABLE bool isTagFiltered(qint64 tagId) const;
 
 signals:
-    void selectedWordChanged();
+    void selectedEntryChanged();
     void editModeChanged();
     void searchQueryChanged();
     void searchInContentChanged();
     void searchResultsChanged();
     void tagFiltersChanged();
     void wordTagsChanged();
-    void wordListChanged();
+    void entryListChanged();
     void errorOccurred(const QString& msg);
 
 private:
@@ -234,8 +234,8 @@ private:
     void applySearch();
     void rebuildSearchResults();
 
-    std::shared_ptr<Service::WordService> m_wordService;
-    std::unique_ptr<ContentBlockModel>    m_contentModel;
+    std::shared_ptr<Service::EntryService> m_entryService;
+    std::unique_ptr<ContentBlockModel>     m_contentModel;
 
     qint64       m_selectedWordId = -1;
     QString      m_selectedWord;

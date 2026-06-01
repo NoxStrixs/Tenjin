@@ -27,7 +27,7 @@ Item {
     property bool dropdownEnabled: true
 
     // Keep the field in sync with the VM query across page switches / recreation.
-    property string queryText: appVM.wordVM.searchQuery
+    property string queryText: appVM.entryVM.searchQuery
 
     Rectangle {
         id: field
@@ -53,7 +53,7 @@ Item {
                 background: Rectangle { color: "transparent" }
                 leftPadding: 0
                 onTextChanged: {
-                    appVM.wordVM.searchQuery = text
+                    appVM.entryVM.searchQuery = text
                     if (root.dropdownEnabled && text.length > 0) dropdown.open()
                     else dropdown.close()
                 }
@@ -102,8 +102,8 @@ Item {
                 spacing: 6
                 CheckBox {
                     id: contentToggle
-                    checked: appVM.wordVM.searchInContent
-                    onToggled: appVM.wordVM.searchInContent = checked
+                    checked: appVM.entryVM.searchInContent
+                    onToggled: appVM.entryVM.searchInContent = checked
                     indicator: Rectangle {
                         implicitWidth: 18; implicitHeight: 18
                         x: contentToggle.leftPadding
@@ -135,7 +135,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.min(contentHeight, 280)
                 clip: true
-                model: appVM.wordVM.searchResults
+                model: appVM.entryVM.searchResults
                 interactive: true
 
                 delegate: ItemDelegate {
@@ -193,9 +193,9 @@ Item {
                     }
                     onClicked: {
                         if (modelData.kind === "tag") {
-                            appVM.wordVM.filterByTag(modelData.id, modelData.label)
+                            appVM.entryVM.filterByTag(modelData.id, modelData.label)
                         } else {
-                            appVM.wordVM.selectWord(modelData.id)
+                            appVM.entryVM.selectEntry(modelData.id)
                             appVM.currentPage = 0
                         }
                         searchField.text = ""
@@ -214,5 +214,6 @@ Item {
         }
     }
 }
+
 
 

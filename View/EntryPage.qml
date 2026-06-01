@@ -10,7 +10,7 @@ import QtQuick.Layouts
 //             shows either the selected word's detail or an empty-state hint.
 //   Mobile  — a self-contained StackView: a searchable/tag-filterable list that
 //             pushes to the full-screen detail editor on tap. Transitions are
-//             driven reactively off selectedWordId so the stack stays correct no
+//             driven reactively off selectedEntryId so the stack stays correct no
 //             matter how selection changes (back, delete, or drawer nav).
 Item {
     id: wordPageRoot
@@ -19,7 +19,7 @@ Item {
     Loader {
         anchors.fill: parent
         active: !Platform.isMobile
-        sourceComponent: appVM.wordVM.selectedWordId >= 0 ? desktopDetail : emptyState
+        sourceComponent: appVM.entryVM.selectedEntryId >= 0 ? desktopDetail : emptyState
     }
 
     // ── Mobile ───────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ Item {
 
     Component {
         id: desktopDetail
-        WordDetailView { showBack: false }
+        EntryDetailView { showBack: false }
     }
 
     Component {
@@ -69,9 +69,9 @@ Item {
             property var detailItem: null
 
             Connections {
-                target: appVM.wordVM
-                function onSelectedWordChanged() {
-                    if (appVM.wordVM.selectedWordId >= 0) {
+                target: appVM.entryVM
+                function onSelectedEntryChanged() {
+                    if (appVM.entryVM.selectedEntryId >= 0) {
                         if (wordsNav.currentItem !== wordsNav.detailItem)
                             wordsNav.push(detailComp)
                     } else {
@@ -82,19 +82,21 @@ Item {
 
             Component {
                 id: listComp
-                WordListPanel {
-                    onWordActivated: (wordId) => appVM.wordVM.selectWord(wordId)
+                EntryListPanel {
+                    onWordActivated: (wordId) => appVM.entryVM.selectEntry(wordId)
                 }
             }
 
             Component {
                 id: detailComp
-                WordDetailView {
+                EntryDetailView {
                     showBack: true
                     Component.onCompleted: wordsNav.detailItem = this
-                    onBackRequested: appVM.wordVM.clearSelection()
+                    onBackRequested: appVM.entryVM.clearSelection()
                 }
             }
         }
     }
 }
+
+

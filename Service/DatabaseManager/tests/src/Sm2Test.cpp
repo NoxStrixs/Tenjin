@@ -19,13 +19,13 @@ Fixture makeFixture(TempDb& tmp)
 {
     Fixture f;
     f.db        = std::make_shared<DatabaseManager>(tmp.path());
-    auto w      = f.db->AddWord("kanji");
+    auto w      = f.db->AddEntry("kanji");
     EXPECT_TRUE(w.has_value());
     f.wordId    = w->id;
     auto d      = f.db->AddDeck("Deck", /*smart=*/false, FilterMode_t::And);
     EXPECT_TRUE(d.has_value());
     f.deckId    = d->id;
-    EXPECT_TRUE(f.db->AddWordToDeck(f.deckId, f.wordId).has_value());
+    EXPECT_TRUE(f.db->AddEntryToDeck(f.deckId, f.wordId).has_value());
     EXPECT_TRUE(f.db->InitReview(f.deckId, f.wordId).has_value());
     return f;
 }
@@ -37,11 +37,11 @@ TEST(Db, AddAndGetWord)
 {
     TempDb          tmp;
     DatabaseManager db(tmp.path());
-    auto            w = db.AddWord("serendipity");
+    auto            w = db.AddEntry("serendipity");
     ASSERT_TRUE(w.has_value()) << (w ? "" : w.error());
     EXPECT_EQ(w->word, "serendipity");
 
-    auto got = db.GetWord("serendipity");
+    auto got = db.GetEntry("serendipity");
     ASSERT_TRUE(got.has_value());
     EXPECT_EQ(got->id, w->id);
 }
@@ -50,8 +50,8 @@ TEST(Db, DuplicateWordFails)
 {
     TempDb          tmp;
     DatabaseManager db(tmp.path());
-    ASSERT_TRUE(db.AddWord("dup").has_value());
-    EXPECT_FALSE(db.AddWord("dup").has_value()) << "UNIQUE(word) should reject duplicate";
+    ASSERT_TRUE(db.AddEntry("dup").has_value());
+    EXPECT_FALSE(db.AddEntry("dup").has_value()) << "UNIQUE(word) should reject duplicate";
 }
 
 // A formula content block must persist with kind "formula" (the v3 promise).
@@ -59,7 +59,7 @@ TEST(Db, FormulaBlockPersistsKind)
 {
     TempDb          tmp;
     DatabaseManager db(tmp.path());
-    auto            w = db.AddWord("integral");
+    auto            w = db.AddEntry("integral");
     ASSERT_TRUE(w.has_value());
 
     ContentBlock_t blk{.wordId = w->id,
@@ -72,7 +72,7 @@ TEST(Db, FormulaBlockPersistsKind)
     auto cb = db.AddContentBlock(blk);
     ASSERT_TRUE(cb.has_value()) << (cb ? "" : cb.error());
 
-    auto blocks = db.GetContentForWord(w->id);
+    auto blocks = db.GetContentForEntry(w->id);
     ASSERT_TRUE(blocks.has_value());
     ASSERT_EQ(blocks->size(), 1u);
     EXPECT_EQ(blocks->front().type, ContentType_t::Formula);

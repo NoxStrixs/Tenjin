@@ -1,7 +1,7 @@
 #pragma once
 
 #include <DatabaseManager/DatabaseManager.h>
-#include <WordService/WordService.h>
+#include <EntryService/EntryService.h>
 
 #include <QAbstractItemModel>
 #include <QAbstractListModel>
@@ -33,11 +33,11 @@ public:
 
     explicit SidebarModel(QObject* parent = nullptr);
 
-    using WordFetcher_t = std::function<std::vector<Service::Word_t>(Service::ID_t)>;
+    using EntryFetcher_t = std::function<std::vector<Service::Entry_t>(Service::ID_t)>;
 
     // Populates the model by combining a tag list with a deferred fetcher for
     // each tag's words.
-    void setData(const std::vector<Service::Tag_t>& tags, WordFetcher_t wordFetcher);
+    void setData(const std::vector<Service::Tag_t>& tags, EntryFetcher_t wordFetcher);
 
     int                    rowCount(const QModelIndex& parent = {}) const override;
     QVariant               data(const QModelIndex& index, int role) const override;
@@ -47,15 +47,15 @@ public:
     Q_INVOKABLE void toggleExpanded(int tagRow);
 
 private:
-    struct WordItem_t {
+    struct EntryItem_t {
         Service::ID_t id;
         QString       name;
     };
     struct TagItem_t {
-        Service::ID_t           id;
-        QString                 name;
-        bool                    expanded = false;
-        std::vector<WordItem_t> words;
+        Service::ID_t            id;
+        QString                  name;
+        bool                     expanded = false;
+        std::vector<EntryItem_t> words;
     };
 
     // A single visible row in the flat list.
@@ -83,8 +83,8 @@ class SidebarViewModel : public QObject
     Q_PROPERTY(bool collapsed READ collapsed WRITE setCollapsed NOTIFY collapsedChanged)
 
 public:
-    explicit SidebarViewModel(std::shared_ptr<Service::WordService> wordService,
-                              QObject*                              parent = nullptr);
+    explicit SidebarViewModel(std::shared_ptr<Service::EntryService> wordService,
+                              QObject*                               parent = nullptr);
 
     SidebarModel* model() const
     {
@@ -103,18 +103,18 @@ public slots:
     void setFilterText(const QString& text);
     void setCollapsed(bool v);
     void reload();
-    void onWordSelected(qint64 wordId);
+    void onEntrySelected(qint64 wordId);
     void onTagSelected(qint64 tagId);
 
 signals:
     void filterTextChanged();
     void collapsedChanged();
-    void wordSelected(qint64 wordId);
+    void entrySelected(qint64 wordId);
     void tagFilterChanged(qint64 tagId, bool active);
 
 private:
-    std::shared_ptr<Service::WordService> m_wordService;
-    std::unique_ptr<SidebarModel>         m_model;
+    std::shared_ptr<Service::EntryService> m_entryService;
+    std::unique_ptr<SidebarModel>          m_model;
 
     QString m_filterText;
     bool    m_collapsed = false;

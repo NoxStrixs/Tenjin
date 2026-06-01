@@ -1,10 +1,10 @@
 #pragma once
 #include <DeckService/DeckService.h>
+#include <EntryService/EntryService.h>
 #include <ViewModels/DeckViewModel.h>
+#include <ViewModels/EntryViewModel.h>
 #include <ViewModels/ReviewViewModel.h>
 #include <ViewModels/SidebarViewModel.h>
-#include <ViewModels/WordViewModel.h>
-#include <WordService/WordService.h>
 
 #include <QObject>
 #include <QString>
@@ -24,16 +24,13 @@ class AppViewModel : public QObject
     // choice survives restarts; Platform binds its palette to this via Main.qml.
     Q_PROPERTY(int theme READ theme WRITE setTheme NOTIFY themeChanged)
 
-    Q_PROPERTY(WordViewModel* wordVM READ wordVM CONSTANT)
+    Q_PROPERTY(EntryViewModel* entryVM READ entryVM CONSTANT)
     Q_PROPERTY(DeckViewModel* deckVM READ deckVM CONSTANT)
     Q_PROPERTY(SidebarViewModel* sidebarVM READ sidebarVM CONSTANT)
     Q_PROPERTY(ReviewViewModel* reviewVM READ reviewVM CONSTANT)
     // True when QtWebEngine was compiled in (WEBVIEW_SUPPORT). Used by QML to
     // decide whether inline web embeds are possible.
     Q_PROPERTY(bool webEngineAvailable READ webEngineAvailable CONSTANT)
-    // True when offline LaTeX rendering is available (FORMULA_SUPPORT, via
-    // QtWebView). When false, formula blocks show a raw-LaTeX text fallback.
-    Q_PROPERTY(bool formulaRenderingAvailable READ formulaRenderingAvailable CONSTANT)
 
 public:
     enum Page_t {
@@ -58,9 +55,9 @@ public:
         return m_theme;
     }
 
-    WordViewModel* wordVM() const
+    EntryViewModel* entryVM() const
     {
-        return m_wordVM.get();
+        return m_entryVM.get();
     }
     DeckViewModel* deckVM() const
     {
@@ -82,14 +79,9 @@ public:
         return false;
 #endif
     }
-    bool formulaRenderingAvailable() const
-    {
-#ifdef TENJIN_FORMULA
-        return true;
-#else
-        return false;
-#endif
-    }
+
+    // Convert a LaTeX-subset string to Qt rich text for display. Pure/offline.
+    Q_INVOKABLE QString renderFormula(const QString& latex) const;
 
 public slots:
     void setCurrentPage(int page);
@@ -113,10 +105,10 @@ private:
     QString m_statusMessage;
     int     m_theme = 0;
 
-    std::shared_ptr<Service::WordService> m_wordService;
-    std::shared_ptr<Service::DeckService> m_deckService;
+    std::shared_ptr<Service::EntryService> m_entryService;
+    std::shared_ptr<Service::DeckService>  m_deckService;
 
-    std::unique_ptr<WordViewModel>    m_wordVM;
+    std::unique_ptr<EntryViewModel>   m_entryVM;
     std::unique_ptr<DeckViewModel>    m_deckVM;
     std::unique_ptr<SidebarViewModel> m_sidebarVM;
     std::unique_ptr<ReviewViewModel>  m_reviewVM;

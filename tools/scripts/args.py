@@ -31,16 +31,3 @@ def add_jobs(parser) -> None:
         default = os.cpu_count(),
         help    = "Parallel jobs (default: cpu count)",
     )
-
-
-def add_filter(parser, *, help: str = "Regex filter") -> None:
-    parser.add_argument("--filter", default="", help=help)
-
-
-def add_last_build_args(parser) -> None:
-    """Default --target/--config to whatever was last built."""
-    # Imported lazily to avoid pulling state into modules that don't need it.
-    from scripts.state import load as _load_last
-    last_target, last_config = _load_last()
-    add_target(parser, default=last_target)
-    add_config(parser, default=last_config)

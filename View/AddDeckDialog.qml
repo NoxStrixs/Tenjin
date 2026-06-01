@@ -23,7 +23,7 @@ Dialog {
         deckNameInput.text = ""
         smartToggle.checked = false
         orToggle.checked = false
-        root.allTags = appVM.wordVM.getAllTags()
+        root.allTags = appVM.entryVM.getAllTags()
         root.selectedTagIds = []
     }
     onAccepted: {

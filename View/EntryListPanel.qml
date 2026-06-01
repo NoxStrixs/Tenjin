@@ -6,8 +6,8 @@ import QtQuick.Layouts
 import TenjinView
 
 // The scrollable list of all words for mobile. The header search field (Main.qml)
-// drives appVM.wordVM.searchQuery, so the list filters inline; this panel re-reads
-// getAllWords() whenever the list, query, or tag filters change. A horizontal row
+// drives appVM.entryVM.searchQuery, so the list filters inline; this panel re-reads
+// getAllEntries() whenever the list, query, or tag filters change. A horizontal row
 // of tag chips below the header provides tag filtering.
 Rectangle {
     id: listRoot
@@ -15,16 +15,16 @@ Rectangle {
 
     signal wordActivated(int wordId)
 
-    // getAllWords() already honours the active search query and tag filters.
-    property var words: appVM.wordVM.getAllWords()
-    property var allTags: appVM.wordVM.getAllTags()
+    // getAllEntries() already honours the active search query and tag filters.
+    property var words: appVM.entryVM.getAllEntries()
+    property var allTags: appVM.entryVM.getAllTags()
 
-    function refreshWords() { words = appVM.wordVM.getAllWords() }
-    function refreshTags()  { allTags = appVM.wordVM.getAllTags() }
+    function refreshWords() { words = appVM.entryVM.getAllEntries() }
+    function refreshTags()  { allTags = appVM.entryVM.getAllTags() }
 
     Connections {
-        target: appVM.wordVM
-        function onWordListChanged()   { listRoot.refreshWords(); listRoot.refreshTags() }
+        target: appVM.entryVM
+        function onEntryListChanged()   { listRoot.refreshWords(); listRoot.refreshTags() }
         function onSearchQueryChanged() { listRoot.refreshWords() }
         function onTagFiltersChanged()  { listRoot.refreshWords() }
     }
@@ -56,7 +56,7 @@ Rectangle {
                     spacing: 6
 
                     Rectangle {
-                        visible: appVM.wordVM.tagFilters.length > 0
+                        visible: appVM.entryVM.tagFilters.length > 0
                         anchors.verticalCenter: parent.verticalCenter
                         width: clearText.implicitWidth + 22
                         height: 30
@@ -65,7 +65,7 @@ Rectangle {
                         border.color: Platform.danger
                         border.width: 1
                         Text { id: clearText; anchors.centerIn: parent; text: "Clear"; color: clearArea.containsMouse ? Platform.textOnDark : Platform.danger; font.pixelSize: Platform.fontBase - 2; font.bold: true }
-                        MouseArea { id: clearArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: appVM.wordVM.clearTagFilters() }
+                        MouseArea { id: clearArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: appVM.entryVM.clearTagFilters() }
                     }
 
                     Repeater {
@@ -74,7 +74,7 @@ Rectangle {
                             id: filterChip
                             required property var modelData
                             // Touch tagFilters so this re-evaluates when filters change.
-                            readonly property bool active: (appVM.wordVM.tagFilters, appVM.wordVM.isTagFiltered(modelData.id))
+                            readonly property bool active: (appVM.entryVM.tagFilters, appVM.entryVM.isTagFiltered(modelData.id))
                             anchors.verticalCenter: parent.verticalCenter
                             width: chipLabel.implicitWidth + 22
                             height: 30
@@ -94,8 +94,8 @@ Rectangle {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    if (filterChip.active) appVM.wordVM.removeTagFilter(filterChip.modelData.id)
-                                    else appVM.wordVM.addTagFilter(filterChip.modelData.id)
+                                    if (filterChip.active) appVM.entryVM.removeTagFilter(filterChip.modelData.id)
+                                    else appVM.entryVM.addTagFilter(filterChip.modelData.id)
                                 }
                             }
                         }
@@ -106,7 +106,7 @@ Rectangle {
 
         // ── Word list ────────────────────────────────────────────────
         ListView {
-            id: wordList
+            id: entryList
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
@@ -136,10 +136,10 @@ Rectangle {
             Text {
                 anchors.centerIn: parent
                 width: parent.width - 48
-                visible: wordList.count === 0
+                visible: entryList.count === 0
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
-                text: appVM.wordVM.searchQuery.length > 0 || appVM.wordVM.tagFilters.length > 0
+                text: appVM.entryVM.searchQuery.length > 0 || appVM.entryVM.tagFilters.length > 0
                       ? "No words match the current filter."
                       : "No words yet.\nTap + Word to add one."
                 color: Platform.textMuted
@@ -148,3 +148,5 @@ Rectangle {
         }
     }
 }
+
+

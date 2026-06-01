@@ -97,7 +97,7 @@ Result_t<bool> DatabaseManager::DeleteDeck(ID_t id)
     return true;
 }
 
-Result_t<bool> DatabaseManager::AddWordToDeck(ID_t deckId, ID_t wordId)
+Result_t<bool> DatabaseManager::AddEntryToDeck(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO deck_entry (deck_id, entry_id) VALUES (:deckId, :wordId);");
@@ -110,7 +110,7 @@ Result_t<bool> DatabaseManager::AddWordToDeck(ID_t deckId, ID_t wordId)
     return true;
 }
 
-Result_t<bool> DatabaseManager::RemoveWordFromDeck(ID_t deckId, ID_t wordId)
+Result_t<bool> DatabaseManager::RemoveEntryFromDeck(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM deck_entry WHERE deck_id = :deckId AND entry_id = :wordId;");
@@ -175,7 +175,7 @@ Result_t<std::vector<Tag_t>> DatabaseManager::GetTagFiltersForDeck(ID_t deckId)
     return tags;
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForDeck(ID_t deckId)
+Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
 {
     auto deck = GetDeck(deckId);
     if (!deck)
@@ -193,9 +193,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForDeck(ID_t deckId)
         if (!q.exec())
             return std::unexpected(q.lastError().text().toStdString());
 
-        std::vector<Word_t> words;
+        std::vector<Entry_t> words;
         while (q.next()) {
-            words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+            words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                    .word      = q.value(1).toString().toStdString(),
                                    .createdAt = q.value(2).toString().toStdString()});
         }
@@ -212,14 +212,14 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForDeck(ID_t deckId)
     for (const auto& tag : *tags)
         tagIds.push_back(tag.id);
 
-    return GetWordsByTags(tagIds, deck->filterMode);
+    return GetEntriesByTags(tagIds, deck->filterMode);
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::GetWordsByTags(const std::vector<ID_t>& tagIds,
+Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vector<ID_t>& tagIds,
                                                               FilterMode_t             mode)
 {
     if (tagIds.empty())
-        return std::vector<Word_t>{};
+        return std::vector<Entry_t>{};
 
     // Build the IN clause placeholder list: (:t0, :t1, :t2 ...)
     QStringList placeholders;
@@ -254,9 +254,9 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsByTags(const std::vector<
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                .word      = q.value(1).toString().toStdString(),
                                .createdAt = q.value(2).toString().toStdString()});
     }

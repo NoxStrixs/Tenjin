@@ -158,7 +158,7 @@ ApplicationWindow {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (appVM.currentPage === 0) addWordDialog.open()
+                        if (appVM.currentPage === 0) addEntryDialog.open()
                         else if (appVM.currentPage === 1) addDeckDialog.open()
                         else addTagDialog.open()
                     }
@@ -201,7 +201,7 @@ ApplicationWindow {
             visible: !Platform.isMobile && !appVM.sidebarVM.collapsed
             Layout.preferredWidth: Platform.sidebarWidth
             Layout.fillHeight: true
-            onAddWordRequested: addWordDialog.open()
+            onAddEntryRequested: addEntryDialog.open()
             onAddDeckRequested: addDeckDialog.open()
             onAddTagRequested: addTagDialog.open()
         }
@@ -215,7 +215,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: appVM.currentPage
-            WordPage     {}
+            EntryPage     {}
             DeckListPage {}
             TagsPage     {}
         }
@@ -233,7 +233,7 @@ ApplicationWindow {
             anchors.fill: parent
             onNavigate: (page) => {
                 // Land on the Words list (not a stale detail) when picking Words.
-                if (page === 0) appVM.wordVM.clearSelection()
+                if (page === 0) appVM.entryVM.clearSelection()
                 appVM.currentPage = page
                 sidebarDrawer.close()
             }
@@ -261,12 +261,12 @@ ApplicationWindow {
     }
 
     // Dialogs
-    AddWordDialog { id: addWordDialog }
+    AddEntryDialog { id: addEntryDialog }
     AddDeckDialog { id: addDeckDialog }
     AddTagDialog { id: addTagDialog }
 
     // Error toast
-    Connections { target: appVM.wordVM; function onErrorOccurred(msg) { toast.show(msg) } }
+    Connections { target: appVM.entryVM; function onErrorOccurred(msg) { toast.show(msg) } }
     Connections { target: appVM.deckVM; function onErrorOccurred(msg) { toast.show(msg) } }
 
     Rectangle {
@@ -475,4 +475,6 @@ ApplicationWindow {
         }
     }
 }
+
+
 

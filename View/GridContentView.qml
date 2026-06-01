@@ -45,7 +45,7 @@ Flickable {
     // Build a row-grouped structure from the flat model.
     // Returns an array of bands; each band = { row, blocks:[{index, id, type, content, row, col, colSpan}] }.
     function buildBands() {
-        const m = appVM.wordVM.contentModel
+        const m = appVM.entryVM.contentModel
 
         // 1. Safety Guard: If model is null or rowCount is 0, exit immediately
         if (!m || m.rowCount() === 0) {
@@ -94,7 +94,7 @@ Flickable {
 
     // Rebuild whenever the model changes.
     Connections {
-        target: appVM.wordVM.contentModel
+        target: appVM.entryVM.contentModel
         function onModelReset()              { root.refresh() }
         function onRowsInserted()            { root.refresh() }
         function onRowsRemoved()             { root.refresh() }
@@ -102,7 +102,7 @@ Flickable {
         function onDataChanged()             { root.refresh() }
     }
     Connections {
-        target: appVM.wordVM
+        target: appVM.entryVM
         function onEditModeChanged()         { root.refresh() }
     }
 
@@ -192,7 +192,7 @@ Flickable {
                                         implicitWidth: Platform.touchTarget * 0.8
                                         implicitHeight: Platform.touchTarget * 0.8
                                         contentItem: Text { text: divDel.text; color: Platform.danger; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                        onClicked: appVM.wordVM.deleteContentBlock(cell.modelData.id)
+                                        onClicked: appVM.entryVM.deleteContentBlock(cell.modelData.id)
                                     }
                                 }
                                 Dialog {
@@ -264,7 +264,7 @@ Flickable {
                                             border.width: divNameField.activeFocus ? 2 : 1
                                         }
                                     }
-                                    onAccepted: appVM.wordVM.updateContentBlockText(cell.modelData.id, divNameField.text)
+                                    onAccepted: appVM.entryVM.updateContentBlockText(cell.modelData.id, divNameField.text)
                                 }
                             }
 
@@ -288,9 +288,9 @@ Flickable {
                                 z:            cellDrag.drag.active ? 5 : 1
                                 visualIndex:  cell.modelData.index
 
-                                onDeleteRequested: (bid) => appVM.wordVM.deleteContentBlock(bid)
-                                onContentEdited:   (bid, t) => appVM.wordVM.updateContentBlockText(bid, t)
-                                onPosEdited:       (bid, p) => appVM.wordVM.setBlockPartOfSpeech(bid, p)
+                                onDeleteRequested: (bid) => appVM.entryVM.deleteContentBlock(bid)
+                                onContentEdited:   (bid, t) => appVM.entryVM.updateContentBlockText(bid, t)
+                                onPosEdited:       (bid, p) => appVM.entryVM.setBlockPartOfSpeech(bid, p)
                             }
 
                             // Formula block (content type 4 / Formula). Renders LaTeX
@@ -308,8 +308,8 @@ Flickable {
                                 z:            cellDrag.drag.active ? 5 : 1
                                 visualIndex:  cell.modelData.index
 
-                                onDeleteRequested: (bid) => appVM.wordVM.deleteContentBlock(bid)
-                                onContentEdited:   (bid, t) => appVM.wordVM.updateContentBlockText(bid, t)
+                                onDeleteRequested: (bid) => appVM.entryVM.deleteContentBlock(bid)
+                                onContentEdited:   (bid, t) => appVM.entryVM.updateContentBlockText(bid, t)
                             }
 
                             // Floating drag proxy: carries the Drag payload so the
@@ -401,7 +401,7 @@ Flickable {
                                     // only write when the span actually changes.
                                     if (newSpan !== lastSpan) {
                                         lastSpan = newSpan
-                                        appVM.wordVM.setBlockSpan(cell.modelData.id, 1, newSpan)
+                                        appVM.entryVM.setBlockSpan(cell.modelData.id, 1, newSpan)
                                     }
                                 }
                                 Rectangle {
@@ -450,7 +450,7 @@ Flickable {
                                     for (const b of band.modelData.blocks)
                                         if (b.id !== src.blockId)
                                             maxCol = Math.max(maxCol, b.col)
-                                    appVM.wordVM.setBlockPosition(src.blockId, band.modelData.row, maxCol + 1)
+                                    appVM.entryVM.setBlockPosition(src.blockId, band.modelData.row, maxCol + 1)
                                     drop.accept()
                                 }
                                 // Highlight when a block hovers, so the target is clear.
@@ -494,8 +494,8 @@ Flickable {
             onDropped: (drop) => {
                 const src = drop.source
                 if (!src || src.blockId === undefined) return
-                const nextRow = appVM.wordVM.rowCountForLayout()
-                appVM.wordVM.setBlockPosition(src.blockId, nextRow, 0)
+                const nextRow = appVM.entryVM.rowCountForLayout()
+                appVM.entryVM.setBlockPosition(src.blockId, nextRow, 0)
                 drop.accept()
             }
         }
@@ -512,3 +512,4 @@ Flickable {
         horizontalAlignment: Text.AlignHCenter
     }
 }
+

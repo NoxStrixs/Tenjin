@@ -20,9 +20,9 @@ namespace Service {
 Result_t<ContentBlock_t> DatabaseManager::AddContentBlock(const ContentBlock_t& block)
 {
     QSqlQuery q(m_db);
-    q.prepare(
-        "INSERT INTO entry_content (entry_id, type, kind, content, row, col, row_span, col_span, pos) "
-        "VALUES (:wordId, :type, :kind, :content, :row, :col, :rowSpan, :colSpan, :pos);");
+    q.prepare("INSERT INTO entry_content (entry_id, type, kind, content, row, col, row_span, "
+              "col_span, pos) "
+              "VALUES (:wordId, :type, :kind, :content, :row, :col, :rowSpan, :colSpan, :pos);");
     q.bindValue(":wordId", QVariant::fromValue(block.wordId));
     q.bindValue(":type", static_cast<int>(block.type));
     q.bindValue(":kind", QString::fromStdString(ToKindString(block.type)));
@@ -47,11 +47,11 @@ Result_t<ContentBlock_t> DatabaseManager::AddContentBlock(const ContentBlock_t& 
                           .pos     = block.pos};
 }
 
-
 Result_t<ContentBlock_t> DatabaseManager::UpdateContentBlock(const ContentBlock_t& block)
 {
     QSqlQuery q(m_db);
-    q.prepare("UPDATE entry_content SET type = :type, kind = :kind, content = :content, row = :row, col = :col, "
+    q.prepare("UPDATE entry_content SET type = :type, kind = :kind, content = :content, row = "
+              ":row, col = :col, "
               "row_span = :rowSpan, col_span = :colSpan, pos = :pos WHERE id = :id;");
     q.bindValue(":type", static_cast<int>(block.type));
     q.bindValue(":kind", QString::fromStdString(ToKindString(block.type)));
@@ -72,7 +72,6 @@ Result_t<ContentBlock_t> DatabaseManager::UpdateContentBlock(const ContentBlock_
     return block;
 }
 
-
 Result_t<bool> DatabaseManager::DeleteContentBlock(ID_t id)
 {
     QSqlQuery q(m_db);
@@ -88,8 +87,7 @@ Result_t<bool> DatabaseManager::DeleteContentBlock(ID_t id)
     return true;
 }
 
-
-Result_t<std::vector<ContentBlock_t>> DatabaseManager::GetContentForWord(ID_t wordId)
+Result_t<std::vector<ContentBlock_t>> DatabaseManager::GetContentForEntry(ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, entry_id, type, content, row, col, row_span, col_span, pos "
@@ -115,7 +113,6 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::GetContentForWord(ID_t wo
     return blocks;
 }
 
-
 Result_t<bool> DatabaseManager::SaveContentLayout(const std::vector<ContentBlock_t>& blocks)
 {
     // Transaction — all blocks update atomically or none do
@@ -126,9 +123,10 @@ Result_t<bool> DatabaseManager::SaveContentLayout(const std::vector<ContentBlock
     // Persist type and content as well as layout. Previously only the
     // row/col/span columns were written, so staged text edits made in edit
     // mode were never saved — blocks survived but their content did not.
-    q.prepare("UPDATE entry_content SET type = :type, kind = :kind, content = :content, pos = :pos, "
-              "row = :row, col = :col, row_span = :rowSpan, col_span = :colSpan "
-              "WHERE id = :id;");
+    q.prepare(
+        "UPDATE entry_content SET type = :type, kind = :kind, content = :content, pos = :pos, "
+        "row = :row, col = :col, row_span = :rowSpan, col_span = :colSpan "
+        "WHERE id = :id;");
 
     for (const auto& block : blocks) {
         q.bindValue(":type", static_cast<int>(block.type));
