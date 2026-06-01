@@ -17,12 +17,6 @@ endif()
 if(WEBVIEW_SUPPORT)
     list(APPEND _TENJIN_MEDIA_QML WebEmbed.qml)
 endif()
-# FormulaWebView imports QtWebView, so it's only compiled into the module when
-# FORMULA_SUPPORT is on. FormulaBlock itself is always present (it gates the
-# WebView behind a Loader and shows a text fallback otherwise).
-if(FORMULA_SUPPORT)
-    list(APPEND _TENJIN_MEDIA_QML FormulaWebView.qml)
-endif()
 
 # Declaring every module our .qml files import is REQUIRED for static builds
 # (iOS): it tells qmlimportscanner which backing plugins to link into the
@@ -48,9 +42,6 @@ if(MEDIA_SUPPORT)
 endif()
 if(WEBVIEW_SUPPORT)
     list(APPEND _TENJIN_QML_IMPORTS QtWebEngine)
-endif()
-if(FORMULA_SUPPORT)
-    list(APPEND _TENJIN_QML_IMPORTS QtWebView)
 endif()
 
 qt_add_qml_module(TenjinView
@@ -101,30 +92,6 @@ target_link_libraries(TenjinView
              tenjin_warnings
              tenjin_sanitizers
 )
-
-# ── Offline KaTeX bundle ──────────────────────────────────────────────────────
-# Formula rendering loads KaTeX from qrc:/katex/... so it works fully offline
-# (no CDN). The assets are NOT committed to the repo; fetch them once with
-#   tools/fetch-katex.sh
-# which populates View/katex/. If the directory is missing we skip the resource
-# and FormulaWebView's loader falls back to the CDN/text path, so a fresh clone
-# still configures and builds.
-if(FORMULA_SUPPORT)
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/katex/katex.min.js")
-        file(GLOB_RECURSE _KATEX_ASSETS
-             RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-             "katex/*")
-        qt_add_resources(TenjinView "katex"
-            PREFIX "/"
-            FILES ${_KATEX_ASSETS}
-        )
-    else()
-        message(WARNING
-            "FORMULA_SUPPORT=ON but View/katex/ is empty. Run tools/fetch-katex.sh "
-            "to bundle the offline assets. Formulas will use the network/text "
-            "fallback until then.")
-    endif()
-endif()
 
 # Feature macros (TENJIN_MEDIA / TENJIN_WEBVIEW). PUBLIC so the App target, which
 # includes AppViewModel.h (it reads TENJIN_WEBVIEW), inherits them transitively.

@@ -33,13 +33,6 @@ if(TARGET Qt6::QSQLiteDriverPlugin)
     target_link_libraries(Tenjin PRIVATE Qt6::QSQLiteDriverPlugin)
 endif()
 
-# QtWebView (offline formula rendering). Linked to the executable because
-# main.cpp calls QtWebView::initialize(). if(TARGET) keeps it a no-op when
-# FORMULA_SUPPORT is off or the module is absent.
-if(TARGET Qt6::WebView)
-    target_link_libraries(Tenjin PRIVATE Qt6::WebView)
-endif()
-
 # iOS static plugin imports.
 #
 # On a STATIC Qt build (always the case on iOS) the linker dead-strips any
@@ -111,13 +104,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         # QtMultimedia (only present when MEDIA_SUPPORT linked it)
         Qt6::quickmultimediaplugin
         Qt6::multimediaquickplugin
-        # QtWebView (only present when FORMULA_SUPPORT linked it) — both the
-        # C++ module plugin and the QML import plugin spellings across kits.
-        Qt6::qtwebviewplugin
-        Qt6::webviewplugin
-        Qt6::qquickwebviewplugin
-        Qt6::quickwebviewplugin
-        Qt6::qtwebviewquickplugin
     )
         if(TARGET ${_qmlplug})
             target_link_libraries(Tenjin PRIVATE ${_qmlplug})

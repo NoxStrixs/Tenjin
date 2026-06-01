@@ -28,12 +28,6 @@ option(SANITIZERS       "Sanitizers, comma-separated (asan,lsan,tsan,ubsan)" "")
 option(MEDIA_SUPPORT    "Enable audio/video playback (QtMultimedia)" ON)
 # Web embeds (YouTube etc.) via QtWebEngine. Heavy (~100MB+); off by default.
 option(WEBVIEW_SUPPORT  "Enable web/YouTube embeds (QtWebEngine)" OFF)
-# Offline LaTeX formula rendering via QtWebView (the system WebView — WKWebView
-# on iOS/macOS, WebView2/WebKit elsewhere). Lightweight and, unlike QtWebEngine,
-# available on iOS. KaTeX assets are bundled into the binary (see View/katex).
-# ON by default; degrades to a monospaced LaTeX fallback if Qt6::WebView or the
-# bundled assets are missing.
-option(FORMULA_SUPPORT  "Enable offline LaTeX formula rendering (QtWebView)" ON)
 
 include(cmake/Sanitizers.cmake)
 include(cmake/Warnings.cmake)
@@ -58,20 +52,6 @@ if(WEBVIEW_SUPPORT)
     find_package(Qt6 6.8 REQUIRED COMPONENTS WebEngineQuick)
     list(APPEND TENJIN_MEDIA_COMPONENTS Qt6::WebEngineQuick)
 endif()
-# QtWebView is optional: if the host Qt lacks it (some minimal Linux SDKs),
-# don't hard-fail — just disable formula rendering and use the text fallback.
-if(FORMULA_SUPPORT)
-    find_package(Qt6 6.8 QUIET COMPONENTS WebView)
-    if(Qt6WebView_FOUND)
-        list(APPEND TENJIN_MEDIA_COMPONENTS Qt6::WebView)
-    else()
-        message(WARNING
-            "FORMULA_SUPPORT=ON but Qt6::WebView was not found; "
-            "formula blocks will fall back to raw-LaTeX text. "
-            "Install the Qt WebView module or set -DFORMULA_SUPPORT=OFF.")
-        set(FORMULA_SUPPORT OFF)
-    endif()
-endif()
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -84,9 +64,6 @@ if(MEDIA_SUPPORT)
 endif()
 if(WEBVIEW_SUPPORT)
     list(APPEND TENJIN_FEATURE_DEFINITIONS TENJIN_WEBVIEW)
-endif()
-if(FORMULA_SUPPORT)
-    list(APPEND TENJIN_FEATURE_DEFINITIONS TENJIN_FORMULA)
 endif()
 
 # ─── Subprojects ──────────────────────────────────────────────────────────────

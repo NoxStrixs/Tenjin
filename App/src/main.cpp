@@ -19,10 +19,6 @@
 #include <QtQml/qqmlextensionplugin.h>
 Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 
-#ifdef TENJIN_FORMULA
-#include <QtWebView/QtWebView>
-#endif
-
 // Global pointers used by the message handler. Set up in main before the
 // handler is installed. The handler runs on whatever thread logged, so it
 // marshals onto the LogModel's (GUI) thread via a queued invocation.
@@ -66,12 +62,6 @@ int main(int argc, char* argv[])
     app.setApplicationName("Tenjin");
     app.setOrganizationName("Tenjin");
     app.setOrganizationDomain("tenjin.app");
-
-#ifdef TENJIN_FORMULA
-    // Must run after QGuiApplication is constructed and before any WebView is
-    // created (i.e. before the QML engine instantiates FormulaWebView).
-    QtWebView::initialize();
-#endif
 
     // Fusion is the only Quick Controls style guaranteed on every platform
     // without extra plugin dependencies.

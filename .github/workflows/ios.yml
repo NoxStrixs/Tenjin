@@ -43,7 +43,7 @@ jobs:
           host: "mac"
           target: "desktop"
           arch: "clang_64"
-          modules: "qtmultimedia qtwebview"
+          modules: "qtmultimedia"
           dir: ${{ github.workspace }}/Qt
           cache: true
 
@@ -53,12 +53,9 @@ jobs:
           version: "6.8.3"
           host: "mac"
           target: "ios"
-          modules: "qtmultimedia qtwebview"
+          modules: "qtmultimedia"
           dir: ${{ github.workspace }}/Qt
           cache: true
-
-      - name: Fetch KaTeX (offline formula assets)
-        run: tools/fetch-katex.sh
 
       - name: Configure (qt-cmake, Xcode generator)
         run: |
@@ -69,7 +66,6 @@ jobs:
             -DQT_HOST_PATH="$QT_HOST" \
             -DMEDIA_SUPPORT=OFF \
             -DWEBVIEW_SUPPORT=OFF \
-            -DFORMULA_SUPPORT=ON \
             -DBUILD_TESTS=OFF \
             -DBUILD_BENCHMARKS=OFF \
             -DSANITIZERS="" \

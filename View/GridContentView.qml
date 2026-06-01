@@ -294,9 +294,9 @@ Flickable {
                             }
 
                             // Formula block (content type 4 / Formula). Renders LaTeX
-                            // via KaTeX when formula rendering is available, else a
-                            // raw-LaTeX text fallback. Same edit/content contract as
-                            // ContentBlock.
+                            // natively via appVM.renderFormula() (a LaTeX-subset →
+                            // Qt rich-text converter; no WebView, fully offline).
+                            // Same edit/content contract as ContentBlock.
                             FormulaBlock {
                                 id: formula
                                 width: parent.width
@@ -512,4 +512,5 @@ Flickable {
         horizontalAlignment: Text.AlignHCenter
     }
 }
+
 
