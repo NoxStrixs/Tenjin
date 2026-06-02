@@ -2,14 +2,9 @@ import QtQuick
 import QtQuick.Controls
 import TenjinView
 
-// A small themed text button used in page headers. Centralizes the styling so
-// pages don't repeat background/contentItem blocks (and avoids the `parent.text`
-// pattern, which QML's static checker can't resolve).
 Button {
     id: control
 
-    // Visual variant: "neutral" (surface), "primary" (accent),
-    // "success", or "danger".
     property string variant: "neutral"
 
     implicitHeight: Platform.touchTarget

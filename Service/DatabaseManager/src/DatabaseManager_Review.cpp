@@ -19,7 +19,6 @@ namespace Service {
 
 Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
 {
-    // INSERT OR IGNORE — safe to call multiple times, won't overwrite existing progress
     QSqlQuery q(m_db);
     q.prepare("INSERT OR IGNORE INTO review (deck_id, entry_id, next_review_date) "
               "VALUES (:deckId, :wordId, date('now', 'localtime'));");
@@ -29,7 +28,6 @@ Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    // Fetch the row whether it was just inserted or already existed
     q.prepare("SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
               "next_review_date, last_review_date "
               "FROM review WHERE deck_id = :deckId AND entry_id = :wordId;");
@@ -51,7 +49,6 @@ Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
 
 Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int quality)
 {
-    // Fetch current state
     QSqlQuery q(m_db);
     q.prepare("SELECT id, ease_factor, interval_days, repetitions "
               "FROM review WHERE deck_id = :deckId AND entry_id = :wordId;");
@@ -102,7 +99,7 @@ Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int q
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    // Append to the review history log (analytics). Non-fatal if it fails.
+    // Append to the review history log. Non-fatal if it fails.
     {
         QSqlQuery log(m_db);
         log.prepare("INSERT INTO review_log "
@@ -181,12 +178,12 @@ Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
     for (const auto& w : *words) {
         const auto it = nextByWord.find(static_cast<qint64>(w.id));
         if (it == nextByWord.end()) {
-            ++stats.due; // never reviewed → new card, due
+            stats.due++; // never reviewed → new card, due
             continue;
         }
         const QString next = it.value();
         if (next.isEmpty() || next <= today) {
-            ++stats.due;
+            stats.due++;
         } else if (earliestUpcoming.isEmpty() || next < earliestUpcoming) {
             earliestUpcoming = next;
         }
@@ -200,8 +197,7 @@ Result_t<DeckAnalytics_t> DatabaseManager::GetDeckAnalytics(ID_t deckId)
     DeckAnalytics_t a;
 
     // Daily aggregates: count + average grade per day, chronological.
-    // reviewed_at is epoch ms; convert to a local date string in SQL via SQLite's
-    // datetime on (ms/1000) seconds.
+    // reviewed_at is epoch ms.
     QSqlQuery q(m_db);
     q.prepare("SELECT date(reviewed_at/1000, 'unixepoch', 'localtime') AS d, "
               "COUNT(*) AS c, AVG(quality) AS aq "

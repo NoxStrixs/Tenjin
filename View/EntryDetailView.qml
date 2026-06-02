@@ -9,7 +9,7 @@ import QtQml.Models
 
 // The full editor for a single word: title, action buttons, tags, the row/column
 // content grid, and the add-content buttons. Extracted from EntryPage so both the
-// desktop detail pane and the mobile list→detail stack render one definition.
+// desktop detail pane and the mobile list-detail stack render one definition.
 //
 //   showBack — when true (mobile), shows a "‹" button that emits backRequested()
 //              so the host StackView can pop.
@@ -25,7 +25,7 @@ Item {
         anchors { fill: parent; margins: Platform.pagePadding }
         spacing: 16
 
-        // ── Header: title + actions ──────────────────────────────────
+        // Header: title and actions
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 6
@@ -67,7 +67,7 @@ Item {
                 }
             }
 
-            // Mobile edit actions — full-width second row.
+            // Mobile edit actions: full-width second row.
             RowLayout {
                 visible: appVM.entryVM.editMode && Platform.isMobile
                 Layout.fillWidth: true
@@ -78,7 +78,7 @@ Item {
             }
         }
 
-        // ── Tags ─────────────────────────────────────────────────────
+        // Tags
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -100,7 +100,7 @@ Item {
                     }
                 }
 
-                // "+ tag" → popup to create-or-attach.
+                // "+ tag": popup to create-or-attach.
                 Rectangle {
                     id: addTagButton
                     visible: appVM.entryVM.editMode
@@ -230,7 +230,7 @@ Item {
 
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border }
 
-        // ── Content blocks (row/column grid) ─────────────────────────
+        // Content blocks
         GridContentView {
             id: blockGrid
             Layout.fillWidth: true
@@ -238,9 +238,7 @@ Item {
             editMode: appVM.entryVM.editMode
         }
 
-        // ── Add content buttons (wrap on narrow screens) ─────────────
-        // Formula (type 4) is offered alongside the rest; it shows a text
-        // fallback when offline rendering isn't compiled in.
+        // Add content buttons (wrap on narrow screens)
         Flow {
             Layout.fillWidth: true
             visible: appVM.entryVM.editMode

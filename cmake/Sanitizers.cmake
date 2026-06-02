@@ -1,10 +1,6 @@
-# ─── Sanitizers ───────────────────────────────────────────────────────────────
 # Emits an interface target `tenjin_sanitizers` that other targets can link
-# against to inherit -fsanitize=… flags. The set is parsed from the comma-
-# separated SANITIZERS option (e.g. -DSANITIZERS=asan,lsan,ubsan).
-#
-# Combinations that don't work (tsan + asan, msan + asan) are rejected. msan is
-# clang-only; we still set the flag and let the toolchain complain if absent.
+# against to inherit -fsanitize=… flags.
+# The set is parsed from the comma-separated SANITIZERS option (e.g. -DSANITIZERS=asan,lsan,ubsan).
 
 add_library(tenjin_sanitizers INTERFACE)
 

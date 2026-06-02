@@ -5,7 +5,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-// The scrollable list of all words for mobile. The header search field (Main.qml)
+// The scrollable list of all words for mobile. The header search field
 // drives appVM.entryVM.searchQuery, so the list filters inline; this panel re-reads
 // getAllEntries() whenever the list, query, or tag filters change. A horizontal row
 // of tag chips below the header provides tag filtering.
@@ -33,7 +33,7 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        // ── Tag filter row ───────────────────────────────────────────
+        // Tag filter row
         Rectangle {
             Layout.fillWidth: true
             visible: listRoot.allTags.length > 0
@@ -104,7 +104,7 @@ Rectangle {
             }
         }
 
-        // ── Word list ────────────────────────────────────────────────
+        // Word list
         ListView {
             id: entryList
             Layout.fillWidth: true

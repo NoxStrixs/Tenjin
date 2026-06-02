@@ -5,14 +5,12 @@
 namespace Service {
 
 // Owns schema creation and forward migrations for a single connection.
-//
+
 // Versioning uses SQLite's `PRAGMA user_version`. Each migration step upgrades
 // the DB by exactly one version; `Migrate` runs every step from the DB's
 // current version up to kSchemaVersion, inside one transaction.
 //
-// To evolve the schema: bump kSchemaVersion and append a step to the migration
-// table in Schema.cpp. NEVER edit or reorder existing steps — they have already
-// run on real databases.
+// NEVER edit or reorder existing steps to prevent backward compatibility issues.
 namespace Schema {
 
 // The version the application code expects. A freshly created DB jumps straight

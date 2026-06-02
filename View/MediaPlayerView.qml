@@ -5,9 +5,7 @@ import QtMultimedia
 import TenjinView
 
 // Isolated audio/video player with full transport controls. Lives in its own
-// file so ContentBlock.qml needs no QtMultimedia import — a build without
-// MEDIA_SUPPORT omits this file and the Loader referencing it stays empty.
-//
+// file so ContentBlock.qml needs no QtMultimedia import
 // Video shows its first frame (keyframe) when not playing: the player is loaded
 // paused so QtMultimedia decodes and presents frame 0 into the VideoOutput.
 ColumnLayout {
@@ -72,14 +70,13 @@ ColumnLayout {
             videoOutput: mpRoot.fullscreen ? fsVideoOut : videoOut
             audioOutput: AudioOutput { id: audioOut; volume: volumeSlider.value; muted: muteBtn.muted }
             // No autoplay. To show the first frame as a thumbnail without
-            // starting playback, seek to position 0 once loaded; QtMultimedia
-            // decodes and presents that frame into the VideoOutput.
+            // starting playback, seek to position 0 once loaded.
             property bool primedFrame: false
             onMediaStatusChanged: {
                 if (mpRoot.isVideo && !primedFrame
                     && mediaStatus === MediaPlayer.LoadedMedia) {
                     primedFrame = true
-                    position = 0   // present frame 0 without playing
+                    position = 0
                 }
             }
         }
@@ -181,15 +178,11 @@ ColumnLayout {
     }
 
     // Fullscreen overlay: reparented to the window's overlay so it covers the
-    // whole app. Avoids a separate Window (which can't take Keys and conflicts
-    // on visible/visibility). Player output switches to fsVideoOut via the
-    // MediaPlayer.videoOutput binding while fullscreen is true.
+    // whole app, avoiding a separate Window.
     Item {
         id: fsOverlay
         parent: Overlay.overlay
         anchors.fill: parent
-        // Detach from the parent ColumnLayout's sizing (it's reparented to the
-        // window overlay; the layout must not try to position it).
         Layout.preferredWidth: 0
         Layout.preferredHeight: 0
         visible: mpRoot.fullscreen
@@ -204,7 +197,7 @@ ColumnLayout {
                 anchors.fill: parent
             }
 
-            // Click anywhere (not on controls) toggles play/pause.
+            // Click anywhere toggles play/pause.
             MouseArea {
                 anchors.fill: parent
                 onClicked: player.playbackState === MediaPlayer.PlayingState
@@ -251,7 +244,7 @@ ColumnLayout {
             }
         }
 
-        // Esc exits fullscreen (Item can take Keys; Window can't).
+        // Esc exits fullscreen
         focus: mpRoot.fullscreen
         Keys.onEscapePressed: mpRoot.fullscreen = false
     }

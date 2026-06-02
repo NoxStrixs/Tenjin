@@ -5,13 +5,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-// Mobile navigation drawer. Pure navigation + app-level actions; the lists live
-// on their respective pages. Hosted by a Drawer in Main.qml.
 Rectangle {
     id: drawerRoot
     color: Platform.surface
 
-    // page: 0 = Words, 1 = Decks, 2 = Tags
     signal navigate(int page)
     signal importRequested()
     signal exportRequested()
@@ -22,7 +19,7 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        // ── App name ─────────────────────────────────────────────────
+        // App name
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: Platform.headerHeight + 12
@@ -37,7 +34,7 @@ Rectangle {
             Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border }
         }
 
-        // ── Page navigation ──────────────────────────────────────────
+        // Page navigation
         Repeater {
             model: [
                 { label: "Words", page: 0, glyph: "\uD83D\uDCD6" },
@@ -82,7 +79,7 @@ Rectangle {
 
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; Layout.topMargin: 8 }
 
-        // ── Theme toggle ─────────────────────────────────────────────
+        // Theme toggle
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: Platform.touchTarget + 10
@@ -107,7 +104,7 @@ Rectangle {
             }
         }
 
-        // ── Import / Export ──────────────────────────────────────────
+        // Import / Export
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 12
@@ -138,7 +135,7 @@ Rectangle {
 
         Item { Layout.fillHeight: true }
 
-        // ── About (inline expand) ────────────────────────────────────
+        // About
         Rectangle {
             Layout.fillWidth: true
             visible: drawerRoot.aboutExpanded

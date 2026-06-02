@@ -1,15 +1,9 @@
 add_subdirectory(ViewModels)
 
-# Files that must be tagged as QML singletons before being passed to
-# qt_add_qml_module — set_source_files_properties() must execute in the same
-# directory scope as the module declaration.
 set_source_files_properties(Platform.qml PROPERTIES
     QT_QML_SINGLETON_TYPE TRUE
 )
 
-# Media QML files are added only when their backing Qt module is enabled, so a
-# lean build (MEDIA_SUPPORT=OFF / WEBVIEW_SUPPORT=OFF) doesn't try to compile
-# QML that imports a module it wasn't linked against.
 set(_TENJIN_MEDIA_QML "")
 if(MEDIA_SUPPORT)
     list(APPEND _TENJIN_MEDIA_QML MediaPlayerView.qml)
@@ -19,15 +13,7 @@ if(WEBVIEW_SUPPORT)
 endif()
 
 # Declaring every module our .qml files import is REQUIRED for static builds
-# (iOS): it tells qmlimportscanner which backing plugins to link into the
-# binary. Without it, modules like QtQuick.Layouts / QtQuick.Controls.Basic are
-# dead-stripped and the app fails at runtime with "module ... is not installed"
-# → no root objects → silent exit.
-#
-# NOTE: the IMPORTS keyword takes PLAIN module names evaluated at configure
-# time. Generator expressions ($<...>) are NOT evaluated here and would be
-# recorded verbatim as bogus module names — so build the list with ordinary
-# if() appends instead.
+
 set(_TENJIN_QML_IMPORTS
     QtQuick
     QtQuick.Controls
@@ -41,7 +27,7 @@ if(MEDIA_SUPPORT)
     list(APPEND _TENJIN_QML_IMPORTS QtMultimedia)
 endif()
 if(WEBVIEW_SUPPORT)
-    list(APPEND _TENJIN_QML_IMPORTS QtWebEngine)
+    list(APPEND _TENJIN_QML_IMPORTS QtWebView)
 endif()
 
 qt_add_qml_module(TenjinView
@@ -94,8 +80,9 @@ target_link_libraries(TenjinView
              tenjin_sanitizers
 )
 
-# Feature macros (TENJIN_MEDIA / TENJIN_WEBVIEW). PUBLIC so the App target, which
-# includes AppViewModel.h (it reads TENJIN_WEBVIEW), inherits them transitively.
+# Feature macros:
+# PUBLIC so the App target inherits them transitively.
 target_compile_definitions(TenjinView
     PUBLIC   ${TENJIN_FEATURE_DEFINITIONS}
 )
+

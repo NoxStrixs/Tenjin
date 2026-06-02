@@ -5,16 +5,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-// A LaTeX formula block (content kind "formula").
-//
+// A LaTeX formula block
 // Edit mode : a LaTeX text field plus a palette of buttons that insert snippets
 //             at the cursor — the user never has to know LaTeX syntax.
 // View mode : the formula rendered natively via appVM.renderFormula() (a
 //             LaTeX-subset → Qt rich-text converter). No WebView, no external
 //             assets, fully offline.
-//
-// Presentational only: it emits contentEdited(bid, newLatex) and deleteRequested
-// exactly like the other block delegates; persistence is the ViewModel's job.
 Rectangle {
     id: root
 
@@ -83,7 +79,7 @@ Rectangle {
         anchors.margins: 12
         spacing: 8
 
-        // Header: kind chip + remove.
+        // Header: kind chip and remove.
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -112,7 +108,7 @@ Rectangle {
             }
         }
 
-        // ── Edit mode: LaTeX field + palette ──────────────────────────────────
+        // Edit mode: LaTeX field and palette
         TextArea {
             id: latexField
             visible: root.editMode
@@ -139,8 +135,8 @@ Rectangle {
             Repeater {
                 model: root.palette
                 // Themed palette button, matching the note/definition toolbar's
-                // FmtBtn treatment (Platform colors, hover, touch sizing). Width
-                // grows with the label since entries vary ("x\u00B2" vs "lim").
+                // FmtBtn treatment (Platform colors, hover, touch sizing).
+                // Widthgrows with the label since entries vary ("x\u00B2" vs "lim").
                 delegate: Rectangle {
                     id: palBtn
                     required property var modelData
@@ -174,9 +170,7 @@ Rectangle {
             }
         }
 
-        // ── View mode: natively-rendered formula ──────────────────────────────
-        // FormulaRenderer (C++) converts the LaTeX subset to Qt rich text — no
-        // WebView, no external assets, fully offline.
+        // FormulaRenderer converts the LaTeX subset to Qt rich text.
         Text {
             visible: !root.editMode && root.blockContent.length > 0
             Layout.fillWidth: true

@@ -2,9 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import TenjinView
 
-// A titled card that hosts a hand-drawn chart. Pass the chart as the `chart`
-// Item; it is reparented to fill the plot area. `emptyText` (when non-empty)
-// is shown instead of the chart.
 Rectangle {
     id: card
     property string title: ""

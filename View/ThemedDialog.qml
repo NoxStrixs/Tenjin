@@ -2,14 +2,14 @@ import QtQuick
 import QtQuick.Controls
 import TenjinView
 
-// A themed Dialog base: dark background, themed header bar, themed OK/Cancel
-// footer (no white system button bar), and — when the on-screen keyboard is up —
-// it caps its own height and sits in the top region so its buttons are never
-// covered by the keyboard. Stays horizontally centered.
-//
-// Usage: set `title`, optionally `okText`/`cancelText`, put content as children,
-// handle onAccepted/onRejected. Tapping the dimmed area outside dismisses the
-// keyboard (and, per closePolicy, can close the dialog).
+// A themed Dialog base:
+//  themed header bar,
+//  themed OK/Cancel
+//  footer,
+//  when the on-screen keyboard is up it caps its own height and sits in the top region so its buttons are never
+//  covered by the keyboard.
+//  Stays horizontally centered.
+
 Dialog {
     id: root
     modal: true

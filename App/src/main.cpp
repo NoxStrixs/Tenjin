@@ -2,6 +2,9 @@
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
+#ifdef TENJIN_WEBVIEW
+#    include <QtWebView/QtWebView>
+#endif
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -19,9 +22,9 @@
 #include <QtQml/qqmlextensionplugin.h>
 Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 
-// Global pointers used by the message handler. Set up in main before the
-// handler is installed. The handler runs on whatever thread logged, so it
-// marshals onto the LogModel's (GUI) thread via a queued invocation.
+// Global pointers used by the message handler.
+// The handler runs on whatever thread logged, so it
+// marshals onto the LogModel's thread via a queued invocation.
 static LogViewModel*    g_logModel        = nullptr;
 static QtMessageHandler g_previousHandler = nullptr;
 
@@ -59,30 +62,27 @@ static void tenjinMessageHandler(QtMsgType type, const QMessageLogContext& ctx, 
 int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
+#ifdef TENJIN_WEBVIEW
+    QtWebView::initialize();
+#endif
     app.setApplicationName("Tenjin");
     app.setOrganizationName("Tenjin");
     app.setOrganizationDomain("tenjin.app");
 
     // Fusion is the only Quick Controls style guaranteed on every platform
     // without extra plugin dependencies.
-    // QQuickStyle::setStyle() picks the QtQuick.Controls 2 style at runtime.
     // Use "Basic" on iOS: it's the platform-default, always-present style and
     // does not require a separately-linked style plugin to be alive after the
-    // static linker dead-strips. On desktop, keep Fusion for a more polished
-    // look (it IS reliably auto-imported by dynamic Qt).
+    // static linker dead-strips.
 #if defined(Q_OS_IOS)
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 #else
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
 #endif
 
-    // Construct the app/database layer. The DatabaseManager ctor throws if the
-    // SQLite driver isn't available or the DB can't be opened. Log the failure
-    // loudly: qCritical() goes to idevicesyslog, AND we write a fatal.txt to
-    // AppDataLocation so the user can retrieve it via the Files app
-    // (UIFileSharingEnabled=true). Without this, a Qt init failure looks
-    // identical to a pre-main() AMFI kill: silent black-screen exit, no crash
-    // report in Analytics Data.
+    // The DatabaseManager ctor throws if the SQLite driver isn't available or the DB can't be
+    // opened.
+    // Log the failure and write a fatal.txt to AppDataLocation
     auto writeFatal = [](const QString& what) {
         const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
         QDir().mkpath(dir);
@@ -93,9 +93,7 @@ int main(int argc, char* argv[])
         }
     };
 
-    // Pre-create AppDataLocation before anything tries to use it; on iOS the
-    // directory returned by writableLocation() does not exist until mkpath'd,
-    // and any sqlite3_open() / QSettings write below would fail SQLITE_CANTOPEN.
+    // Pre-create AppDataLocation before anything tries to use it.
     QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
 
     std::unique_ptr<AppViewModel> appVMPtr;
@@ -116,14 +114,15 @@ int main(int argc, char* argv[])
         }
         return -1;
     } catch (...) {
-        const QString msg = QStringLiteral("FATAL: unknown exception in AppViewModel ctor");
+        const QString msg =
+            QStringLiteral("FATAL: unknown exception during AppViewModel creation.");
         qCritical().noquote() << msg;
         writeFatal(msg);
         return -1;
     }
     AppViewModel& appVM = *appVMPtr;
 
-    // Debug-console log capture. Created before installing the handler.
+    // Debug-console log capture.
     LogViewModel logModel;
     g_logModel        = &logModel;
     g_previousHandler = qInstallMessageHandler(tenjinMessageHandler);
@@ -154,9 +153,6 @@ int main(int argc, char* argv[])
         const QString msg = QStringLiteral("FAILED: no root objects for ") + url.toString();
         qCritical().noquote() << msg;
         writeFatal(msg);
-        writeFatal(QStringLiteral("  (likely cause: a QtQuick / QtQuick.Controls "
-                                  "style / QML module plugin was not linked into "
-                                  "the static iOS binary — check qt_import_plugins)"));
         return -1;
     }
     return app.exec();

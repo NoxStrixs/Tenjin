@@ -11,22 +11,10 @@
 namespace Service::Schema {
 namespace {
 
-// One migration step = the ordered SQL that upgrades the DB from version N-1
-// to version N. steps[0] -> v1, steps[1] -> v2, ...
+// Migration step = the ordered SQL that upgrades the DB from version N-1
+// to version N.
 using Step = std::vector<const char*>;
 
-// ── v1: entry-centric baseline ───────────────────────────────────────────────
-// The app is pre-release, so there are no legacy databases to migrate from the
-// old "word_*" naming. This single baseline creates the final entry-centric
-// shape directly:
-//   • entry            — a record (kind='word' for vocabulary entries)
-//   • entry_content    — ordered/positioned content blocks belonging to an entry
-//   • entry_tag        — entry↔tag association
-//   • entry_relation   — entry↔entry relations
-//   • deck / deck_entry / deck_tag_filter — decks and membership
-//   • review / review_log — spaced-repetition scheduling
-// `kind` columns (on entry and entry_content) and the FTS index are part of the
-// baseline rather than later migrations.
 const Step kV1 = {
     "CREATE TABLE IF NOT EXISTS entry ("
     "id INTEGER PRIMARY KEY,"
@@ -131,8 +119,8 @@ const Step kV1 = {
     "reviewed_at   INTEGER NOT NULL);",
 };
 
-// Ordered: index i upgrades to version i+1. Only the baseline exists now;
-// append a new Step here (and bump kSchemaVersion) to evolve the schema.
+// Ordered: index i upgrades to version i+1.
+// Append a new Step here and bump kSchemaVersion to evolve the schema.
 const std::vector<const Step*> kSteps = {&kV1};
 
 int currentVersion(QSqlDatabase& db)
@@ -174,7 +162,7 @@ void Migrate(QSqlDatabase& db)
         throw std::runtime_error("Failed to begin migration transaction.");
 
     try {
-        for (int v = from; v < to; ++v)
+        for (int v = from; v < to; v++)
             for (const char* sql : *kSteps[v])
                 exec(db, sql);
     } catch (...) {

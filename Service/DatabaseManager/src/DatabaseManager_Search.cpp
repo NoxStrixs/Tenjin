@@ -19,7 +19,7 @@ namespace Service {
 
 Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntries(const std::string& query)
 {
-    // Append * for prefix matching so partial input works (e.g. "ephe" matches "ephemeral")
+    // Append * for prefix matching so partial input works
     const QString ftsQuery = QString::fromStdString(query) + "*";
 
     QSqlQuery q(m_db);
@@ -72,7 +72,7 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::SearchContent(const std::
     return blocks;
 }
 
-// ── Substring search (LIKE) ───────────────────────────────────────────────────
+// Substring search (LIKE)
 
 Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByName(const std::string& substring)
 {

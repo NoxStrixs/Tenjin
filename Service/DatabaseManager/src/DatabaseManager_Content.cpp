@@ -115,14 +115,8 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::GetContentForEntry(ID_t w
 
 Result_t<bool> DatabaseManager::SaveContentLayout(const std::vector<ContentBlock_t>& blocks)
 {
-    // Full reconcile against entry_content for this entry, atomically:
-    //   • blocks with id <= 0  → INSERT (added during an edit session)
-    //   • blocks with id  > 0  → UPDATE
-    //   • existing rows not in `blocks` → DELETE (removed during the session)
-    // This lets edit mode stage adds/removes/text/layout entirely in-model and
-    // commit them all on Save; Cancel reverts by simply never calling here.
     if (blocks.empty())
-        return true; // no known entry id to reconcile against; treat as no-op
+        return true; // no known entry id
 
     if (!m_db.transaction())
         return std::unexpected("Failed to begin transaction.");

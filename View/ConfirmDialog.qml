@@ -18,7 +18,6 @@ Dialog {
 
     onAccepted: root.confirmed()
 
-    // Solves clipping inside dialog by nesting standard wrap semantics inside a safe structural item
     ColumnLayout {
         width: parent.width
         Text {
@@ -35,7 +34,7 @@ Dialog {
         border.color: Platform.border; border.width: 1
     }
 
-    // Themed title bar (replaces the dark default header).
+    // Themed title bar
     header: Rectangle {
         color: Platform.surface
         radius: Platform.radiusLarge
@@ -53,7 +52,7 @@ Dialog {
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Platform.border }
     }
 
-    // Themed footer with cream-styled OK / Cancel buttons.
+    // Themed footer OK / Cancel buttons.
     footer: DialogButtonBox {
         padding: 16
         spacing: 8

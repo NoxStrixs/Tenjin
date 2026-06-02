@@ -5,10 +5,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-// Tag management. Lists every tag with rename + delete. Tapping a tag's name
-// filters the Words page to that tag and navigates there. Reached on mobile via
-// the drawer (page index 2). On desktop, tag browsing stays in the sidebar
-// tree, so currentPage never becomes 2 there and this page is inert.
+// Tag management. Lists every tag with rename and delete.
+// Tapping a tag's name filters the Words page to that tag and navigates there.
+// Reached on mobile via the drawer.
+// On desktop, tag browsing stays in the sidebar tree.
 Item {
     id: tagsPageRoot
 

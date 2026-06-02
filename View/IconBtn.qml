@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import TenjinView
 
 // A square icon button for the top bar. Emits activated() on click and exposes
-// hovered so callers can drive hover popups (e.g. the About info card).
+// hovered so callers can drive hover popups.
 Rectangle {
     id: ib
     property string glyph: ""

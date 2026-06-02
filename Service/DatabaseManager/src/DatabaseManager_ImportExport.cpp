@@ -19,7 +19,7 @@ namespace Service {
 
 Result_t<bool> DatabaseManager::ExportToJson(const QString& path)
 {
-    // Ensure every row has a guid (rows created since startup may not).
+    // Ensure every row has a guid
     backfillGuids();
 
     QJsonObject root;
@@ -27,7 +27,7 @@ Result_t<bool> DatabaseManager::ExportToJson(const QString& path)
     root["version"]    = 1;
     root["exportedAt"] = QDateTime::currentMSecsSinceEpoch();
 
-    // Words (with their content blocks and tag guids embedded).
+    // Words with their content blocks and tag guids embedded.
     QJsonArray wordsArr;
     {
         QSqlQuery wq(m_db);
@@ -94,7 +94,7 @@ Result_t<bool> DatabaseManager::ExportToJson(const QString& path)
     }
     root["tags"] = tagsArr;
 
-    // Decks (with member-word guids and tag-filter guids).
+    // Decks with member-word guids and tag-filter guids.
     QJsonArray decksArr;
     {
         QSqlQuery dq(m_db);
@@ -165,8 +165,6 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
         return std::unexpected(msg.toStdString());
     };
 
-    // Helper: look up a row id by guid; returns -1 if absent. Also returns the
-    // stored updated_at via out-param.
     auto findByGuid = [&](const QString& table, const QString& guid, qint64& outUpdated) -> qint64 {
         QSqlQuery q(m_db);
         q.prepare(QStringLiteral("SELECT id, updated_at FROM %1 WHERE guid = :g;").arg(table));
@@ -179,7 +177,7 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
         return -1;
     };
 
-    // ── Tags ──
+    // Tags
     QHash<QString, qint64> tagIdByGuid;
     for (const QJsonValue& v : root.value("tags").toArray()) {
         const QJsonObject t   = v.toObject();
@@ -210,7 +208,7 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
         tagIdByGuid.insert(g, id);
     }
 
-    // ── Words + content blocks ──
+    // Words and content blocks
     QHash<QString, qint64> wordIdByGuid;
     for (const QJsonValue& v : root.value("words").toArray()) {
         const QJsonObject w   = v.toObject();
@@ -229,8 +227,8 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
             ins.bindValue(":g", g);
             ins.bindValue(":u", upd);
             if (!ins.exec()) {
-                // A word with the same text but different guid may already exist
-                // (UNIQUE on word). Treat that as the same word and adopt it.
+                // A word with the same text but different guid may already exist.
+                // Treat it as the same word and adopt it.
                 QSqlQuery byName(m_db);
                 byName.prepare("SELECT id FROM entry WHERE title = :w;");
                 byName.bindValue(":w", txt);
@@ -252,7 +250,7 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
         }
         wordIdByGuid.insert(g, wid);
 
-        // Content blocks (merge by block guid).
+        // Content blocks merge by block guid.
         for (const QJsonValue& bv : w.value("blocks").toArray()) {
             const QJsonObject b   = bv.toObject();
             const QString     bg  = b.value("guid").toString();
@@ -304,7 +302,7 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
             }
         }
 
-        // Word↔tag links (additive; never removes existing links).
+        // Word-tag links
         for (const QJsonValue& tg : w.value("tags").toArray()) {
             const auto it = tagIdByGuid.find(tg.toString());
             if (it == tagIdByGuid.end())

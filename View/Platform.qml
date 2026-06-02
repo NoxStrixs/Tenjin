@@ -5,18 +5,14 @@ QtObject {
     id: platform
     readonly property bool isMobile: Qt.platform.os === "ios" || Qt.platform.os === "android"
 
-    // ── Theme ─────────────────────────────────────────────────
-    // 0 = light (default cream), 1 = dark. Persistence is handled by
-    // AppViewModel via QSettings (see Main.qml), so no extra QML module is
-    // required — this stays a plain property the rest of the UI binds to.
+    // 0 = light (default cream)
+    // 1 = dark.
+    // Persistence is handled by AppViewModel via QSettings
     property int theme: 0
     readonly property bool isDark: theme === 1
     function toggleTheme() { theme = isDark ? 0 : 1 }
 
-    // ── Palette ───────────────────────────────────────────────
     // Each token resolves to the light or dark value based on `theme`.
-    // Light is the original cream scheme; dark is a warm, low-glare palette
-    // that keeps the same accent so the brand identity stays consistent.
     readonly property color bg:          isDark ? "#1e1b16" : "#fefae0"
     readonly property color surface:     isDark ? "#2a251d" : "#faedcd"
     readonly property color surfaceAlt:  isDark ? "#332d23" : "#e9edc9"
@@ -32,7 +28,7 @@ QtObject {
     readonly property color reviewBg:    isDark ? "#252017" : "#f4f1de"
     readonly property color textOnDark:  "#ffffff"
 
-    // ── Sizing ────────────────────────────────────────────────
+    // Sizing
     readonly property int touchTarget:  isMobile ? 48 : 36
     readonly property int iconSize:     isMobile ? 24 : 16
     readonly property int fontBase:     isMobile ? 16 : 13

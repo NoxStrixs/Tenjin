@@ -7,10 +7,6 @@
 #include <QStandardPaths>
 #include <QUrl>
 
-#include <algorithm>
-
-// ── ContentBlockModel ─────────────────────────────────────────────────────────
-
 ContentBlockModel::ContentBlockModel(QObject* parent) : QAbstractListModel(parent) {}
 
 void ContentBlockModel::setBlocks(const std::vector<Service::ContentBlock_t>& blocks)
@@ -73,8 +69,6 @@ void ContentBlockModel::moveBlock(int from, int to)
     if (from == to || from < 0 || to < 0 || from >= rowCount() || to >= rowCount())
         return;
 
-    // beginMoveRows wants the destination row in the *pre-move* coordinate
-    // space; when moving downward Qt expects to + 1.
     if (!beginMoveRows({}, from, from, {}, to > from ? to + 1 : to))
         return;
 
@@ -88,7 +82,7 @@ void ContentBlockModel::moveBlock(int from, int to)
     }
 
     // Renumber row indices so they stay contiguous and match visual order.
-    for (int i = 0; i < static_cast<int>(m_blocks.size()); ++i)
+    for (int i = 0; i < static_cast<int>(m_blocks.size()); i++)
         m_blocks[i].row = i;
 
     endMoveRows();
@@ -121,8 +115,7 @@ void ContentBlockModel::removeBlockById(Service::ID_t id)
     m_blocks.erase(it);
     endRemoveRows();
 
-    // Keep row indices contiguous after removal.
-    for (int i = 0; i < static_cast<int>(m_blocks.size()); ++i)
+    for (int i = 0; i < static_cast<int>(m_blocks.size()); i++)
         m_blocks[i].row = i;
 }
 
@@ -136,7 +129,7 @@ const Service::ContentBlock_t* ContentBlockModel::findById(Service::ID_t id) con
 
 void ContentBlockModel::setBlockContent(Service::ID_t id, const QString& content)
 {
-    for (int i = 0; i < static_cast<int>(m_blocks.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(m_blocks.size()); i++) {
         if (m_blocks[i].id == id) {
             m_blocks[i].content   = content.toStdString();
             const QModelIndex idx = index(i, 0);
@@ -148,7 +141,7 @@ void ContentBlockModel::setBlockContent(Service::ID_t id, const QString& content
 
 void ContentBlockModel::setBlockGrid(Service::ID_t id, int row, int col, int rowSpan, int colSpan)
 {
-    for (int i = 0; i < static_cast<int>(m_blocks.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(m_blocks.size()); i++) {
         if (m_blocks[i].id == id) {
             m_blocks[i].row       = row;
             m_blocks[i].col       = col;
@@ -163,7 +156,7 @@ void ContentBlockModel::setBlockGrid(Service::ID_t id, int row, int col, int row
 
 void ContentBlockModel::setBlockPos(Service::ID_t id, const QString& pos)
 {
-    for (int i = 0; i < static_cast<int>(m_blocks.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(m_blocks.size()); i++) {
         if (m_blocks[i].id == id) {
             m_blocks[i].pos       = pos.toStdString();
             const QModelIndex idx = index(i, 0);
@@ -172,8 +165,6 @@ void ContentBlockModel::setBlockPos(Service::ID_t id, const QString& pos)
         }
     }
 }
-
-// ── EntryViewModel ─────────────────────────────────────────────────────────────
 
 EntryViewModel::EntryViewModel(std::shared_ptr<Service::EntryService> wordService, QObject* parent)
     : QObject(parent), m_entryService(std::move(wordService)),
@@ -226,8 +217,8 @@ void EntryViewModel::saveEdit()
     }
     m_editMode = false;
     emit editModeChanged();
-    // The model may hold temp negative ids for blocks just inserted; reload so
-    // it reflects the real DB ids (and the canonical persisted state).
+    // The model may hold temp negative ids for blocks just inserted.
+    // Reload so it reflects the real DB ids.
     reloadContent();
 }
 
@@ -280,9 +271,6 @@ bool EntryViewModel::addContentBlock(int type, const QString& content)
                                   .colSpan = 1,
                                   .pos     = ""};
 
-    // In an edit session, stage in the model only (temp id) so saveEdit()
-    // persists it and cancelEdit() drops it — without a reload that would wipe
-    // other blocks' unsaved text.
     if (m_editMode) {
         m_contentModel->appendBlock(block);
         return true;
@@ -322,8 +310,6 @@ bool EntryViewModel::updateContentBlock(
 
 bool EntryViewModel::updateContentBlockText(qint64 id, const QString& content)
 {
-    // During an edit session, stage the change in the model only so cancelEdit()
-    // can revert; saveEdit() persists everything via SaveContentLayout().
     if (m_editMode) {
         m_contentModel->setBlockContent(id, content);
         return true;
@@ -391,8 +377,6 @@ int EntryViewModel::rowCountForLayout() const
 
 bool EntryViewModel::deleteContentBlock(qint64 id)
 {
-    // In an edit session, remove from the model only; saveEdit() reconciles the
-    // deletion to the DB and cancelEdit() restores it.
     if (m_editMode) {
         m_contentModel->removeBlockById(id);
         return true;
@@ -416,8 +400,6 @@ bool EntryViewModel::saveLayout()
     }
     return true;
 }
-
-// ── Media ───────────────────────────────────────────────────────────────────
 
 namespace {
 // Directory where imported media is stored: <AppData>/media
@@ -463,7 +445,7 @@ QString EntryViewModel::importMedia(const QString& sourceUrl)
 
     QString fileName = baseName + suffix;
     QString dest     = dir + QStringLiteral("/") + fileName;
-    for (int n = 1; QFile::exists(dest); ++n) {
+    for (int n = 1; QFile::exists(dest); n++) {
         fileName = QStringLiteral("%1_%2%3").arg(baseName).arg(n).arg(suffix);
         dest     = dir + QStringLiteral("/") + fileName;
     }
@@ -506,7 +488,6 @@ QString EntryViewModel::resolveMediaUrl(const QString& storedPath) const
     if (storedPath.isEmpty())
         return {};
 
-    // Already a URL — pass through.
     if (storedPath.startsWith(QStringLiteral("file:")))
         return storedPath;
 
@@ -638,7 +619,7 @@ void EntryViewModel::addTagFilter(qint64 tagId)
 
 void EntryViewModel::removeTagFilter(qint64 tagId)
 {
-    for (int i = m_tagFilters.size() - 1; i >= 0; --i)
+    for (int i = m_tagFilters.size() - 1; i >= 0; i--)
         if (m_tagFilters.at(i).toLongLong() == tagId)
             m_tagFilters.removeAt(i);
     emit tagFiltersChanged();
@@ -695,7 +676,7 @@ QVariantList EntryViewModel::getTagsForEntry(qint64 wordId)
 
 QVariantList EntryViewModel::getAllEntries()
 {
-    // Build search params from current query + tag filters so the sidebar word
+    // Build search params from current query and tag filters so the sidebar word
     // list reflects the active filter state.
     Service::EntryService::SearchParams_t params;
     params.query = m_searchQuery.trimmed().toStdString();
@@ -714,8 +695,7 @@ QVariantList EntryViewModel::getAllEntries()
             return {};
         words = *result;
     } else {
-        // Text query (optionally + tag filters): use substring/content search,
-        // then intersect with tag filters if any.
+        // Text query: use substring/content search, then intersect with tag filters if any.
         auto result = m_entryService->SearchEntriesByName(params.query, m_searchInContent);
         if (!result)
             return {};

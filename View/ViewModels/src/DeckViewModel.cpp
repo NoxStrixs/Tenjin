@@ -2,8 +2,6 @@
 #include <EntryService/EntryService.h>
 #include <ViewModels/DeckViewModel.h>
 
-// ---- DeckListModel --------------------------------------------------
-
 DeckListModel::DeckListModel(QObject* parent) : QAbstractListModel(parent) {}
 
 void DeckListModel::setDecks(const std::vector<Service::Deck_t>& decks)
@@ -48,8 +46,6 @@ QHash<int, QByteArray> DeckListModel::roleNames() const
         {CreatedAtRole, "createdAt"},
     };
 }
-
-// ---- DeckViewModel --------------------------------------------------
 
 DeckViewModel::DeckViewModel(std::shared_ptr<Service::DeckService>  deckService,
                              std::shared_ptr<Service::EntryService> wordService,

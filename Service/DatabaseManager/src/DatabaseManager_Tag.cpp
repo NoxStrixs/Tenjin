@@ -76,8 +76,6 @@ Result_t<bool> DatabaseManager::DeleteTag(ID_t id)
 Result_t<bool> DatabaseManager::RenameTag(ID_t id, const std::string& name)
 {
     // Bumps updated_at so the rename wins during timestamp-based merge import.
-    // A duplicate name trips the tag.name UNIQUE constraint and surfaces as an
-    // error rather than silently corrupting the collection.
     QSqlQuery q(m_db);
     q.prepare("UPDATE tag SET name = :name, updated_at = :u WHERE id = :id;");
     q.bindValue(":name", QString::fromStdString(name));

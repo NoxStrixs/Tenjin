@@ -182,7 +182,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
         return std::unexpected(deck.error());
 
     if (!deck->bIsSmart) {
-        // Manual deck — read directly from deck_entry junction
+        // Manual deck: read directly from deck_entry junction
         QSqlQuery q(m_db);
         q.prepare("SELECT w.id, w.title, w.created_at FROM entry w "
                   "JOIN deck_entry dw ON dw.entry_id = w.id "
@@ -202,7 +202,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
         return words;
     }
 
-    // Smart deck — collect tag filters then delegate to getWordsByTags
+    // Smart deck: collect tag filters then delegate to getWordsByTags
     auto tags = GetTagFiltersForDeck(deckId);
     if (!tags)
         return std::unexpected(tags.error());
@@ -221,14 +221,14 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vect
     if (tagIds.empty())
         return std::vector<Entry_t>{};
 
-    // Build the IN clause placeholder list: (:t0, :t1, :t2 ...)
+    // Build the IN clause placeholder list
     QStringList placeholders;
-    for (size_t i = 0; i < tagIds.size(); ++i)
+    for (size_t i = 0; i < tagIds.size(); i++)
         placeholders << QString(":t%1").arg(i);
 
     QString sql;
     if (mode == FilterMode_t::And) {
-        // Relational division — word must have ALL specified tags
+        // Word must have ALL specified tags
         sql = QString("SELECT w.id, w.title, w.created_at FROM entry w "
                       "JOIN entry_tag wt ON wt.entry_id = w.id "
                       "WHERE wt.tag_id IN (%1) "
@@ -238,7 +238,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vect
                   .arg(placeholders.join(", "))
                   .arg(tagIds.size());
     } else {
-        // OR — word must have at least one of the specified tags
+        // Word must have at least one of the specified tags
         sql = QString("SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
                       "JOIN entry_tag wt ON wt.entry_id = w.id "
                       "WHERE wt.tag_id IN (%1) "
@@ -248,7 +248,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vect
 
     QSqlQuery q(m_db);
     q.prepare(sql);
-    for (size_t i = 0; i < tagIds.size(); ++i)
+    for (size_t i = 0; i < tagIds.size(); i++)
         q.bindValue(QString(":t%1").arg(i), QVariant::fromValue(tagIds[i]));
 
     if (!q.exec())
@@ -262,7 +262,4 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vect
     }
     return words;
 }
-
-// ── Import / Export ─────────────────────────────────────────────────────────
-
 } // namespace Service

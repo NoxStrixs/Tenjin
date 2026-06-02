@@ -3,9 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-// Deck analytics: summary stats + hand-drawn charts (no external charting
-// dependency). Reads from DeckViewModel.deckAnalytics(deckId), which aggregates
-// the review_log table.
+// Deck analytics: summary stats and charts
 Item {
     id: root
     property int deckId: -1
@@ -33,7 +31,7 @@ Item {
             width: root.width
             spacing: 16
 
-            // ── Summary cards ──
+            // Summary cards
             RowLayout {
                 Layout.fillWidth: true
                 Layout.margins: Platform.pagePadding
@@ -75,7 +73,7 @@ Item {
                 }
             }
 
-            // ── Reviews per day (bar chart) ──
+            // Reviews per day
             ChartCard {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.pagePadding
@@ -114,7 +112,7 @@ Item {
                 }
             }
 
-            // ── Accuracy over time (line chart, avg grade 0..3) ──
+            // Accuracy over time
             ChartCard {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.pagePadding
@@ -169,7 +167,7 @@ Item {
         }
     }
 
-    // Repaint charts when the theme changes (colors are read at paint time).
+    // Repaint charts when the theme changes
     Connections {
         target: Platform
         function onThemeChanged() { root.refresh() }

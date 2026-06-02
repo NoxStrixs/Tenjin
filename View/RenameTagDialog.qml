@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-// Modal to rename an existing tag. Open via openFor(id, currentName).
 Dialog {
     id: root
     title: "Rename Tag"

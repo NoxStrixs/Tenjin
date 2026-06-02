@@ -9,7 +9,7 @@ Item {
         currentIndex: Platform.isMobile ? mobileStack.currentIndex : 0
 
         // Desktop: the Sidebar's Decks tab already lists and selects decks,
-        // so the detail panel fills the whole page (no redundant DeckListPanel).
+        // so the detail panel fills the whole page.
         Loader {
             Layout.fillWidth: true
             Layout.fillHeight: true

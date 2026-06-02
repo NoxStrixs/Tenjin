@@ -8,32 +8,19 @@
 
 namespace Service {
 
-// ── Core aliases ─────────────────────────────────────────────────────────────
-// Row identifier. SQLite INTEGER PRIMARY KEY is a signed 64-bit value, read
-// back through QVariant::toLongLong().
 using ID_t = std::int64_t;
 
-// Every fallible service/database call returns one of these: the value on
-// success, or a human-readable message on failure.
 template <typename T>
 using Result_t = std::expected<T, std::string>;
 
-// ── Enums ────────────────────────────────────────────────────────────────────
-// Kind of a content block on an entry page. Stored as the INTEGER `type`
-// column in entry_content, and (since schema v3) also as the stable string
-// `kind` column. New code should prefer the string kind: adding a kind needs
-// only a new enumerator + entry in the kind<->string maps below, and a View
-// delegate — no schema change.
 enum class ContentType_t : int {
     Definition = 0,
     Media      = 1,
     Note       = 2,
     Divider    = 3,
-    Formula    = 4, // LaTeX payload, rendered read-only (schema v3+)
+    Formula    = 4, // LaTeX payload, rendered read-only
 };
 
-// Stable string identifier for a block kind (matches entry_content.kind and the
-// View-side delegate registry). Unknown values map to "note".
 inline std::string ToKindString(ContentType_t t)
 {
     switch (t) {
@@ -64,13 +51,11 @@ inline ContentType_t FromKindString(std::string_view s)
     return ContentType_t::Note;
 }
 
-// How a smart deck combines its tag filters.
 enum class FilterMode_t {
     And,
     Or,
 };
 
-// ── Value types ──────────────────────────────────────────────────────────────
 struct Entry_t {
     ID_t        id = 0;
     std::string word;
@@ -82,10 +67,10 @@ struct Tag_t {
     std::string name;
 };
 
-// One block on a word's page. `content` is the block's payload (definition
-// text, note text, or a media path/URL); `pos` is the part of speech and is
-// only meaningful for definition blocks. row/col/span describe its placement
-// in the page grid.
+// One block on a word's page.
+// `content` is the block's payload.
+// `pos` is the part of speech and is only meaningful for definition blocks.
+// row/col/span describe its placement in the page grid.
 struct ContentBlock_t {
     ID_t          id     = 0;
     ID_t          wordId = 0;
@@ -98,7 +83,7 @@ struct ContentBlock_t {
     std::string   pos;
 };
 
-// A directed relation from one word to another (synonym, antonym, …).
+// A directed relation from one word to another.
 struct EntryRelation_t {
     ID_t        id             = 0;
     ID_t        wordId         = 0;
@@ -133,8 +118,7 @@ struct DeckStats_t {
     std::string nextDue; // earliest upcoming review date, "" if none
 };
 
-// One day's review aggregate (for charts). Built positionally:
-// { date, count, avgQuality }.
+// One day's review aggregate.
 struct DailyStat_t {
     std::string date;
     int         count      = 0;
@@ -147,8 +131,7 @@ struct DeckAnalytics_t {
     double                   retention    = 0.0; // fraction graded "remembered"
 };
 
-// One historical review event for a word (for per-word history charts). Built
-// positionally: { reviewedAt, quality, easeFactor, intervalDays }.
+// One historical review event for a word (for per-word history charts).
 struct EntryReviewEvent_t {
     std::int64_t reviewedAt   = 0; // epoch milliseconds
     int          quality      = 0;

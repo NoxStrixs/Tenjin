@@ -22,7 +22,7 @@ ApplicationWindow {
         function onThemeChanged() { Platform.theme = appVM.theme }
     }
 
-    // ── Header ───────────────────────────────────────────────
+    // Header
     header: Rectangle {
         height: Platform.headerHeight
         color: Platform.surface
@@ -32,7 +32,7 @@ ApplicationWindow {
             color: Platform.border
         }
 
-        // ── Desktop header ───────────────────────────────────────
+        // Desktop header
         RowLayout {
             anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
             spacing: 12
@@ -92,9 +92,9 @@ ApplicationWindow {
             }
         }
 
-        // ── Mobile header ────────────────────────────────────────
-        // Hamburger (opens nav drawer) + contextual controls: search + add
-        // on Words; title + add on Decks / Tags.
+        // Mobile header
+        // Hamburger (opens nav drawer) + contextual controls: search and add
+        // on Words; title and add on Decks / Tags.
         RowLayout {
             anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
             spacing: 10
@@ -167,7 +167,7 @@ ApplicationWindow {
         }
     }
 
-    // About popup — anchored under the about button.
+    // About popup
     Popup {
         id: aboutPopup
         x: root.width - width - 8
@@ -192,7 +192,7 @@ ApplicationWindow {
         }
     }
 
-    // ── Body ─────────────────────────────────────────────────
+    // Body
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -293,7 +293,7 @@ ApplicationWindow {
         }
     }
 
-    // ── Debug console (right-side panel) ──────────────────────
+    // Debug console
     Rectangle {
         id: debugDrawer
         visible: false
@@ -312,7 +312,7 @@ ApplicationWindow {
             anchors.margins: 8
             spacing: 8
 
-            // Header + tab switch.
+            // Header and tab switch.
             RowLayout {
                 Layout.fillWidth: true
                 Text { text: "Debug console"; color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
@@ -339,7 +339,7 @@ ApplicationWindow {
                 }
             }
 
-            // ── Log viewer ──
+            // Log viewer
             ColumnLayout {
                 visible: debugDrawer.tab === 0
                 Layout.fillWidth: true
@@ -393,7 +393,7 @@ ApplicationWindow {
                 }
             }
 
-            // ── Evaluator ──
+            // Evaluator
             ColumnLayout {
                 visible: debugDrawer.tab === 1
                 Layout.fillWidth: true

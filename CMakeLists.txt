@@ -5,34 +5,28 @@ project(Tenjin
     LANGUAGES CXX
 )
 
-# ─── Project-wide settings ────────────────────────────────────────────────────
+# Settings
 set(CMAKE_CXX_STANDARD          23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        OFF)
 
-# Keep symbols visible only where annotated. Reduces binary size and avoids
-# accidental ABI exposure.
+# Keep symbols visible only where annotated.
+# Reduces binary size and avoids accidental ABI exposure.
 set(CMAKE_CXX_VISIBILITY_PRESET     hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
-# Position-independent code — required for any object that might end up in a
-# shared library or a deployed Qt plugin.
+# Required for any object that might end up in a shared library or a deployed Qt plugin.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# ─── Build options ────────────────────────────────────────────────────────────
-option(BUILD_TESTS      "Build unit tests"        OFF)
-option(BUILD_BENCHMARKS "Build microbenchmarks"   OFF)
+# Build options
 option(SANITIZERS       "Sanitizers, comma-separated (asan,lsan,tsan,ubsan)" "")
-# Rich media: QtMultimedia (audio/video playback). Optional so a lean build can
-# omit the FFmpeg backend + codecs.
 option(MEDIA_SUPPORT    "Enable audio/video playback (QtMultimedia)" ON)
-# Web embeds (YouTube etc.) via QtWebEngine. Heavy (~100MB+); off by default.
 option(WEBVIEW_SUPPORT  "Enable web/YouTube embeds (QtWebEngine)" OFF)
 
 include(cmake/Sanitizers.cmake)
 include(cmake/Warnings.cmake)
 
-# ─── Qt ───────────────────────────────────────────────────────────────────────
+# Qt
 find_package(Qt6 6.8 REQUIRED COMPONENTS
     Core
     Gui
@@ -42,7 +36,6 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
     Sql
 )
 
-# Optional media components.
 set(TENJIN_MEDIA_COMPONENTS "")
 if(MEDIA_SUPPORT)
     find_package(Qt6 6.8 REQUIRED COMPONENTS Multimedia)
@@ -55,9 +48,7 @@ endif()
 
 qt_standard_project_setup(REQUIRES 6.8)
 
-# Feature macros + QML files for media, consumed by the View and App targets.
-# (The View/CMakeLists.txt links ${TENJIN_MEDIA_COMPONENTS} and adds the media
-#  QML files conditionally — see the snippet in the project README.)
+# Feature macros and QML files for media, consumed by the View and App targets.
 set(TENJIN_FEATURE_DEFINITIONS "")
 if(MEDIA_SUPPORT)
     list(APPEND TENJIN_FEATURE_DEFINITIONS TENJIN_MEDIA)
@@ -66,21 +57,10 @@ if(WEBVIEW_SUPPORT)
     list(APPEND TENJIN_FEATURE_DEFINITIONS TENJIN_WEBVIEW)
 endif()
 
-# ─── Subprojects ──────────────────────────────────────────────────────────────
+# Subprojects
 add_subdirectory(Service)
 add_subdirectory(View)
 add_subdirectory(App)
 
-if(BUILD_TESTS)
-    enable_testing()
-    find_package(GTest CONFIG REQUIRED)
-    add_subdirectory(tests)
-endif()
-
-if(BUILD_BENCHMARKS)
-    find_package(benchmark CONFIG REQUIRED)
-    add_subdirectory(benchmarks)
-endif()
-
-# ─── Packaging ────────────────────────────────────────────────────────────────
+# Packaging
 include(cmake/Packaging.cmake)

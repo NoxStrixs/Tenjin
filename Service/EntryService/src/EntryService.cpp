@@ -150,7 +150,6 @@ Result_t<std::vector<Entry_t>> EntryService::Search(const SearchParams_t& params
     if (params.tagIds.empty())
         return ftsResult;
 
-    // Intersect FTS results with tag-filtered words
     auto tagResult = m_db->GetEntriesByTags(params.tagIds, params.tagMode);
     if (!tagResult)
         return std::unexpected(tagResult.error());

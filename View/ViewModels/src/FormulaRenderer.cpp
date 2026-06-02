@@ -8,9 +8,12 @@ namespace Tenjin {
 
 namespace {
 
-// LaTeX command (without the backslash) -> Unicode replacement. Covers Greek,
-// common operators/relations, arrows, and set symbols — the vocabulary-app
-// subset. Extend freely; unknown commands fall through as escaped literal text.
+// LaTeX command (without the backslash) to Unicode replacement.
+// Covers:
+//  - Greek
+//  - common operators/relations
+//  - arrows
+//  - set symbols
 const QHash<QString, QString>& commandTable()
 {
     static const QHash<QString, QString> t = {
@@ -176,13 +179,13 @@ QString readArg(const QString& in, int& i)
     if (in[i] == '{') {
         int depth = 0;
         int start = i + 1;
-        for (; i < in.size(); ++i) {
+        for (; i < in.size(); i++) {
             if (in[i] == '{')
-                ++depth;
+                depth++;
             else if (in[i] == '}') {
                 if (--depth == 0) {
                     QString inner = in.mid(start, i - start);
-                    ++i; // consume '}'
+                    i++; // consume '}'
                     return convert(inner);
                 }
             }
@@ -195,13 +198,13 @@ QString readArg(const QString& in, int& i)
         // A single command token, e.g. x^\alpha.
         int start = i++;
         while (i < in.size() && in[i].isLetter())
-            ++i;
+            i++;
         return convert(in.mid(start, i - start));
     }
 
     // A single character.
     QString one = in.mid(i, 1);
-    ++i;
+    i++;
     return escapeHtml(one);
 }
 
@@ -218,7 +221,7 @@ QString maybeParen(const QString& body)
         else if (c == '>')
             inTag = false;
         else if (!inTag)
-            ++visible;
+            visible++;
     }
     return visible > 1 ? "(" + body + ")" : body;
 }
@@ -234,7 +237,7 @@ QString convert(const QString& in)
 
         // Superscript / subscript.
         if (c == '^' || c == '_') {
-            ++i;
+            i++;
             QString     arg = readArg(in, i);
             const char* tag = (c == '^') ? "sup" : "sub";
             out += QString("<%1>%2</%1>").arg(tag, maybeParen(arg));
@@ -243,7 +246,7 @@ QString convert(const QString& in)
 
         // Command.
         if (c == '\\') {
-            ++i;
+            i++;
             if (i >= n)
                 break;
 
@@ -252,18 +255,18 @@ QString convert(const QString& in)
             if (nx == ',' || nx == ';' || nx == ' ' || nx == '!' || nx == ':') {
                 // thin/med spaces and negative space -> a normal space (or none)
                 out += (nx == '!') ? "" : " ";
-                ++i;
+                i++;
                 continue;
             }
             if (nx == '{' || nx == '}' || nx == '%' || nx == '$' || nx == '#' || nx == '&' ||
                 nx == '_') {
                 out += escapeHtml(QString(nx));
-                ++i;
+                i++;
                 continue;
             }
             if (nx == '\\') { // line break
                 out += "<br/>";
-                ++i;
+                i++;
                 continue;
             }
 
@@ -271,7 +274,7 @@ QString convert(const QString& in)
             // Read the command name.
             int start = i;
             while (i < n && in[i].isLetter())
-                ++i;
+                i++;
             QString cmd = in.mid(start, i - start);
 
             if (cmd == "frac" || cmd == "dfrac" || cmd == "tfrac") {
@@ -284,9 +287,9 @@ QString convert(const QString& in)
                 // Optional [n] index is ignored for simplicity.
                 if (i < n && in[i] == '[') {
                     while (i < n && in[i] != ']')
-                        ++i;
+                        i++;
                     if (i < n)
-                        ++i; // skip ']'
+                        i++; // skip ']'
                 }
                 QString rad = readArg(in, i);
                 out += "\u221A(" + rad + ")";
@@ -336,34 +339,34 @@ QString convert(const QString& in)
         // Bare braces are grouping only — strip but convert contents inline.
         if (c == '{') {
             // Treat as a transparent group.
-            ++i;
+            i++;
             int depth = 1, startInner = i;
             while (i < n && depth > 0) {
                 if (in[i] == '{')
-                    ++depth;
+                    depth++;
                 else if (in[i] == '}')
-                    --depth;
+                    depth--;
                 if (depth > 0)
-                    ++i;
+                    i++;
             }
             out += convert(in.mid(startInner, i - startInner));
             if (i < n)
-                ++i; // skip '}'
+                i++; // skip '}'
             continue;
         }
         if (c == '}') {
-            ++i;
+            i++;
             continue;
         }
 
         if (c == '~') {
             out += " ";
-            ++i;
+            i++;
             continue;
         } // non-breaking space -> space
 
         out += escapeHtml(QString(c));
-        ++i;
+        i++;
     }
 
     return out;

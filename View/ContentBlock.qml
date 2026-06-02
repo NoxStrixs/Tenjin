@@ -6,18 +6,13 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 import TenjinView
 
-// A single content block (definition / media path / note), presentational only.
-//
+// A single content block
 // - Definition / Note  → editable multi-line text.
 // - Media Path         → a file path with a "Browse…" picker; if the path points
 //                        to an image it is rendered inline.
-//
-// Reordering is handled by the draggable wrapper in EntryPage.qml; this component
-// renders its content and emits edit/delete intents.
-//
+
 // Layout note: the root height is driven by content via implicitHeight and the
-// inner column is anchored to top/left/right (NOT anchors.fill on a Layout,
-// which previously created a binding loop and caused clipping/overlap).
+// inner column is anchored to top/left/right
 Rectangle {
     id: root
 
@@ -39,7 +34,6 @@ Rectangle {
     readonly property var typeNames: ["definition", "media", "note"]
     readonly property bool isMedia: blockType === 1
 
-    // Set by the app: whether QtWebEngine was compiled in (WEBVIEW_SUPPORT).
     property bool webEngineAvailable: (typeof appVM !== "undefined"
                                        && appVM.webEngineAvailable !== undefined)
                                       ? appVM.webEngineAvailable : false
@@ -48,7 +42,7 @@ Rectangle {
     readonly property string mediaKind: {
         if (!isMedia || blockContent.length === 0) return "none"
         const p = blockContent.toLowerCase()
-        // Web embed (YouTube, Vimeo, or any http/https URL).
+        // Web embed
         if (p.startsWith("http://") || p.startsWith("https://")) return "embed"
         const ext = function (s) { const i = p.lastIndexOf("."); return i < 0 ? "" : p.slice(i) }
         const e = ext(p)
@@ -60,7 +54,7 @@ Rectangle {
     }
     readonly property bool isImagePath: mediaKind === "image" || mediaKind === "gif"
 
-    // Just the file name for tooltips/labels (strip any directory).
+    // Just the file name for tooltips/labels
     readonly property string mediaFileName: {
         if (blockContent.length === 0) return ""
         const s = blockContent.replace(/[\\/]+$/, "")
@@ -255,7 +249,7 @@ Rectangle {
         }
     }
 
-    // ── Text: read-only (rich text / HTML) ───────────────────────
+    // Text: read-only (rich text / HTML)
     Component {
         id: viewArea
         Text {
@@ -271,14 +265,14 @@ Rectangle {
         }
     }
 
-    // ── Text: editable (rich text + formatting toolbar) ───────────
+    // Text: editable (rich text and formatting toolbar)
     Component {
         id: editArea
         ColumnLayout {
             width: contentLoader.width
             spacing: 4
 
-            // Formatting toolbar — operates on the focused selection.
+            // Formatting toolbar: operates on the focused selection.
             Flow {
                 Layout.fillWidth: true
                 spacing: 3
@@ -345,30 +339,36 @@ Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: Math.min(
                     Math.max(editField.implicitHeight + 12, Platform.touchTarget * 2),
-                    Platform.isMobile ? 320 : 480)
+                    Platform.isMobile ? 180 : 320)
                 color: Platform.bg
                 radius: Platform.radius - 2
                 border.color: editField.activeFocus ? Platform.accent : Platform.border
                 border.width: editField.activeFocus ? 2 : 1
 
-                TextArea {
-                    id: editField
+                // Scroll internally when content exceeds the capped height, so a
+                // long definition never pushes the block off-screen.
+                ScrollView {
                     anchors.fill: parent
                     anchors.margins: 6
-                    textFormat: TextEdit.RichText
-                    text: root.blockContent
-                    color: Platform.textPrimary
-                    placeholderText: "Type here\u2026"
-                    placeholderTextColor: Platform.textMuted
-                    font.pixelSize: Platform.fontBase
-                    wrapMode: TextEdit.WordWrap
-                    background: null
-                    selectByMouse: true
-                    persistentSelection: true
-                    onEditingFinished: root.contentEdited(root.blockId, getFormattedText(0, length))
+                    clip: true
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
-                    // Apply formatting to the current selection. getText() strips
-                    // formatting, so we use getFormattedText() and pull out the
+                    TextArea {
+                        id: editField
+                        textFormat: TextEdit.RichText
+                        text: root.blockContent
+                        color: Platform.textPrimary
+                        placeholderText: "Type here\u2026"
+                        placeholderTextColor: Platform.textMuted
+                        font.pixelSize: Platform.fontBase
+                        wrapMode: TextEdit.WordWrap
+                        background: null
+                        selectByMouse: true
+                        persistentSelection: true
+                        onEditingFinished: root.contentEdited(root.blockId, getFormattedText(0, length))
+
+                        // Apply formatting to the current selection.
+                        // We use getFormattedText() and pull out the
                     // body fragment Qt marks with Start/EndFragment comments,
                     // wrap it, then re-insert at cursorPosition (the KDAB pattern).
                     function selectionFragment(s, e) {
@@ -380,11 +380,7 @@ Rectangle {
                         // Fallback: plain selected text.
                         return getText(s, e)
                     }
-                    // Formatting via the Qt 6.7+ cursorSelection API — operates on
-                    // the selected range's character format directly, instead of the
-                    // old (unreliable) approach of removing the selection and
-                    // re-inserting hand-built HTML tags, which corrupted the document
-                    // on repeated/overlapping toggles.
+
                     function toggleBold() {
                         if (selectionStart === selectionEnd) return
                         cursorSelection.font = Qt.font({ bold: cursorSelection.font.bold !== true })
@@ -426,6 +422,7 @@ Rectangle {
                     }
                 }
             }
+            }
 
             ColorDialog {
                 id: fgColorDialog
@@ -438,7 +435,7 @@ Rectangle {
         }
     }
 
-    // ── Media: pick-only, renders per kind; no visible label/path ──────────
+    // Media: pick-only, renders per kind; no visible label/path
     Component {
         id: mediaArea
         ColumnLayout {
@@ -476,7 +473,7 @@ Rectangle {
                     }
                 }
 
-                // Paste a URL for web embeds (YouTube etc.).
+                // Paste a URL for web embeds.
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: Platform.touchTarget
@@ -498,7 +495,7 @@ Rectangle {
                 }
             }
 
-            // ── IMAGE / GIF ────────────────────────────────────────────
+            // IMAGE / GIF
             Rectangle {
                 id: previewBox
                 Layout.fillWidth: true
@@ -554,7 +551,7 @@ Rectangle {
                 }
             }
 
-            // ── VIDEO / AUDIO (QtMultimedia, no autoplay) ──────────────
+            // VIDEO / AUDIO (QtMultimedia, no autoplay)
             Loader {
                 Layout.fillWidth: true
                 active: root.mediaKind === "video" || root.mediaKind === "audio"
@@ -562,7 +559,7 @@ Rectangle {
                 sourceComponent: mediaPlayerComponent
             }
 
-            // ── WEB EMBED (QtWebEngine if available, else link) ────────
+            // WEB EMBED (QtWebEngine if available, else link)
             Loader {
                 Layout.fillWidth: true
                 active: root.mediaKind === "embed"
@@ -570,7 +567,7 @@ Rectangle {
                 sourceComponent: root.webEngineAvailable ? webEmbedComponent : embedLinkComponent
             }
 
-            // ── GENERIC FILE (open externally) ─────────────────────────
+            // GENERIC FILE (open externally)
             Loader {
                 Layout.fillWidth: true
                 active: root.mediaKind === "file"
@@ -578,7 +575,7 @@ Rectangle {
                 sourceComponent: fileLinkComponent
             }
 
-            // ── EMPTY ──────────────────────────────────────────────────
+            // EMPTY
             Text {
                 Layout.fillWidth: true
                 visible: root.mediaKind === "none"
@@ -609,9 +606,6 @@ Rectangle {
         }
     }
 
-    // Video/audio player, isolated in MediaPlayerView.qml so this file needs no
-    // QtMultimedia import. A build without MEDIA_SUPPORT omits that file and the
-    // Loader stays empty.
     Component {
         id: mediaPlayerComponent
         Loader {
@@ -626,7 +620,7 @@ Rectangle {
         }
     }
 
-    // Web embed via QtWebEngine (only instantiated when webEngineAvailable).
+    // Web/video embed via QtWebView (only instantiated when webEngineAvailable).
     Component {
         id: webEmbedComponent
         Rectangle {
@@ -636,13 +630,13 @@ Rectangle {
             radius: Platform.radius - 2
             border.color: Platform.border
             border.width: 1
-            // WebEngineView is created via a nested Loader keyed off a context
-            // property so this file still compiles without QtWebEngine.
+            // The WebView is created via a nested Loader so this file still
+            // compiles without the QtWebView module present.
             Loader {
                 anchors.fill: parent
                 anchors.margins: 4
                 source: Qt.resolvedUrl("WebEmbed.qml")
-                onLoaded: if (item) item.url = appVM.entryVM.resolveMediaUrl(root.blockContent)
+                onLoaded: if (item) item.src = appVM.entryVM.resolveMediaUrl(root.blockContent)
             }
         }
     }
@@ -711,8 +705,7 @@ Rectangle {
         }
     }
 
-    // Fullscreen media viewer — tap an image/gif to open; tap anywhere or the
-    // close button to dismiss. Parented to the window overlay so it covers all.
+    // Fullscreen media viewer
     Popup {
         id: mediaViewer
         parent: Overlay.overlay
@@ -766,5 +759,6 @@ Rectangle {
         }
     }
 }
+
 
 

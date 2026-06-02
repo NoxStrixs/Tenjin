@@ -59,9 +59,8 @@ QString ReviewViewModel::currentAnswer() const
         return {};
 
     // Collect definition bodies. Each block's content is a full rich-text
-    // document (with <html>/<body> and a CSS preamble). Joining several whole
-    // documents into one Text breaks rendering after the first, so we extract
-    // just the body fragment of each and build one numbered list.
+    // document with <html>/<body> and a CSS preamble.
+    // We extract just the body fragment of each and build one numbered list.
     QStringList items;
     for (const auto& b : *blocks) {
         if (b.type != Service::ContentType_t::Definition || b.content.empty())
@@ -81,16 +80,14 @@ QString ReviewViewModel::currentAnswer() const
                                        QRegularExpression::CaseInsensitiveOption |
                                            QRegularExpression::DotMatchesEverythingOption));
         // Unwrap block-level <p>…</p> so the text sits inline inside <li>
-        // (nested block elements inside a list item render inconsistently and
-        // can swallow following items in Qt's rich-text engine).
         html.replace(QRegularExpression("</?p[^>]*>", QRegularExpression::CaseInsensitiveOption),
                      QString());
-        // Collapse any HTML comments (e.g. fragment markers).
+        // Collapse any HTML comments
         html.remove(
             QRegularExpression("<!--.*?-->", QRegularExpression::DotMatchesEverythingOption));
         html = html.trimmed();
         if (!html.isEmpty()) {
-            // Prefix the part of speech in italics, e.g. "(noun) …".
+            // Prefix the part of speech in italics
             if (!b.pos.empty())
                 html = QStringLiteral("<i>(") + QString::fromStdString(b.pos) +
                        QStringLiteral(")</i> ") + html;
@@ -101,7 +98,7 @@ QString ReviewViewModel::currentAnswer() const
     if (items.isEmpty())
         return {};
 
-    // Build: "Definitions:" header + a numbered list.
+    // Build: "Definitions:" header and a numbered list.
     QString out = QStringLiteral("<b>Definitions:</b><br><ol>");
     for (const auto& it : items)
         out += QStringLiteral("<li>") + it + QStringLiteral("</li>");

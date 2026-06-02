@@ -26,8 +26,7 @@ DatabaseManager::DatabaseManager(const std::string& filepath)
         throw std::runtime_error("Invalid database filepath: " + filepath);
     }
 
-    // Unique connection name prevents "duplicate connection" warnings when
-    // multiple DatabaseManager instances exist (e.g. tests, iOS app lifecycle).
+    // Unique connection name prevents "duplicate connection" warnings
     const QString connName = QUuid::createUuid().toString();
     QSqlDatabase  db       = QSqlDatabase::addDatabase("QSQLITE", connName);
     db.setDatabaseName(QString::fromStdString(filepath));
@@ -38,8 +37,7 @@ DatabaseManager::DatabaseManager(const std::string& filepath)
 
     m_db = db;
 
-    // Schema creation + forward migrations (PRAGMA user_version driven).
-    // Replaces the former inline CREATE/ALTER block; see Schema.{h,cpp}.
+    // Schema creation and forward migrations
     Schema::Migrate(m_db);
 
     // Assign guids to any rows created before guid columns existed.

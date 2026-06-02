@@ -6,19 +6,17 @@ import QtQuick.Layouts
 import QtQml.Models
 import TenjinView
 
-// Row-grouped grid of content blocks.
-//
 // Layout model (matches the DB row/col/rowSpan/colSpan columns):
 //   - Blocks are grouped by their `row`. Each group renders as a horizontal
-//     band; blocks within a band are ordered by `col` and share the band width
+//     band, and are ordered by their `col`. They share the band width
 //     in proportion to their colSpan.
-//   - Dividers (blockType 3) always render full-width on their own band.
+//   - Dividers always render full-width on their own band.
 //   - Edit mode adds: drag a block left/right to change its column / move
 //     between bands; drag the right edge to grow/shrink colSpan; per-block
 //     controls to push to a new row.
 //   - "Merge" visual: adjacent same-type blocks in the same column with no gap
-//     render with a shared edge (no inter-block margin) — handled by comparing
-//     neighbors in the band.
+//     render with a shared edge
+
 Flickable {
     id: root
     contentWidth: width
@@ -26,8 +24,7 @@ Flickable {
     // empty-state text is positioned against a zero-height content rect and
     // gets clipped at the top.
     // Add the keyboard's height as extra scrollable space when it's up, so a
-    // focused block (e.g. a definition editor near the bottom) can be scrolled
-    // clear of the on-screen keyboard instead of sitting under it.
+    // focused block can be scrolled clear of the on-screen keyboard instead of sitting under it.
     readonly property real _kb: Qt.inputMethod.visible
         ? Qt.inputMethod.keyboardRectangle.height / Screen.devicePixelRatio
         : 0
@@ -49,11 +46,9 @@ Flickable {
     readonly property int rowGap: 12
 
     // Build a row-grouped structure from the flat model.
-    // Returns an array of bands; each band = { row, blocks:[{index, id, type, content, row, col, colSpan}] }.
     function buildBands() {
         const m = appVM.entryVM.contentModel
 
-        // 1. Safety Guard: If model is null or rowCount is 0, exit immediately
         if (!m || m.rowCount() === 0) {
             return []
         }
@@ -61,10 +56,9 @@ Flickable {
         const n = m.rowCount()
         const byRow = {}
 
-        for (let i = 0; i < n; ++i) {
+        for (let i = 0; i < n; i++) {
             const idx = m.index(i, 0)
 
-            // 2. Safety Guard: Ensure data exists before using it
             const rawRow = m.data(idx, Qt.UserRole + 5)
             const row = (rawRow !== undefined && rawRow !== null) ? Number(rawRow) : 0
 
@@ -83,7 +77,6 @@ Flickable {
         }
 
         const keys = Object.keys(byRow);
-        // 3. Safety Guard: Ensure we have keys to sort
         if (keys.length === 0) return []
 
         const sortedKeys = keys.sort((a, b) => Number(a) - Number(b));
@@ -159,9 +152,8 @@ Flickable {
                                                               : content.implicitHeight
 
                             // Divider renders as a labeled rule, full band width.
-                            // Inlined (not a Loader+Component) so it reads
-                            // cell.modelData directly from its own scope — avoids the
-                            // cross-boundary id resolution that fails under
+                            // Inlined so it reads cell.modelData directly from its own scope.
+                            // This avoids the cross-boundary id resolution that fails under
                             // ComponentBehavior: Bound.
                             Item {
                                 id: divItem
@@ -182,23 +174,29 @@ Flickable {
                                         font.bold: true
                                     }
                                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border }
-                                    ToolButton {
+                                    Rectangle {
                                         id: divEdit
                                         visible: root.editMode
-                                        text: "\u270E"
-                                        implicitWidth: Platform.touchTarget * 0.8
+                                        implicitWidth: divEditLabel.implicitWidth + 18
                                         implicitHeight: Platform.touchTarget * 0.8
-                                        contentItem: Text { text: divEdit.text; color: Platform.textMuted; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                        onClicked: divNameDialog.open()
+                                        radius: Platform.radius
+                                        color: divEditArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                                        border.color: Platform.border
+                                        border.width: 1
+                                        Text { id: divEditLabel; anchors.centerIn: parent; text: "Edit"; color: Platform.accentDark; font.pixelSize: Platform.fontBase - 1; font.bold: true }
+                                        MouseArea { id: divEditArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: divNameDialog.open() }
                                     }
-                                    ToolButton {
+                                    Rectangle {
                                         id: divDel
                                         visible: root.editMode
-                                        text: "\u2715"
-                                        implicitWidth: Platform.touchTarget * 0.8
+                                        implicitWidth: divDelLabel.implicitWidth + 18
                                         implicitHeight: Platform.touchTarget * 0.8
-                                        contentItem: Text { text: divDel.text; color: Platform.danger; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                                        onClicked: appVM.entryVM.deleteContentBlock(cell.modelData.id)
+                                        radius: Platform.radius
+                                        color: divDelArea.containsMouse ? Platform.danger : "transparent"
+                                        border.color: Platform.danger
+                                        border.width: 1
+                                        Text { id: divDelLabel; anchors.centerIn: parent; text: "Delete"; color: divDelArea.containsMouse ? Platform.textOnDark : Platform.danger; font.pixelSize: Platform.fontBase - 1; font.bold: true }
+                                        MouseArea { id: divDelArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: appVM.entryVM.deleteContentBlock(cell.modelData.id) }
                                     }
                                 }
                                 ThemedDialog {
@@ -225,7 +223,7 @@ Flickable {
                                 }
                             }
 
-                            // Normal block. Stays in place during drag — a separate
+                            // Normal block. Stays in place during drag, a separate
                             // floating proxy (below) carries the Drag payload, which
                             // avoids the reparent-to-root stranding seen previously.
                             ContentBlock {
@@ -250,9 +248,6 @@ Flickable {
                                 onPosEdited:       (bid, p) => appVM.entryVM.setBlockPartOfSpeech(bid, p)
                             }
 
-                            // Formula block (content type 4 / Formula). Renders LaTeX
-                            // natively via appVM.renderFormula() (a LaTeX-subset →
-                            // Qt rich-text converter; no WebView, fully offline).
                             // Same edit/content contract as ContentBlock.
                             FormulaBlock {
                                 id: formula
@@ -311,7 +306,6 @@ Flickable {
                                 visible: enabled
                                 cursorShape: enabled ? Qt.SizeAllCursor : Qt.ArrowCursor
 
-                                // Drag the floating proxy, not the real block.
                                 drag.target: dragProxy
 
                                 onPressed: {
@@ -321,7 +315,7 @@ Flickable {
                                 }
                                 onReleased: {
                                     // MouseArea-driven drags do NOT auto-emit a drop
-                                    // event — we must call Drag.drop() explicitly so
+                                    // event. Must call Drag.drop() explicitly so
                                     // the DropArea under the cursor gets onDropped.
                                     dragProxy.Drag.drop()
                                 }
@@ -350,12 +344,8 @@ Flickable {
                                     // mouseX is relative to this handle (12px wide),
                                     // so offset from center accumulates drag distance.
                                     accum += (m.x - width / 2)
-                                    // Each ~120px of drag = one column-span step.
                                     const delta = Math.round(accum / 120)
                                     const newSpan = Math.max(1, startSpan + delta)
-                                    // Compare against the last value WE committed, not
-                                    // cell.modelData.colSpan (a stale snapshot), so we
-                                    // only write when the span actually changes.
                                     if (newSpan !== lastSpan) {
                                         lastSpan = newSpan
                                         appVM.entryVM.setBlockSpan(cell.modelData.id, 1, newSpan)
@@ -371,8 +361,6 @@ Flickable {
                                     border.color: Platform.accentDark
                                     border.width: 1
                                     visible: spanHandle.enabled
-                                    // Two diagonal grip lines (Rectangles, not Canvas,
-                                    // so they always render).
                                     Rectangle {
                                         width: 10; height: 1.5
                                         color: Platform.accentDark
@@ -391,8 +379,7 @@ Flickable {
                             }
 
                             // Drop target: dropping block B onto this cell places
-                            // B into the SAME band, beside the target — this is how
-                            // a multi-column row is created.
+                            // B into the SAME band, beside the target.
                             DropArea {
                                 id: cellDrop
                                 z: 9
@@ -462,12 +449,13 @@ Flickable {
     Text {
         anchors.centerIn: parent
         visible: root.bandData.length === 0
-        text: root.editMode ? "No content yet — use the buttons below to add some."
+        text: root.editMode ? "No content yet. Use the buttons below to add some."
                             : "No content yet. Click Edit to start."
         color: Platform.textMuted
         font.pixelSize: Platform.fontBase
         horizontalAlignment: Text.AlignHCenter
     }
 }
+
 
 

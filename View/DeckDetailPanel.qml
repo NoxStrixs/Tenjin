@@ -15,7 +15,7 @@ Item {
         anchors { fill: parent; margins: Platform.pagePadding }
         spacing: 14
 
-        // Header — name row + action buttons.
+        // Header: name row + action buttons.
         // On mobile the buttons move to a second row so nothing clips.
         ColumnLayout {
             Layout.fillWidth: true
@@ -58,7 +58,7 @@ Item {
                 }
             }
 
-            // Mobile action bar — full-width row so buttons never overflow.
+            // Mobile action bar: full-width row so buttons never overflow.
             RowLayout {
                 visible: Platform.isMobile
                 Layout.fillWidth: true
@@ -84,7 +84,7 @@ Item {
             }
         }
 
-        // ── Analytics (toggled) ─────────────────────────────────────
+        // Analytics (toggled)
         AnalyticsPanel {
             Layout.fillWidth: true
             Layout.preferredHeight: 480
@@ -92,7 +92,7 @@ Item {
             deckId: panelRoot.showAnalytics ? appVM.deckVM.selectedDeckId : -1
         }
 
-        // ── Smart deck: tag-filter editor ───────────────────────────
+        // Smart deck: tag-filter editor
         ColumnLayout {
             Layout.fillWidth: true
             visible: appVM.deckVM.selectedDeckIsSmart
@@ -150,7 +150,7 @@ Item {
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; opacity: 0.5 }
         }
 
-        // ── Manual deck: add-word control ───────────────────────────
+        // Manual deck: add-word control
         RowLayout {
             Layout.fillWidth: true
             visible: !appVM.deckVM.selectedDeckIsSmart

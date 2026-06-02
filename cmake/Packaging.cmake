@@ -2,22 +2,9 @@
 # Windows: a self-contained install tree assembled by windeployqt (run under
 #   wine64), then packaged as an NSIS installer + portable ZIP via CPack.
 # Linux:   .deb via CPack + AppImage via linuxdeploy (driven from package.py).
-#
-# The Windows install tree layout (everything under bin/) is:
-#   bin/Tenjin.exe
-#   bin/Qt6Core.dll, Qt6Gui.dll, Qt6Quick.dll, ...      (windeployqt)
-#   bin/libgcc_s_seh-1.dll, libstdc++-6.dll, ...        (MinGW runtime)
-#   bin/platforms/qwindows.dll                          (windeployqt)
-#   bin/sqldrivers/qsqlite.dll                          (windeployqt)
-#   bin/styles/, imageformats/, iconengines/, ...       (windeployqt)
-#   bin/qml/QtQuick/, QtQml/, ...                       (windeployqt)
-# The app's own TenjinView QML module is compiled into Tenjin.exe's resources
-# (qmlcachegen+rcc), so it is not deployed as loose files. Qt finds plugins/
-# and qml/ relative to the executable automatically — no qt.conf required.
 
 include(GNUInstallDirs)
 
-# ─── Windows: windeployqt under wine ─────────────────────────────────────────
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     find_program(WINDEPLOYQT_WINE windeployqt-wine)
     if(NOT WINDEPLOYQT_WINE)
@@ -29,7 +16,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(_TENJIN_QML_DIR "${CMAKE_SOURCE_DIR}/View")
     set(_TENJIN_EXE     "${CMAKE_BINARY_DIR}/bin/Tenjin.exe")
 
-    # MinGW runtime DLLs — windeployqt is run with --no-compiler-runtime
+    # MinGW runtime DLLs — windeployqt is ran with --no-compiler-runtime
     # because under wine it can't reliably locate the Ubuntu cross-toolchain's
     # runtime, so we stage them ourselves.
     set(_MINGW_RUNTIME "")
@@ -82,7 +69,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     ")
 endif()
 
-# ─── Linux desktop entry + icon ──────────────────────────────────────────────
+# Linux desktop entry and icon
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/tenjin.desktop
             DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
@@ -90,7 +77,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
             DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
 endif()
 
-# ─── CPack ────────────────────────────────────────────────────────────────────
+# CPack
 set(CPACK_PACKAGE_NAME              "Tenjin")
 set(CPACK_PACKAGE_VENDOR            "Tenjin")
 set(CPACK_PACKAGE_VERSION           ${PROJECT_VERSION})
@@ -129,7 +116,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(CPACK_NSIS_MODIFY_PATH           OFF)
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 
-    # Start Menu shortcut (install + uninstall).
+    # Start Menu shortcut (install and uninstall).
     set(CPACK_NSIS_CREATE_ICONS_EXTRA "
         SetShellVarContext all
         CreateShortCut '\$SMPROGRAMS\\\\Tenjin\\\\Tenjin.lnk' '\$INSTDIR\\\\bin\\\\Tenjin.exe'

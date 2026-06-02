@@ -16,7 +16,7 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        // ── Mode tabs: Words | Tags | Decks ──────────────────
+        // Mode tabs: Words | Tags | Decks
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 38
@@ -51,7 +51,6 @@ Rectangle {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 sidebarMode = index
-                                // Drive the main page too (top nav removed):
                                 // Words/Tags → Words page (0), Decks → Decks page (1).
                                 appVM.currentPage = (index === 2) ? 1 : 0
                             }
@@ -61,7 +60,7 @@ Rectangle {
             }
         }
 
-        // ── Filter input ──────────────────────────────────────
+        // Filter input
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 34
@@ -80,8 +79,7 @@ Rectangle {
             }
         }
 
-        // ── Add button (context-sensitive: Word on Words tab, Deck on
-        //    Decks tab, + Tag on Tags tab) ──────────────────────────
+        // Add button
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 40
@@ -118,24 +116,82 @@ Rectangle {
             }
         }
 
-        // ── Lists ─────────────────────────────────────────────
+        // Lists
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: sidebarMode
 
             // Words
-            ListView {
-                id: wordListView
-                clip: true
-                model: appVM.entryVM.getAllEntries()
+            ColumnLayout {
+                spacing: 6
 
-                Connections {
-                    target: appVM.entryVM
-                    function onEntryListChanged() {
-                        wordListView.model = appVM.entryVM.getAllEntries()
+                // Tag filter chips (tap to toggle) — mirrors the mobile filter.
+                Flow {
+                    id: tagFilterFlow
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 8
+                    Layout.rightMargin: 8
+                    Layout.topMargin: 6
+                    spacing: 5
+                    visible: tagFilterFlow._tags.length > 0
+
+                    property var _tags: appVM.entryVM.getAllTags()
+                    Connections {
+                        target: appVM.entryVM
+                        function onEntryListChanged() { tagFilterFlow._tags = appVM.entryVM.getAllTags() }
+                    }
+
+                    Rectangle {
+                        visible: appVM.entryVM.tagFilters.length > 0
+                        width: clearAllText.implicitWidth + 18
+                        height: 26
+                        radius: height / 2
+                        color: clearAllArea.containsMouse ? Platform.danger : "transparent"
+                        border.color: Platform.danger
+                        border.width: 1
+                        Text { id: clearAllText; anchors.centerIn: parent; text: "Clear"; color: clearAllArea.containsMouse ? Platform.textOnDark : Platform.danger; font.pixelSize: 11; font.bold: true }
+                        MouseArea { id: clearAllArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: appVM.entryVM.clearTagFilters() }
+                    }
+
+                    Repeater {
+                        model: tagFilterFlow._tags
+                        delegate: Rectangle {
+                            required property var modelData
+                            readonly property bool active: (appVM.entryVM.tagFilters, appVM.entryVM.isTagFiltered(modelData.id))
+                            width: chipText.implicitWidth + 20
+                            height: 26
+                            radius: height / 2
+                            color: active ? Platform.accent : Platform.bg
+                            border.color: active ? Platform.accent : Platform.border
+                            border.width: 1
+                            Text { id: chipText; anchors.centerIn: parent; text: modelData.name; color: active ? Platform.textOnDark : Platform.accentDark; font.pixelSize: 11; font.bold: active }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: active ? appVM.entryVM.removeTagFilter(modelData.id)
+                                                  : appVM.entryVM.addTagFilter(modelData.id)
+                            }
+                        }
                     }
                 }
+
+                ListView {
+                    id: wordListView
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    model: appVM.entryVM.getAllEntries()
+
+                    Connections {
+                        target: appVM.entryVM
+                        function onEntryListChanged() {
+                            wordListView.model = appVM.entryVM.getAllEntries()
+                        }
+                        function onTagFiltersChanged() {
+                            wordListView.model = appVM.entryVM.getAllEntries()
+                        }
+                    }
 
                 delegate: Rectangle {
                     width: ListView.view.width
@@ -185,9 +241,10 @@ Rectangle {
                     horizontalAlignment: Text.AlignHCenter
                 }
             }
+            }
 
-            // Tags (tree: tag → words). Creation is via the "+ Tag" button
-            // above (opens AddTagDialog), matching the word/deck pattern.
+            // Tags (tree: tag → words).
+            // Creation is via the "+ Tag" button above, matching the word/deck pattern.
             ColumnLayout {
                 spacing: 6
 
@@ -222,7 +279,7 @@ Rectangle {
                                 color: model.isTag ? Platform.accent : Platform.textPrimary
                                 elide: Text.ElideRight
                             }
-                            // Delete tag (global) — only on tag rows, on hover.
+                            // Delete tag (global), only on tag rows, on hover.
                             Text {
                                 visible: model.isTag && rowHover.hovered
                                 text: "\u2715"
@@ -266,7 +323,6 @@ Rectangle {
                 model: appVM.deckVM.deckModel
 
                 // Bumped to force the per-row due badges to re-query deckStats
-                // (e.g. after decks reload or a review session changes counts).
                 property int deckRefresh: 0
                 Connections {
                     target: appVM.deckVM.deckModel
@@ -306,8 +362,7 @@ Rectangle {
                             color: Platform.textMuted
                             visible: model.isSmart
                         }
-                        // Due badge / next-due hint. Recomputed when the deck
-                        // model changes (deckRefresh bumps on reload).
+                        // Due badge / next-due hint. Recomputed when the deck model changes.
                         Rectangle {
                             id: dueBadge
                             property var stats: (deckListView.deckRefresh, appVM.deckVM.deckStats(model.deckId))
@@ -355,7 +410,7 @@ Rectangle {
             }
         }
 
-        // ── Import / Export footer ─────────────────────────────────
+        // Import / Export footer
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 44
@@ -418,4 +473,5 @@ Rectangle {
     // Mode state
     property int sidebarMode: 0
 }
+
 

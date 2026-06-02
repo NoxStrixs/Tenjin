@@ -15,14 +15,14 @@ import QtQuick.Layouts
 Item {
     id: wordPageRoot
 
-    // ── Desktop ──────────────────────────────────────────────────────
+    // Desktop
     Loader {
         anchors.fill: parent
         active: !Platform.isMobile
         sourceComponent: appVM.entryVM.selectedEntryId >= 0 ? desktopDetail : emptyState
     }
 
-    // ── Mobile ───────────────────────────────────────────────────────
+    // Mobile
     Loader {
         anchors.fill: parent
         active: Platform.isMobile
@@ -64,8 +64,7 @@ Item {
             id: wordsNav
             initialItem: listComp
 
-            // Single source of truth: follow selection. Selecting a word shows
-            // the detail; clearing returns to the list.
+            // Selecting a word shows the detail, clearing returns to the list.
             property var detailItem: null
 
             Connections {

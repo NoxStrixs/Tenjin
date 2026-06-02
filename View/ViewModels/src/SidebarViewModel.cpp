@@ -1,14 +1,12 @@
 #include <EntryService/EntryService.h>
 #include <ViewModels/SidebarViewModel.h>
 
-// ---- SidebarModel ---------------------------------------------------
-
 SidebarModel::SidebarModel(QObject* parent) : QAbstractListModel(parent) {}
 
 void SidebarModel::rebuildRows()
 {
     m_rows.clear();
-    for (int ti = 0; ti < static_cast<int>(m_tags.size()); ++ti) {
+    for (int ti = 0; ti < static_cast<int>(m_tags.size()); ti++) {
         const auto& tag = m_tags[ti];
         m_rows.push_back(Row_t{true, tag.id, tag.name, tag.expanded, ti});
         if (tag.expanded)
@@ -109,8 +107,6 @@ void SidebarModel::toggleExpanded(int tagRow)
     const QModelIndex idx = index(tagRow, 0);
     emit              dataChanged(idx, idx, {ExpandedRole});
 }
-
-// ---- SidebarViewModel -----------------------------------------------
 
 SidebarViewModel::SidebarViewModel(std::shared_ptr<Service::EntryService> wordService,
                                    QObject*                               parent)

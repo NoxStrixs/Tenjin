@@ -5,9 +5,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-// Search field with a live dropdown of word/tag matches and a toggle to also
-// match inside content blocks. Clicking a word opens it; clicking a tag filters
-// the word list to that tag.
+// Search field with a live dropdown of word/tag matches and a toggle to also match inside content blocks.
+// Clicking a word opens it; clicking a tag filters the word list to that tag.
 Item {
     id: root
     implicitHeight: Platform.touchTarget
@@ -22,8 +21,7 @@ Item {
     // Provided by parent so width can scale with the window.
     property real parentWidth: 800
 
-    // When false, the live results popup is suppressed (mobile filters the word
-    // list inline, so the dropdown would be redundant and fight list navigation).
+    // When false, the live results popup is suppressed.
     property bool dropdownEnabled: true
 
     // Keep the field in sync with the VM query across page switches / recreation.
@@ -76,21 +74,21 @@ Item {
                 }
             }
 
-            // Content-search toggle pill. Always visible (works even when the
-            // results dropdown is suppressed on mobile). "Aa" = match inside
-            // content blocks, not just the word/tag name.
+            // Content-search toggle. Always visible (works on mobile where the
+            // results dropdown is suppressed). Glyph toggles accent when active;
+            // matches inside content blocks, not just the word/tag name.
             Rectangle {
                 Layout.alignment: Qt.AlignVCenter
-                implicitWidth: 30
-                implicitHeight: Platform.isMobile ? 32 : 22
+                implicitWidth: Platform.isMobile ? 34 : 26
+                implicitHeight: Platform.isMobile ? 34 : 26
                 radius: Platform.radius - 1
                 color: appVM.entryVM.searchInContent ? Platform.accent : Platform.surfaceAlt
                 border.color: appVM.entryVM.searchInContent ? Platform.accent : Platform.border
                 border.width: 1
                 Text {
                     anchors.centerIn: parent
-                    text: "Aa"
-                    font.pixelSize: Platform.fontBase - 2
+                    text: "\u2630"   // list/lines glyph = search within content
+                    font.pixelSize: Platform.fontBase
                     font.bold: true
                     color: appVM.entryVM.searchInContent ? Platform.textOnDark : Platform.textMuted
                 }
@@ -122,40 +120,6 @@ Item {
 
         contentItem: ColumnLayout {
             spacing: 4
-
-            // Content-search toggle
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-                CheckBox {
-                    id: contentToggle
-                    checked: appVM.entryVM.searchInContent
-                    onToggled: appVM.entryVM.searchInContent = checked
-                    indicator: Rectangle {
-                        implicitWidth: 18; implicitHeight: 18
-                        x: contentToggle.leftPadding
-                        y: parent.height / 2 - height / 2
-                        radius: 4
-                        color: contentToggle.checked ? Platform.accent : Platform.bg
-                        border.color: Platform.border
-                        Text {
-                            anchors.centerIn: parent
-                            visible: contentToggle.checked
-                            text: "\u2713"; color: Platform.textOnDark
-                            font.pixelSize: 12; font.bold: true
-                        }
-                    }
-                    contentItem: Text {
-                        text: "Also search content blocks"
-                        leftPadding: contentToggle.indicator.width + 8
-                        color: Platform.textPrimary
-                        font.pixelSize: Platform.fontBase - 1
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
-            }
-
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; opacity: 0.5 }
 
             // Results
             ListView {
@@ -241,6 +205,7 @@ Item {
         }
     }
 }
+
 
 
 
