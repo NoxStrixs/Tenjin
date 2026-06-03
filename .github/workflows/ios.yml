@@ -49,6 +49,7 @@ jobs:
           echo "TENJIN_APP_DISPLAY_NAME=Tenjin"                           >> "$GITHUB_ENV"
           echo "TENJIN_BUNDLE_ID=app.tenjin.Tenjin"                       >> "$GITHUB_ENV"
           echo "TENJIN_IOS_DEPLOYMENT_TARGET=16.0"                        >> "$GITHUB_ENV"
+
           if [ -f .env ]; then
             # Strip comments and blanks. Strip surrounding quotes on values.
             # Anything that doesn't look like KEY=… is dropped.
@@ -62,6 +63,8 @@ jobs:
                 val=substr($0, 2)
                 sub(/^[[:space:]]+/, "", key); sub(/[[:space:]]+$/, "", key)
                 sub(/^[[:space:]]+/, "", val); sub(/[[:space:]]+$/, "", val)
+                # Strip carriage returns if file came from Windows editing
+                gsub(/\r/, "", val)
                 if (val ~ /^".*"$/ || val ~ /^'\''.*'\''$/) {
                   val = substr(val, 2, length(val) - 2)
                 }
@@ -69,11 +72,7 @@ jobs:
               }
             ' .env >> "$GITHUB_ENV"
           fi
-          echo "Loaded app identity from .env:"
-          # Re-source to make values visible in this step's echo too.
-          set -a; . .env 2>/dev/null || true; set +a
-          echo "  TENJIN_APP_NAME=${TENJIN_APP_NAME:-Tenjin}"
-          echo "  TENJIN_BUNDLE_ID=${TENJIN_BUNDLE_ID:-app.tenjin.Tenjin}"
+          echo "Loaded app identity from .env successfully into GITHUB_ENV."
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
@@ -233,7 +232,7 @@ jobs:
       #   2. Releases do NOT count against the Actions artifact storage quota.
       #   3. Each build gets a stable, direct download URL.
       - name: Publish .ipa to a GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release=v2
         with:
           tag_name: ios-build-${{ github.run_number }}
           name: iOS build ${{ github.run_number }}
