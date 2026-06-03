@@ -5,6 +5,7 @@ qt_add_executable(Tenjin
 
 set_target_properties(Tenjin PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    OUTPUT_NAME              "${TENJIN_APP_NAME}"
 )
 
 target_link_libraries(Tenjin
@@ -29,13 +30,6 @@ endif()
 # plugin not referenced from the executable's compiled code. QML module plugins
 # are referenced only by name from QML source at runtime, so the linker drops
 # them.
-
-# Fixes:
-#   1. qt_import_qml_plugins(Tenjin) imports every QML module plugin that
-#      qmlimportscanner associated with the target.
-#   2. qt_import_plugins covers non-QML C++ plugins.
-#      QtGui needs at startup which are keyed by type rather than by QML import.
-
 # Reference: Qt Wiki "Qt for iOS known issues" (QTBUG-35195) and forum.qt.io
 # topics 153384 / 156448.
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
@@ -80,19 +74,23 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         Qt6::qmlmodelsplugin
         Qt6::modelsplugin
         Qt6::qtqmlmodelsplugin
-        # QtMultimedia (only present when MEDIA_SUPPORT linked it)
+        # QtMultimedia
         Qt6::quickmultimediaplugin
         Qt6::multimediaquickplugin
+        # QtWebView QML plugin
+        Qt6::declarative_webviewplugin
+        Qt6::qtwebviewplugin
+        Qt6::webviewquickplugin
     )
         if(TARGET ${_qmlplug})
             target_link_libraries(Tenjin PRIVATE ${_qmlplug})
-            message(STATUS "Tenjin iOS: linked QML plugin ${_qmlplug}")
+            message(STATUS "${TENJIN_APP_NAME} iOS: linked QML plugin ${_qmlplug}")
         endif()
     endforeach()
 
     # Diagnostic: list every QML plugin target Qt actually defines.
     get_property(_all_targets DIRECTORY "${CMAKE_SOURCE_DIR}" PROPERTY IMPORTED_TARGETS)
-    message(STATUS "Tenjin iOS: (see Qt plugin import scan results in build log)")
+    message(STATUS "${TENJIN_APP_NAME} iOS: (see Qt plugin import scan results in build log)")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
@@ -113,15 +111,23 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         PROPERTIES MACOSX_PACKAGE_LOCATION Resources
     )
 
+    # Info.plist is generated from a template so the .env can drive the
+    # bundle identity.
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+        @ONLY
+    )
+
     set_target_properties(Tenjin PROPERTIES
         MACOSX_BUNDLE                              TRUE
-        MACOSX_BUNDLE_INFO_PLIST                   "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist"
-        MACOSX_BUNDLE_BUNDLE_NAME                  "Tenjin"
+        MACOSX_BUNDLE_INFO_PLIST                   "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+        MACOSX_BUNDLE_BUNDLE_NAME                  "${TENJIN_APP_DISPLAY_NAME}"
         MACOSX_BUNDLE_BUNDLE_VERSION               "${TENJIN_BUILD_NUMBER}"
         MACOSX_BUNDLE_SHORT_VERSION_STRING         "${PROJECT_VERSION}"
-        MACOSX_BUNDLE_GUI_IDENTIFIER               "app.tenjin.Tenjin"
-        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER  "app.tenjin.Tenjin"
-        XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "16.0"
+        MACOSX_BUNDLE_GUI_IDENTIFIER               "${TENJIN_BUNDLE_ID}"
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER  "${TENJIN_BUNDLE_ID}"
+        XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "${TENJIN_IOS_DEPLOYMENT_TARGET}"
         XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY     "1,2"
         XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
         # Default to "no team / sign later" so an unsigned device build succeeds
@@ -151,12 +157,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
                 "Either upgrade CMake, or configure with -DMEDIA_SUPPORT=OFF for iOS.")
         endif()
         if(COMMAND qt_add_ios_ffmpeg_libraries)
-            # NOTE: Do NOT set QT_NO_FFMPEG_XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY.
-            # On iOS 26 + AltStore-on-Windows, skipping per-framework code-sign-on-copy
-            # leaves the FFmpeg frameworks signed with the Qt installer's Team ID
-            # while AltStore re-signs only the main binary with the user's free Apple ID team.
-            # Let Xcode ad-hoc-sign the frameworks on copy; AltStore then cleanly re-signs all of them.
-            qt_add_ios_ffmpeg_libraries(Tenjin)
         else()
             message(FATAL_ERROR
                 "qt_add_ios_ffmpeg_libraries is not available — Qt 6.8+ is required "
@@ -165,7 +165,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     endif()
 endif()
 
-# Windows: install + windeployqt handled entirely in cmake/Packaging.cmake.
+# Windows: install and windeployqt handled entirely in cmake/Packaging.cmake.
 # Linux/macOS use the standard install and Qt deploy script.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     install(TARGETS Tenjin
@@ -179,3 +179,4 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     )
     install(SCRIPT ${deploy_script})
 endif()
+

@@ -15,7 +15,7 @@ ApplicationWindow {
     color: Platform.bg
 
     // Apply the persisted theme on startup, and keep Platform in sync if the
-    // stored preference changes (theme persistence lives in AppViewModel).
+    // stored preference changes
     Component.onCompleted: Platform.theme = appVM.theme
     Connections {
         target: appVM
@@ -93,8 +93,7 @@ ApplicationWindow {
         }
 
         // Mobile header
-        // Hamburger (opens nav drawer) + contextual controls: search and add
-        // on Words; title and add on Decks / Tags.
+        // Hamburger (opens nav drawer) and contextual controls
         RowLayout {
             anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
             spacing: 10
@@ -170,25 +169,26 @@ ApplicationWindow {
     // About popup
     Popup {
         id: aboutPopup
-        x: root.width - width - 8
-        y: Platform.headerHeight + 4
-        width: 240
-        padding: 14
+        parent: aboutBtn
+        x: aboutBtn.width - width
+        y: aboutBtn.height + Platform.spacingXs
+        width: Platform.popupWidthSm
+        padding: Platform.spacingLg
         closePolicy: Popup.NoAutoClose
         background: Rectangle {
             color: Platform.surface
             radius: Platform.radiusLarge
             border.color: Platform.border
-            border.width: 1
+            border.width: Platform.borderWidth
         }
         contentItem: ColumnLayout {
-            spacing: 4
+            spacing: Platform.spacingSm
             Text { text: "Tenjin"; color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
-            Text { text: "Vocabulary & spaced-repetition study"; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-            Rectangle { Layout.fillWidth: true; height: 1; color: Platform.border; opacity: 0.5 }
-            Text { text: "Version 1.0"; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1 }
-            Text { text: "Qt 6.8"; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1 }
-            Text { text: Qt.platform.os; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1 }
+            Text { text: "Vocabulary & spaced-repetition study"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Rectangle { Layout.fillWidth: true; height: Platform.borderWidth; color: Platform.border; opacity: 0.5 }
+            Text { text: "Version 1.0"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+            Text { text: "Qt 6.8"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+            Text { text: Qt.platform.os; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
         }
     }
 
@@ -446,9 +446,6 @@ ApplicationWindow {
 
         property int tab: 0
 
-        // Evaluate the input expression and log the result. Uses a wrapper
-        // QML object with a function so arbitrary JS (including statements)
-        // runs in a scope that can see the root context properties.
         function runEval() {
             const src = evalInput.text.trim()
             if (src.length === 0) return
@@ -475,6 +472,7 @@ ApplicationWindow {
         }
     }
 }
+
 
 
 

@@ -5,16 +5,21 @@ name: iOS build
 # on your side:
 #
 #   AltStore / Sideloadly (no Mac needed after CI):
-#     1. Download the "tenjin-ios-unsigned-ipa" artifact from this run.
+#     1. Download the unsigned .ipa from the GitHub Release this run creates.
 #     2. Open it in AltStore (Sideload .ipa…) or Sideloadly, sign in with your
 #        free Apple ID. It re-signs with your account and installs to your iPhone.
 #        AltStore auto-renews every 7 days; Sideloadly is manual.
 #
 #   Xcode (on your Mac), if you prefer:
-#     ./tools/ios-configure.sh && open build-ios/Tenjin.xcodeproj
+#     ./tools/ios-configure.sh && open build-ios/$TENJIN_APP_NAME.xcodeproj
 #     Set your Apple ID team in Signing & Capabilities, plug in the phone, Run.
 #
 # Free Apple ID: app runs 7 days then must be re-signed. Paid ($99/yr): 1 year.
+#
+# App identity comes from `.env` at the repo root (Batch 6.1). The workflow
+# loads it into $GITHUB_ENV in the first step so every subsequent step uses
+# the same names CMake uses — rename in one place and the .app, .ipa, and
+# .xcodeproj all follow.
 
 on:
   push:
@@ -32,6 +37,43 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Parse .env into $GITHUB_ENV. Lines like `KEY=value` and `KEY="value"`
+      # both work; comments and blanks are ignored. Defaults are baked in so
+      # a missing .env still produces a working build using "Tenjin"-named
+      # artifacts.
+      - name: Load .env into environment
+        run: |
+          # Apply defaults first so an absent .env still works.
+          echo "TENJIN_APP_NAME=Tenjin"                                   >> "$GITHUB_ENV"
+          echo "TENJIN_APP_DISPLAY_NAME=Tenjin"                           >> "$GITHUB_ENV"
+          echo "TENJIN_BUNDLE_ID=app.tenjin.Tenjin"                       >> "$GITHUB_ENV"
+          echo "TENJIN_IOS_DEPLOYMENT_TARGET=16.0"                        >> "$GITHUB_ENV"
+          if [ -f .env ]; then
+            # Strip comments and blanks. Strip surrounding quotes on values.
+            # Anything that doesn't look like KEY=… is dropped.
+            awk -F= '
+              /^[[:space:]]*#/  { next }
+              /^[[:space:]]*$/  { next }
+              NF < 2            { next }
+              {
+                key=$1
+                $1=""
+                val=substr($0, 2)
+                sub(/^[[:space:]]+/, "", key); sub(/[[:space:]]+$/, "", key)
+                sub(/^[[:space:]]+/, "", val); sub(/[[:space:]]+$/, "", val)
+                if (val ~ /^".*"$/ || val ~ /^'\''.*'\''$/) {
+                  val = substr(val, 2, length(val) - 2)
+                }
+                print key "=" val
+              }
+            ' .env >> "$GITHUB_ENV"
+          fi
+          echo "Loaded app identity from .env:"
+          # Re-source to make values visible in this step's echo too.
+          set -a; . .env 2>/dev/null || true; set +a
+          echo "  TENJIN_APP_NAME=${TENJIN_APP_NAME:-Tenjin}"
+          echo "  TENJIN_BUNDLE_ID=${TENJIN_BUNDLE_ID:-app.tenjin.Tenjin}"
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
@@ -62,7 +104,7 @@ jobs:
           QT_IOS="${{ github.workspace }}/Qt/Qt/6.8.3/ios"
           QT_HOST="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
           "$QT_IOS/bin/qt-cmake" -G Xcode -S . -B build-ios \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$TENJIN_IOS_DEPLOYMENT_TARGET" \
             -DQT_HOST_PATH="$QT_HOST" \
             -DMEDIA_SUPPORT=OFF \
             -DWEBVIEW_SUPPORT=OFF \
@@ -85,8 +127,8 @@ jobs:
       # compiled app icon must all be present, or the sideload will look broken.
       - name: Verify bundle
         run: |
-          APP=$(find build-ios -name "Tenjin.app" -type d | head -n1)
-          if [ -z "$APP" ]; then echo "::error::Tenjin.app not found"; exit 1; fi
+          APP=$(find build-ios -name "${TENJIN_APP_NAME}.app" -type d | head -n1)
+          if [ -z "$APP" ]; then echo "::error::${TENJIN_APP_NAME}.app not found"; exit 1; fi
           echo "App bundle: $APP"
           PLIST="$APP/Info.plist"
           echo "===== FULL Info.plist (as built) ====="
@@ -103,6 +145,12 @@ jobs:
           file "$APP/$EXE"
           echo "===== plist validity ====="
           plutil -lint "$PLIST"
+          # Bundle identifier must match .env.
+          PLIST_BUNDLE_ID=$(plutil -extract CFBundleIdentifier raw "$PLIST")
+          if [ "$PLIST_BUNDLE_ID" != "$TENJIN_BUNDLE_ID" ]; then
+            echo "::error::Bundle id mismatch: plist='$PLIST_BUNDLE_ID' env='$TENJIN_BUNDLE_ID'"
+            exit 1
+          fi
           # AppIcon should have compiled into the bundle.
           ls "$APP"/AppIcon*.png 2>/dev/null && echo "icon present" \
             || echo "::warning::No AppIcon*.png in bundle."
@@ -124,7 +172,7 @@ jobs:
       # bundle.
       - name: Ad-hoc sign all Mach-O binaries in the bundle
         run: |
-          APP=$(find build-ios -name "Tenjin.app" -type d | head -n1)
+          APP=$(find build-ios -name "${TENJIN_APP_NAME}.app" -type d | head -n1)
           echo "Re-signing every framework in: $APP/Frameworks"
           if [ -d "$APP/Frameworks" ]; then
             for FW in "$APP"/Frameworks/*.framework; do
@@ -158,21 +206,24 @@ jobs:
       # preserves symlinks instead of dereferencing them.
       - name: Package unsigned .ipa
         run: |
-          APP=$(find build-ios -name "Tenjin.app" -type d | head -n1)
+          APP=$(find build-ios -name "${TENJIN_APP_NAME}.app" -type d | head -n1)
+          IPA="${TENJIN_APP_NAME}-unsigned.ipa"
           rm -rf payload && mkdir -p payload/Payload
           cp -RP "$APP" payload/Payload/
           # ditto -c -k = create a PKZip archive; --keepParent keeps the Payload
           # dir as the top-level entry, exactly what the IPA format expects.
-          ( cd payload && ditto -c -k --keepParent --sequesterRsrc Payload ../Tenjin-unsigned.ipa )
-          echo "Built $(du -h Tenjin-unsigned.ipa | cut -f1) unsigned ipa"
+          ( cd payload && ditto -c -k --keepParent --sequesterRsrc Payload "../$IPA" )
+          echo "Built $(du -h "$IPA" | cut -f1) unsigned ipa"
           echo "===== verify archive is readable and well-formed ====="
           # unzip -t tests integrity; the listing must start with Payload/.
-          unzip -t Tenjin-unsigned.ipa >/dev/null && echo "archive integrity OK"
+          unzip -t "$IPA" >/dev/null && echo "archive integrity OK"
           echo "top-level entries:"
-          unzip -Z1 Tenjin-unsigned.ipa | sed -n '1,5p'
-          unzip -Z1 Tenjin-unsigned.ipa | grep -q '^Payload/' \
+          unzip -Z1 "$IPA" | sed -n '1,5p'
+          unzip -Z1 "$IPA" | grep -q '^Payload/' \
             && echo "Payload/ at top level — OK" \
             || { echo "::error::archive does not start with Payload/"; exit 1; }
+          # Re-export for downstream steps that need the filename.
+          echo "TENJIN_IPA_PATH=$IPA" >> "$GITHUB_ENV"
 
       # Publish the .ipa as a GitHub Release asset rather than an Actions
       # artifact. Three reasons:
@@ -186,7 +237,7 @@ jobs:
         with:
           tag_name: ios-build-${{ github.run_number }}
           name: iOS build ${{ github.run_number }}
-          files: Tenjin-unsigned.ipa
+          files: ${{ env.TENJIN_IPA_PATH }}
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -15,6 +15,8 @@
 
 #include <exception>
 
+#include <TenjinConfig.h>
+
 #include <ViewModels/AppViewModel.h>
 #include <ViewModels/LogViewModel.h>
 #include <ViewModels/ReviewViewModel.h>
@@ -22,15 +24,11 @@
 #include <QtQml/qqmlextensionplugin.h>
 Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 
-// Global pointers used by the message handler.
-// The handler runs on whatever thread logged, so it
-// marshals onto the LogModel's thread via a queued invocation.
 static LogViewModel*    g_logModel        = nullptr;
 static QtMessageHandler g_previousHandler = nullptr;
 
 static void tenjinMessageHandler(QtMsgType type, const QMessageLogContext& ctx, const QString& msg)
 {
-    // Keep the default behaviour (still prints to the terminal).
     if (g_previousHandler)
         g_previousHandler(type, ctx, msg);
 
@@ -65,9 +63,12 @@ int main(int argc, char* argv[])
 #ifdef TENJIN_WEBVIEW
     QtWebView::initialize();
 #endif
-    app.setApplicationName("Tenjin");
-    app.setOrganizationName("Tenjin");
-    app.setOrganizationDomain("tenjin.app");
+
+    app.setApplicationName(QString::fromUtf8(Tenjin::Config::kAppName));
+    app.setApplicationDisplayName(QString::fromUtf8(Tenjin::Config::kAppDisplayName));
+    app.setApplicationVersion(QString::fromUtf8(Tenjin::Config::kAppVersion));
+    app.setOrganizationName(QString::fromUtf8(Tenjin::Config::kOrgName));
+    app.setOrganizationDomain(QString::fromUtf8(Tenjin::Config::kOrgDomain));
 
     // Fusion is the only Quick Controls style guaranteed on every platform
     // without extra plugin dependencies.
@@ -80,7 +81,7 @@ int main(int argc, char* argv[])
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
 #endif
 
-    // The DatabaseManager ctor throws if the SQLite driver isn't available or the DB can't be
+    // The DatabaseManager cstor throws if the SQLite driver isn't available or the DB can't be
     // opened.
     // Log the failure and write a fatal.txt to AppDataLocation
     auto writeFatal = [](const QString& what) {

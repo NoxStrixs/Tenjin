@@ -67,7 +67,8 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::SearchContent(const std::
                                         .row     = q.value(4).toInt(),
                                         .col     = q.value(5).toInt(),
                                         .rowSpan = q.value(6).toInt(),
-                                        .colSpan = q.value(7).toInt()});
+                                        .colSpan = q.value(7).toInt(),
+                                        .pos     = ""});
     }
     return blocks;
 }
