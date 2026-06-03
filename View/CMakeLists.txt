@@ -1,24 +1,3 @@
-# View/CMakeLists.txt
-#
-# QML module for the application's UI. Files are organised into subdirectories
-# by role (Batch 6.3):
-#   View/
-#   ├── Main.qml                  (root app window)
-#   ├── Platform.qml              (singleton — design tokens, theme)
-#   ├── components/               (reusable visual primitives)
-#   ├── dialogs/                  (modal popups)
-#   ├── pages/                    (top-level routable views)
-#   ├── panels/                   (page subregions, sidebars, drawers)
-#   └── media/                    (conditionally compiled — needs QtMultimedia / QtWebView)
-#
-# qt_add_qml_module registers each .qml as a QML type under the TenjinView
-# URI. Type lookup within the module is by basename, not path — so a file in
-# panels/ can still write `TagChip {}` and Qt finds components/TagChip.qml.
-#
-# ViewModels is no longer a subdirectory of View — it became a top-level
-# sibling in Batch 6.2 since the view depends on view models, not the other
-# way around.
-
 set_source_files_properties(Platform.qml PROPERTIES
     QT_QML_SINGLETON_TYPE TRUE
 )

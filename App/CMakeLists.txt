@@ -1,5 +1,6 @@
 qt_add_executable(Tenjin
     WIN32
+    MANUAL_FINALIZATION
     src/main.cpp
 )
 
@@ -41,10 +42,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         INCLUDE_BY_TYPE iconengines
         INCLUDE_BY_TYPE imageformats
     )
+    qt_finalize_executable(Tenjin)
     # Explicitly link the QML module plugin targets we know the UI imports.
     # Explicit links guarantee the plugins survive dead-stripping.
     foreach(_qmlplug
         # QtQuick core
+        Qt6::qmlqquick2plugin
         Qt6::qtquick2plugin
         Qt6::quickplugin
         # QtQuick.Layouts
