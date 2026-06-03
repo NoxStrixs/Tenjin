@@ -232,7 +232,7 @@ jobs:
       #   2. Releases do NOT count against the Actions artifact storage quota.
       #   3. Each build gets a stable, direct download URL.
       - name: Publish .ipa to a GitHub Release
-        uses: softprops/action-gh-release=v2
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ios-build-${{ github.run_number }}
           name: iOS build ${{ github.run_number }}
