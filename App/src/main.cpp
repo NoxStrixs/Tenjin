@@ -1,7 +1,11 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QFont>
 #include <QGuiApplication>
+#include <QIcon>
+#include <QPainter>
+#include <QPixmap>
 #ifdef TENJIN_WEBVIEW
 #    include <QtWebView/QtWebView>
 #endif
@@ -57,6 +61,39 @@ static void tenjinMessageHandler(QtMsgType type, const QMessageLogContext& ctx, 
         g_logModel, "append", Qt::QueuedConnection, Q_ARG(QString, level), Q_ARG(QString, msg));
 }
 
+namespace {
+// Programmatic placeholder app icon: rounded square in the app's accent color
+// (Platform.accent #d4a373) with the 天 ideograph centered. Lives in code so
+// the binary doesn't need a packaged icon asset until a designed one lands.
+// Replace makeAppIcon() with a QIcon(":/icons/app.svg") (or similar) once a
+// real asset is wired into a resource/asset-catalog.
+QIcon makeAppIcon()
+{
+    QIcon icon;
+    for (int size : {16, 24, 32, 48, 64, 128, 256, 512}) {
+        QPixmap pm(size, size);
+        pm.fill(Qt::transparent);
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setRenderHint(QPainter::TextAntialiasing, true);
+        p.setBrush(QColor(0xd4, 0xa3, 0x73));
+        p.setPen(Qt::NoPen);
+        const qreal r = size * 0.20;
+        p.drawRoundedRect(QRectF(0, 0, size, size), r, r);
+        QFont f = p.font();
+        f.setPixelSize(static_cast<int>(size * 0.66));
+        f.setBold(true);
+        p.setFont(f);
+        p.setPen(QColor(0xfe, 0xfa, 0xe0));
+        // U+5929 是 the 天 ideograph; written as escape so source stays ASCII.
+        p.drawText(pm.rect(), Qt::AlignCenter, QStringLiteral("\u5929"));
+        p.end();
+        icon.addPixmap(pm);
+    }
+    return icon;
+}
+} // namespace
+
 int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
@@ -69,6 +106,11 @@ int main(int argc, char* argv[])
     app.setApplicationVersion(QString::fromUtf8(Tenjin::Config::kAppVersion));
     app.setOrganizationName(QString::fromUtf8(Tenjin::Config::kOrgName));
     app.setOrganizationDomain(QString::fromUtf8(Tenjin::Config::kOrgDomain));
+
+    // Window/taskbar/dock icon. On Windows/Linux this drives the window
+    // decoration; on macOS the .app bundle icon wins, on iOS the bundle
+    // AppIcon catalog wins, on Android the manifest's icon wins.
+    app.setWindowIcon(makeAppIcon());
 
     // Fusion is the only Quick Controls style guaranteed on every platform
     // without extra plugin dependencies.

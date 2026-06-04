@@ -39,9 +39,10 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
             m_sidebarVM.get(),
             &SidebarViewModel::reload);
 
-    // Restore the persisted theme preference.
+    // Restore persisted user preferences.
     QSettings settings;
-    m_theme = settings.value("appearance/theme", 0).toInt();
+    m_theme               = settings.value("appearance/theme", 0).toInt();
+    m_welcomeAcknowledged = settings.value("onboarding/welcomeAcknowledged", false).toBool();
 }
 
 void AppViewModel::setCurrentPage(int page)
@@ -66,6 +67,16 @@ void AppViewModel::setTheme(int theme)
     QSettings settings;
     settings.setValue("appearance/theme", theme);
     emit themeChanged();
+}
+
+void AppViewModel::setWelcomeAcknowledged(bool acknowledged)
+{
+    if (m_welcomeAcknowledged == acknowledged)
+        return;
+    m_welcomeAcknowledged = acknowledged;
+    QSettings settings;
+    settings.setValue("onboarding/welcomeAcknowledged", acknowledged);
+    emit welcomeAcknowledgedChanged();
 }
 
 bool AppViewModel::exportData(const QString& fileUrl)

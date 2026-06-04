@@ -19,6 +19,8 @@ class AppViewModel : public QObject
     Q_PROPERTY(
         QString statusMessage READ statusMessage WRITE setStatusMessage NOTIFY statusMessageChanged)
     Q_PROPERTY(int theme READ theme WRITE setTheme NOTIFY themeChanged)
+    Q_PROPERTY(bool welcomeAcknowledged READ welcomeAcknowledged WRITE setWelcomeAcknowledged NOTIFY
+                   welcomeAcknowledgedChanged)
 
     Q_PROPERTY(EntryViewModel* entryVM READ entryVM CONSTANT)
     Q_PROPERTY(DeckViewModel* deckVM READ deckVM CONSTANT)
@@ -47,6 +49,10 @@ public:
     int theme() const
     {
         return m_theme;
+    }
+    bool welcomeAcknowledged() const
+    {
+        return m_welcomeAcknowledged;
     }
 
     EntryViewModel* entryVM() const
@@ -80,6 +86,7 @@ public slots:
     void setCurrentPage(int page);
     void setStatusMessage(const QString& msg);
     void setTheme(int theme);
+    void setWelcomeAcknowledged(bool acknowledged);
 
 public:
     Q_INVOKABLE bool exportData(const QString& fileUrl);
@@ -89,11 +96,13 @@ signals:
     void currentPageChanged();
     void statusMessageChanged();
     void themeChanged();
+    void welcomeAcknowledgedChanged();
 
 private:
     int     m_currentPage = PageWords;
     QString m_statusMessage;
-    int     m_theme = 0;
+    int     m_theme               = 0;
+    bool    m_welcomeAcknowledged = false;
 
     std::shared_ptr<Service::EntryService> m_entryService;
     std::shared_ptr<Service::DeckService>  m_deckService;
