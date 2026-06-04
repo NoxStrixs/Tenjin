@@ -87,11 +87,16 @@ QtObject {
     // (the engine reports `module "QtQuick.Window" is not installed` at
     // launch). Qt.application is provided by the QML language itself, so it's
     // available on every platform without any extra plugin to link.
+    //
+    // Fallback values are deliberately large so that if `Qt.application.screens`
+    // is still empty at first evaluation, the ApplicationWindow doesn't size
+    // itself to a tiny rectangle — the OS will clamp this down to the actual
+    // screen on mobile (and `visibility: FullScreen` forces edge-to-edge).
     readonly property real devicePixelRatio:
         Qt.application.screens.length > 0 ? Qt.application.screens[0].devicePixelRatio : 1.0
     readonly property int screenWidth:
-        Qt.application.screens.length > 0 ? Qt.application.screens[0].desktopAvailableWidth  : 480
+        Qt.application.screens.length > 0 ? Qt.application.screens[0].desktopAvailableWidth  : 1280
     readonly property int screenHeight:
-        Qt.application.screens.length > 0 ? Qt.application.screens[0].desktopAvailableHeight : 800
+        Qt.application.screens.length > 0 ? Qt.application.screens[0].desktopAvailableHeight : 1920
 }
 

@@ -17,6 +17,12 @@ ApplicationWindow {
     title: "Tenjin"
     color: Platform.bg
 
+    // Force fullscreen on mobile so iOS / Android render edge-to-edge instead
+    // of inside a smaller-than-screen rectangle when width/height computations
+    // race the screen-info population. Literal ints match Window's visibility
+    // enum: 1 = AutomaticVisibility, 5 = FullScreen (stable Qt 6 values).
+    visibility: Platform.isMobile ? 5 : 1
+
     // Bundled news items. Each: id (unique), date (YYYY-MM-DD), title, body,
     // popup (whether to surface as a launch popup). Later this list will be
     // replaced/augmented by a fetched JSON feed; the schema stays the same.
@@ -267,8 +273,13 @@ ApplicationWindow {
         dim: true
         closePolicy: Popup.NoAutoClose
         padding: 0
-        width:  Platform.isMobile ? Math.min(root.width  - 24, 480) : 480
-        height: Platform.isMobile ? Math.min(root.height - 64, 560) : 540
+        // Mobile gets a more generous bottom margin so the footer never
+        // lands under the iOS home indicator / Android nav bar. The
+        // ScrollView in the middle absorbs any leftover content overflow
+        // (long body text on large-font mobile devices), so the dots and
+        // Skip/Back/Next buttons always stay in view.
+        width:  Platform.isMobile ? Math.min(root.width  - 24,  480) : 480
+        height: Platform.isMobile ? Math.min(root.height - 120, 580) : 540
         x: parent ? Math.max(12, (parent.width  - width)  / 2) : 12
         y: parent ? Math.max(12, (parent.height - height) / 2) : 12
 
@@ -300,10 +311,11 @@ ApplicationWindow {
         }
 
         contentItem: ColumnLayout {
-            spacing: Platform.spacingLg
+            spacing: Platform.spacingMd
 
             Item { Layout.preferredHeight: Platform.spacingMd; Layout.fillWidth: true }
 
+            // Top: badge (always visible, never scrolls)
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
                 implicitWidth: 76
@@ -319,31 +331,45 @@ ApplicationWindow {
                 }
             }
 
-            Text {
+            // Middle: scrollable title + body. Layout.fillHeight makes this
+            // section absorb any leftover popup height, and clip lets long
+            // body text scroll instead of pushing the dots/footer out the
+            // bottom of the popup (the bug iOS was hitting at fontBase=16).
+            ScrollView {
                 Layout.fillWidth: true
-                Layout.leftMargin: Platform.spacingXl
-                Layout.rightMargin: Platform.spacingXl
-                horizontalAlignment: Text.AlignHCenter
-                text: welcomePopup.titles[welcomePopup.step]
-                color: Platform.textPrimary
-                font.pixelSize: Platform.fontTitle
-                font.bold: true
-                wrapMode: Text.WordWrap
-            }
+                Layout.fillHeight: true
+                Layout.leftMargin: Platform.spacingLg
+                Layout.rightMargin: Platform.spacingLg
+                clip: true
 
-            Text {
-                Layout.fillWidth: true
-                Layout.leftMargin: Platform.spacingXl
-                Layout.rightMargin: Platform.spacingXl
-                horizontalAlignment: Text.AlignHCenter
-                text: welcomePopup.bodies[welcomePopup.step]
-                color: Platform.textMuted
-                font.pixelSize: Platform.fontBase
-                wrapMode: Text.WordWrap
-                lineHeight: 1.35
-            }
+                ColumnLayout {
+                    width: welcomePopup.width - 2 * Platform.spacingLg
+                    spacing: Platform.spacingMd
 
-            Item { Layout.fillHeight: true }
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Platform.spacingSm
+                        horizontalAlignment: Text.AlignHCenter
+                        text: welcomePopup.titles[welcomePopup.step]
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontTitle
+                        font.bold: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        text: welcomePopup.bodies[welcomePopup.step]
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontBase
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.35
+                    }
+
+                    Item { Layout.preferredHeight: Platform.spacingMd }
+                }
+            }
 
             Row {
                 Layout.alignment: Qt.AlignHCenter
