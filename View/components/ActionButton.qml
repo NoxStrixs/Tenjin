@@ -17,11 +17,18 @@ Button {
                                                           : Platform.textOnDark
     readonly property bool _bordered: variant === "neutral"
 
+    // Press feedback — scale slightly down on press for tactile feel.
+    scale: control.down ? 0.97 : 1.0
+    Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+
     background: Rectangle {
-        color: control.down ? Qt.darker(control._bg, 1.15) : control._bg
+        color: control.down ? Qt.darker(control._bg, 1.15)
+             : control.hovered ? Qt.lighter(control._bg, 1.05)
+             : control._bg
         radius: Platform.radius
         border.color: Platform.border
         border.width: control._bordered ? 1 : 0
+        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
     }
 
     contentItem: Text {

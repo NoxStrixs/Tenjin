@@ -38,18 +38,14 @@ QtObject {
     readonly property int headerHeight: isMobile ? 56 : 48
     readonly property int sidebarWidth: 220
 
-    // Typography scale. Each step ≈ 2-3px, chosen so chip / pill text reads as
-    // secondary at fontSmall and metadata at fontTiny without being illegible
-    // on mobile. fontBase is what general body text uses.
+    // Typography scale.
     readonly property int fontTiny:   isMobile ? 12 : 10
     readonly property int fontSmall:  isMobile ? 14 : 11
     readonly property int fontBase:   isMobile ? 16 : 13
     readonly property int fontLarge:  isMobile ? 20 : 15
     readonly property int fontTitle:  isMobile ? 26 : 20
 
-    // Spacing scale. Use these for margins, paddings, and gaps between
-    // sibling components. pagePadding remains the outermost gutter for
-    // pages and panels (kept separate so it can be retuned independently).
+    // Spacing scale.
     readonly property int spacingXs:   isMobile ?  3 :  2
     readonly property int spacingSm:   isMobile ?  6 :  4
     readonly property int spacingMd:   isMobile ? 10 :  8
@@ -57,15 +53,11 @@ QtObject {
     readonly property int spacingXl:   isMobile ? 24 : 18
     readonly property int pagePadding: isMobile ? 16 : 24
 
-    // Corner radii. radius is the default for buttons/inputs; radiusLarge is
-    // for cards and dialogs; pill chips use chipRadius which is height-based.
+    // Corner radii.
     readonly property int radius:       6
     readonly property int radiusLarge:  10
 
-    // Chip / pill primitives. Used by TagChip.qml, the tag-filter popup,
-    // the deck-detail chip row, and any future pill-shaped control. Two
-    // sizes — default (chipHeight) and compact (chipHeightSm) — both
-    // height-derived radius so the pill shape is automatic.
+    // Chip / pill primitives.
     readonly property int chipHeight:    isMobile ? 32 : 26
     readonly property int chipHeightSm:  isMobile ? 26 : 22
     readonly property int chipPaddingH:  isMobile ? 12 : 10
@@ -75,14 +67,12 @@ QtObject {
     readonly property int borderWidth:      1
     readonly property int borderWidthThick: 2
 
-    // Popups. popupWidthSm fits a search field + ~6 visible list rows;
-    // popupWidthMd is the default for the tag-filter popup and similar.
-    // On mobile we clamp to viewport-derived sizes in the popup itself.
+    // Popups.
     readonly property int popupWidthSm: 240
     readonly property int popupWidthMd: 320
     readonly property int popupMaxRows: 10
 
-    // Animation durations (ms). Keep these terse — UI should feel snappy.
+    // Animation durations (ms).
     readonly property int durationFast: 120
     readonly property int durationMed:  200
 
@@ -90,4 +80,18 @@ QtObject {
     // Minimum desktop window size so layouts never collapse below usability.
     readonly property int minWindowWidth:  720
     readonly property int minWindowHeight: 480
+
+    // ── Display info ──────────────────────────────────────────────────────────
+    // These used to live in QtQuick.Window's Screen singleton, but the static
+    // QML plugin for QtQuick.Window doesn't reliably link into the iOS build
+    // (the engine reports `module "QtQuick.Window" is not installed` at
+    // launch). Qt.application is provided by the QML language itself, so it's
+    // available on every platform without any extra plugin to link.
+    readonly property real devicePixelRatio:
+        Qt.application.screens.length > 0 ? Qt.application.screens[0].devicePixelRatio : 1.0
+    readonly property int screenWidth:
+        Qt.application.screens.length > 0 ? Qt.application.screens[0].desktopAvailableWidth  : 480
+    readonly property int screenHeight:
+        Qt.application.screens.length > 0 ? Qt.application.screens[0].desktopAvailableHeight : 800
 }
+

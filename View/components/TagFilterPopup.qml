@@ -1,10 +1,16 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Window
 import TenjinView
 
 // Tag filter UI
+//
+// QtQuick.Window used to be imported here for the `Window` attached property
+// (root.Window.width/height). On iOS static builds the QtQuick.Window plugin
+// won't reliably link, so the engine reported `module "QtQuick.Window" is
+// not installed` at launch. We now route window-relative sizing through the
+// Platform singleton, which derives display info from Qt.application — a
+// QML language built-in with no plugin to dead-strip.
 Item {
     id: root
 
@@ -32,7 +38,8 @@ Item {
         border.color: _hasFilters ? Platform.accent : Platform.border
         border.width: Platform.borderWidth
 
-        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+        Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
+        Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
 
         Row {
             id: triggerRow
@@ -77,11 +84,14 @@ Item {
         x: 0
         y: trigger.height + Platform.spacingXs
 
+        // Mobile: cap to a comfortable max width derived from screen size.
+        // Desktop: hug the trigger, but at least as wide as the surrounding
+        // host so it doesn't look truncated.
         width: Platform.isMobile
-               ? Math.min(360, root.Window.width - 2 * Platform.spacingLg)
+               ? Math.min(360, Platform.screenWidth - 2 * Platform.spacingLg)
                : Math.max(trigger.implicitWidth, root.width)
 
-        readonly property int _maxHeight: Math.round(root.Window.height * 0.7)
+        readonly property int _maxHeight: Math.round(Platform.screenHeight * 0.7)
         height: Math.min(implicitHeight, _maxHeight)
 
         padding: Platform.spacingMd
@@ -95,6 +105,16 @@ Item {
             radius: Platform.radiusLarge
             border.color: Platform.border
             border.width: Platform.borderWidth
+        }
+
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.durationFast }
+                NumberAnimation { property: "scale";   from: 0.96; to: 1; duration: Platform.durationFast; easing.type: Easing.OutCubic }
+            }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.durationFast }
         }
 
         onAboutToShow: tagListInternal.reload()
@@ -269,8 +289,6 @@ Item {
                     return false
                 }
 
-                // Partition into active / inactive, applying search filter
-                // to both groups. Alphabetised within each group.
                 const actives = []
                 const inactives = []
                 for (let i = 0; i < _all.length; ++i) {

@@ -65,8 +65,6 @@ namespace {
 // Programmatic placeholder app icon: rounded square in the app's accent color
 // (Platform.accent #d4a373) with the 天 ideograph centered. Lives in code so
 // the binary doesn't need a packaged icon asset until a designed one lands.
-// Replace makeAppIcon() with a QIcon(":/icons/app.svg") (or similar) once a
-// real asset is wired into a resource/asset-catalog.
 QIcon makeAppIcon()
 {
     QIcon icon;
@@ -85,8 +83,7 @@ QIcon makeAppIcon()
         f.setBold(true);
         p.setFont(f);
         p.setPen(QColor(0xfe, 0xfa, 0xe0));
-        // U+5929 是 the 天 ideograph; written as escape so source stays ASCII.
-        p.drawText(pm.rect(), Qt::AlignCenter, QStringLiteral("\u5929"));
+        p.drawText(pm.rect(), Qt::AlignCenter, QStringLiteral("\u5929")); // 天
         p.end();
         icon.addPixmap(pm);
     }
@@ -107,25 +104,14 @@ int main(int argc, char* argv[])
     app.setOrganizationName(QString::fromUtf8(Tenjin::Config::kOrgName));
     app.setOrganizationDomain(QString::fromUtf8(Tenjin::Config::kOrgDomain));
 
-    // Window/taskbar/dock icon. On Windows/Linux this drives the window
-    // decoration; on macOS the .app bundle icon wins, on iOS the bundle
-    // AppIcon catalog wins, on Android the manifest's icon wins.
     app.setWindowIcon(makeAppIcon());
 
-    // Fusion is the only Quick Controls style guaranteed on every platform
-    // without extra plugin dependencies.
-    // Use "Basic" on iOS: it's the platform-default, always-present style and
-    // does not require a separately-linked style plugin to be alive after the
-    // static linker dead-strips.
 #if defined(Q_OS_IOS)
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 #else
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
 #endif
 
-    // The DatabaseManager cstor throws if the SQLite driver isn't available or the DB can't be
-    // opened.
-    // Log the failure and write a fatal.txt to AppDataLocation
     auto writeFatal = [](const QString& what) {
         const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
         QDir().mkpath(dir);
@@ -136,7 +122,6 @@ int main(int argc, char* argv[])
         }
     };
 
-    // Pre-create AppDataLocation before anything tries to use it.
     QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
 
     std::unique_ptr<AppViewModel> appVMPtr;
@@ -165,7 +150,6 @@ int main(int argc, char* argv[])
     }
     AppViewModel& appVM = *appVMPtr;
 
-    // Debug-console log capture.
     LogViewModel logModel;
     g_logModel        = &logModel;
     g_previousHandler = qInstallMessageHandler(tenjinMessageHandler);

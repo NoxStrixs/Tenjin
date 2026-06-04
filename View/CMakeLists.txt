@@ -18,7 +18,6 @@ set(_TENJIN_QML_IMPORTS
     QtQuick.Controls.Basic
     QtQuick.Layouts
     QtQuick.Dialogs
-    QtQuick.Window
     QtQml
     QtQml.Models
 )

@@ -7,13 +7,34 @@ import QtQuick.Dialogs
 ApplicationWindow {
     id: root
     visible: true
-    width:  Platform.isMobile ? Screen.width  : 1280
-    height: Platform.isMobile ? Screen.height : 820
+    // Platform.screenWidth/Height resolve via Qt.application.screens — no
+    // QtQuick.Window dependency, so the iOS static build doesn't have to
+    // link a plugin that wasn't reliably loading.
+    width:  Platform.isMobile ? Platform.screenWidth  : 1280
+    height: Platform.isMobile ? Platform.screenHeight : 820
     minimumWidth:  Platform.isMobile ? 0 : Platform.minWindowWidth
     minimumHeight: Platform.isMobile ? 0 : Platform.minWindowHeight
     title: "Tenjin"
     color: Platform.bg
 
+    // Bundled news items. Each: id (unique), date (YYYY-MM-DD), title, body,
+    // popup (whether to surface as a launch popup). Later this list will be
+    // replaced/augmented by a fetched JSON feed; the schema stays the same.
+    property var newsItems: [
+        { id: "v1.0-launch",
+          date: "2026-06-04",
+          title: "Welcome to Tenjin 1.0",
+          body:  "Tenjin's first public release. Words, decks, spaced-repetition reviews, tags, and rich content blocks — all stored locally on your device.",
+          popup: false },
+        { id: "multi-platform",
+          date: "2026-06-04",
+          title: "Coming soon: more platforms & polish",
+          body:  "We're working on broader platform coverage (Android, polished macOS builds), multilingual UI, in-app reminders, and a redesigned analytics page. Stay tuned.",
+          popup: false }
+    ]
+
+    // Apply the persisted theme on startup, and keep Platform in sync if the
+    // stored preference changes
     Component.onCompleted: {
         Platform.theme = appVM.theme
         if (!appVM.welcomeAcknowledged)
@@ -79,8 +100,6 @@ ApplicationWindow {
                     font.pixelSize: 19
                     font.bold: true
                 }
-                // Show the full name on hover as a tooltip so the brand
-                // isn't lost when we drop the text label.
                 HoverHandler { id: badgeHover }
                 ToolTip.visible: badgeHover.hovered
                 ToolTip.text: "Tenjin"
@@ -101,20 +120,34 @@ ApplicationWindow {
                 onHoveredChanged: hovered ? aboutPopup.open() : aboutPopup.close()
             }
             IconBtn {
+                id: helpBtn
+                glyph: "?"
+                onActivated: helpPopup.open()
+            }
+            IconBtn {
+                id: newsBtn
+                glyph: "\u2709" // ✉
+                onActivated: newsPopup.open()
+            }
+            IconBtn {
+                id: settingsBtn
+                glyph: "\u2699" // ⚙
+                onActivated: settingsPopup.open()
+            }
+            IconBtn {
                 id: themeBtn
                 glyph: Platform.isDark ? "\u2600" : "\u263E"
                 onActivated: appVM.setTheme(Platform.isDark ? 0 : 1)
             }
             IconBtn {
                 id: debugBtn
-                glyph: "\u2699"
+                glyph: "\u2328" // ⌨ keyboard — debug/eval console
                 active: debugDrawer.visible
                 onActivated: debugDrawer.visible = !debugDrawer.visible
             }
         }
 
         // Mobile header
-        // Hamburger (opens nav drawer) and contextual controls
         RowLayout {
             anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
             spacing: 10
@@ -128,7 +161,7 @@ ApplicationWindow {
                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 Text {
                     anchors.centerIn: parent
-                    text: "\u2630"   // hamburger
+                    text: "\u2630"
                     font.pixelSize: Platform.fontTitle
                     color: Platform.textPrimary
                 }
@@ -164,6 +197,8 @@ ApplicationWindow {
                 radius: Platform.radius
                 color: mAddArea.containsMouse ? Platform.accentDark : Platform.accent
                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                scale: mAddArea.pressed ? 0.97 : 1.0
+                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
                 Text {
                     id: mAddLabel
                     anchors.centerIn: parent
@@ -189,7 +224,7 @@ ApplicationWindow {
         }
     }
 
-    // About popup
+    // About popup (header-anchored, hover-driven)
     Popup {
         id: aboutPopup
         parent: aboutBtn
@@ -224,10 +259,7 @@ ApplicationWindow {
         }
     }
 
-    // Welcome carousel — first-launch onboarding. Multi-step, persistently
-    // dismissible via Skip or the Got it button on the final step. Acknowledged
-    // state lives in QSettings (onboarding/welcomeAcknowledged) so this only
-    // ever appears once unless the user explicitly re-enables it from Settings.
+    // ── Welcome carousel ────────────────────────────────────────────────────
     Popup {
         id: welcomePopup
         parent: Overlay.overlay
@@ -252,7 +284,7 @@ ApplicationWindow {
             "Your personal study companion for vocabulary, phrases, and anything else worth remembering. Let's take a quick look around.",
             "Add words with rich content — text, formulas, images, audio, video. Group related words into decks, and tag them however you like for fast filtering.",
             "Decks schedule cards using a proven spaced-repetition algorithm. Review what's due each day and Tenjin tracks what you know.",
-            "Toggle light and dark from the header at any time. More features — news, settings, language, reminders — are on the way."
+            "Toggle light and dark from the header at any time. Open Help anytime to revisit the basics, or News to see what's new."
         ]
 
         function finish() {
@@ -270,10 +302,8 @@ ApplicationWindow {
         contentItem: ColumnLayout {
             spacing: Platform.spacingLg
 
-            // Inner padding wrapper so background hugs full popup size.
             Item { Layout.preferredHeight: Platform.spacingMd; Layout.fillWidth: true }
 
-            // 天 badge
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
                 implicitWidth: 76
@@ -282,14 +312,13 @@ ApplicationWindow {
                 color: Platform.accent
                 Text {
                     anchors.centerIn: parent
-                    text: "\u5929" // 天
+                    text: "\u5929"
                     color: Platform.bg
                     font.pixelSize: 46
                     font.bold: true
                 }
             }
 
-            // Title
             Text {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.spacingXl
@@ -302,7 +331,6 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
             }
 
-            // Body
             Text {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.spacingXl
@@ -317,7 +345,6 @@ ApplicationWindow {
 
             Item { Layout.fillHeight: true }
 
-            // Step dots
             Row {
                 Layout.alignment: Qt.AlignHCenter
                 spacing: 10
@@ -335,7 +362,6 @@ ApplicationWindow {
                 }
             }
 
-            // Footer buttons
             RowLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.spacingLg
@@ -343,7 +369,6 @@ ApplicationWindow {
                 Layout.bottomMargin: Platform.spacingLg
                 spacing: Platform.spacingMd
 
-                // Skip — only while there are still steps left.
                 Rectangle {
                     Layout.preferredHeight: Platform.touchTarget
                     Layout.preferredWidth: skipLabel.implicitWidth + 24
@@ -369,7 +394,6 @@ ApplicationWindow {
 
                 Item { Layout.fillWidth: true }
 
-                // Back — only after the first step.
                 Rectangle {
                     Layout.preferredHeight: Platform.touchTarget
                     Layout.preferredWidth: backLabel.implicitWidth + 28
@@ -395,13 +419,14 @@ ApplicationWindow {
                     }
                 }
 
-                // Next / Got it
                 Rectangle {
                     Layout.preferredHeight: Platform.touchTarget
                     Layout.preferredWidth: nextLabel.implicitWidth + 32
                     radius: Platform.radius
                     color: nextArea.containsMouse ? Platform.accentDark : Platform.accent
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    scale: nextArea.pressed ? 0.97 : 1.0
+                    Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
                     Text {
                         id: nextLabel
                         anchors.centerIn: parent
@@ -437,6 +462,440 @@ ApplicationWindow {
                 NumberAnimation { property: "opacity"; from: 1; to: 0;    duration: Platform.durationFast }
                 NumberAnimation { property: "scale";   from: 1; to: 0.96; duration: Platform.durationFast }
             }
+        }
+    }
+
+    // ── Help popup ──────────────────────────────────────────────────────────
+    Popup {
+        id: helpPopup
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: 0
+        width:  Platform.isMobile ? Math.min(root.width  - 24, 560) : 560
+        height: Platform.isMobile ? Math.min(root.height - 64, 640) : Math.min(root.height - 80, 640)
+        x: parent ? Math.max(12, (parent.width  - width)  / 2) : 12
+        y: parent ? Math.max(12, (parent.height - height) / 2) : 12
+
+        readonly property var sections: [
+            { h: "Getting started",
+              b: "Tenjin organizes the things you want to remember into Words, gathered into Decks, and labelled with Tags. Everything lives locally on this device unless you export it." },
+            { h: "Adding a word",
+              b: "From the Words page, tap + Word. Give it a headword, then add content blocks below — plain text, formulas (LaTeX), images, audio, video, or links. Drag handles let you arrange the layout." },
+            { h: "Decks & reviews",
+              b: "On the Decks page, create a deck and add words to it. Open a deck and start a Review session — Tenjin uses spaced repetition to schedule what you see next based on how well you knew it." },
+            { h: "Tags & filtering",
+              b: "Tag words on the word's detail page or from the Tags page. The Tags filter in the sidebar / mobile filter bar lets you narrow the Words list to any combination, in Any or All mode." },
+            { h: "Import & export",
+              b: "Your entire collection exports to a single JSON file (sidebar footer on desktop, drawer on mobile). Import the same JSON on another device to move everything across." },
+            { h: "Re-run this walkthrough",
+              b: "Settings (gear icon) → Show welcome again. The carousel will re-open immediately and play through all four steps." }
+        ]
+
+        background: Rectangle {
+            color: Platform.surface
+            radius: Platform.radiusLarge
+            border.color: Platform.border
+            border.width: Platform.borderWidth
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 0
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.headerHeight
+                color: "transparent"
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingMd }
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Help"
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontTitle
+                        font.bold: true
+                    }
+                    Rectangle {
+                        Layout.preferredWidth: 32; Layout.preferredHeight: 32
+                        radius: Platform.radius
+                        color: helpCloseArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Text { anchors.centerIn: parent; text: "\u2715"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+                        MouseArea { id: helpCloseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: helpPopup.close() }
+                    }
+                }
+                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border }
+            }
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                ColumnLayout {
+                    width: helpPopup.width
+                    spacing: Platform.spacingMd
+
+                    Repeater {
+                        model: helpPopup.sections
+                        delegate: ColumnLayout {
+                            required property var modelData
+                            required property int index
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Platform.spacingLg
+                            Layout.rightMargin: Platform.spacingLg
+                            Layout.topMargin: index === 0 ? Platform.spacingLg : 0
+                            spacing: Platform.spacingSm
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.h
+                                color: Platform.textPrimary
+                                font.pixelSize: Platform.fontLarge
+                                font.bold: true
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.b
+                                color: Platform.textMuted
+                                font.pixelSize: Platform.fontBase
+                                wrapMode: Text.WordWrap
+                                lineHeight: 1.35
+                            }
+                            Rectangle { Layout.fillWidth: true; Layout.topMargin: Platform.spacingSm; Layout.preferredHeight: Platform.borderWidth; color: Platform.border; opacity: 0.5 }
+                        }
+                    }
+
+                    Item { Layout.preferredHeight: Platform.spacingLg }
+                }
+            }
+        }
+
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Platform.durationMed }
+                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+            }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.durationFast }
+        }
+    }
+
+    // ── News popup ──────────────────────────────────────────────────────────
+    Popup {
+        id: newsPopup
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: 0
+        width:  Platform.isMobile ? Math.min(root.width  - 24, 560) : 560
+        height: Platform.isMobile ? Math.min(root.height - 64, 640) : Math.min(root.height - 80, 640)
+        x: parent ? Math.max(12, (parent.width  - width)  / 2) : 12
+        y: parent ? Math.max(12, (parent.height - height) / 2) : 12
+
+        background: Rectangle {
+            color: Platform.surface
+            radius: Platform.radiusLarge
+            border.color: Platform.border
+            border.width: Platform.borderWidth
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 0
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.headerHeight
+                color: "transparent"
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingMd }
+                    Text {
+                        Layout.fillWidth: true
+                        text: "News"
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontTitle
+                        font.bold: true
+                    }
+                    Rectangle {
+                        Layout.preferredWidth: 32; Layout.preferredHeight: 32
+                        radius: Platform.radius
+                        color: newsCloseArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Text { anchors.centerIn: parent; text: "\u2715"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+                        MouseArea { id: newsCloseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: newsPopup.close() }
+                    }
+                }
+                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border }
+            }
+
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                model: root.newsItems
+                spacing: Platform.spacingMd
+                topMargin: Platform.spacingLg
+                bottomMargin: Platform.spacingLg
+                leftMargin: Platform.spacingLg
+                rightMargin: Platform.spacingLg
+
+                delegate: Rectangle {
+                    required property var modelData
+                    width: ListView.view.width - 2 * Platform.spacingLg
+                    implicitHeight: newsCol.implicitHeight + 2 * Platform.spacingMd
+                    radius: Platform.radius
+                    color: Platform.bg
+                    border.color: Platform.border
+                    border.width: Platform.borderWidth
+                    ColumnLayout {
+                        id: newsCol
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: Platform.spacingMd }
+                        spacing: Platform.spacingXs
+                        Text {
+                            text: modelData.date
+                            color: Platform.textMuted
+                            font.pixelSize: Platform.fontTiny
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelData.title
+                            color: Platform.textPrimary
+                            font.pixelSize: Platform.fontLarge
+                            font.bold: true
+                            wrapMode: Text.WordWrap
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelData.body
+                            color: Platform.textMuted
+                            font.pixelSize: Platform.fontBase
+                            wrapMode: Text.WordWrap
+                            lineHeight: 1.35
+                        }
+                    }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: parent.count === 0
+                    text: "No news yet."
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontBase
+                }
+
+                ScrollBar.vertical: ScrollBar {}
+            }
+        }
+
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Platform.durationMed }
+                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+            }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.durationFast }
+        }
+    }
+
+    // ── Settings popup ──────────────────────────────────────────────────────
+    Popup {
+        id: settingsPopup
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: 0
+        width:  Platform.isMobile ? Math.min(root.width  - 24, 480) : 480
+        height: Platform.isMobile ? Math.min(root.height - 64, 560) : Math.min(root.height - 80, 560)
+        x: parent ? Math.max(12, (parent.width  - width)  / 2) : 12
+        y: parent ? Math.max(12, (parent.height - height) / 2) : 12
+
+        background: Rectangle {
+            color: Platform.surface
+            radius: Platform.radiusLarge
+            border.color: Platform.border
+            border.width: Platform.borderWidth
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 0
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.headerHeight
+                color: "transparent"
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingMd }
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Settings"
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontTitle
+                        font.bold: true
+                    }
+                    Rectangle {
+                        Layout.preferredWidth: 32; Layout.preferredHeight: 32
+                        radius: Platform.radius
+                        color: setCloseArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Text { anchors.centerIn: parent; text: "\u2715"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+                        MouseArea { id: setCloseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settingsPopup.close() }
+                    }
+                }
+                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border }
+            }
+
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+
+                ColumnLayout {
+                    width: settingsPopup.width
+                    spacing: 0
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Platform.spacingLg
+                        Layout.topMargin: Platform.spacingLg
+                        Layout.bottomMargin: Platform.spacingSm
+                        text: "Appearance"
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontSmall
+                        font.bold: true
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Platform.touchTarget + 16
+                        color: themeRowArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        RowLayout {
+                            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                            spacing: Platform.spacingMd
+                            Text {
+                                text: Platform.isDark ? "\u2600" : "\u263E"
+                                color: Platform.textMuted
+                                font.pixelSize: Platform.fontLarge
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+                                Text { text: "Theme"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                                Text { text: Platform.isDark ? "Dark" : "Light"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                            }
+                            Rectangle {
+                                Layout.preferredWidth: 52
+                                Layout.preferredHeight: 28
+                                radius: 14
+                                color: Platform.isDark ? Platform.accent : Platform.border
+                                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                                Rectangle {
+                                    width: 22; height: 22; radius: 11
+                                    y: 3
+                                    x: Platform.isDark ? parent.width - width - 3 : 3
+                                    color: Platform.bg
+                                    Behavior on x { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                                }
+                            }
+                        }
+                        MouseArea {
+                            id: themeRowArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: appVM.setTheme(Platform.isDark ? 0 : 1)
+                        }
+                    }
+
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; opacity: 0.5 }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Platform.spacingLg
+                        Layout.topMargin: Platform.spacingLg
+                        Layout.bottomMargin: Platform.spacingSm
+                        text: "Language"
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontSmall
+                        font.bold: true
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Platform.touchTarget + 16
+                        color: "transparent"
+                        opacity: 0.55
+                        RowLayout {
+                            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                            spacing: Platform.spacingMd
+                            Text { text: "\uD83C\uDF10"; font.pixelSize: Platform.fontLarge }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+                                Text { text: "Interface language"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                                Text { text: "English (more languages coming soon)"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                            }
+                        }
+                    }
+
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; opacity: 0.5 }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Platform.spacingLg
+                        Layout.topMargin: Platform.spacingLg
+                        Layout.bottomMargin: Platform.spacingSm
+                        text: "Onboarding"
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontSmall
+                        font.bold: true
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Platform.touchTarget + 16
+                        color: welcomeAgainArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        RowLayout {
+                            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                            spacing: Platform.spacingMd
+                            Text { text: "\u21BB"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+                                Text { text: "Show welcome again"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                                Text { text: "Re-open the first-launch carousel now"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                            }
+                            Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                        }
+                        MouseArea {
+                            id: welcomeAgainArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                appVM.setWelcomeAcknowledged(false)
+                                welcomePopup.step = 0
+                                settingsPopup.close()
+                                welcomePopup.open()
+                            }
+                        }
+                    }
+
+                    Item { Layout.preferredHeight: Platform.spacingLg }
+                }
+            }
+        }
+
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Platform.durationMed }
+                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+            }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.durationFast }
         }
     }
 
@@ -480,18 +939,19 @@ ApplicationWindow {
         MobileDrawer {
             anchors.fill: parent
             onNavigate: (page) => {
-                // Land on the Words list (not a stale detail) when picking Words.
                 if (page === 0) appVM.entryVM.clearSelection()
                 appVM.currentPage = page
                 sidebarDrawer.close()
             }
-            onImportRequested: { sidebarDrawer.close(); importDialog.open() }
-            onExportRequested: { sidebarDrawer.close(); exportDialog.open() }
+            onImportRequested:   { sidebarDrawer.close(); importDialog.open() }
+            onExportRequested:   { sidebarDrawer.close(); exportDialog.open() }
+            onHelpRequested:     { sidebarDrawer.close(); helpPopup.open() }
+            onNewsRequested:     { sidebarDrawer.close(); newsPopup.open() }
+            onSettingsRequested: { sidebarDrawer.close(); settingsPopup.open() }
         }
     }
 
-    // Import / export file pickers (driven by the mobile drawer; desktop keeps
-    // its own controls in the sidebar footer).
+    // Import / export file pickers
     FileDialog {
         id: importDialog
         title: "Import collection"
@@ -510,12 +970,12 @@ ApplicationWindow {
 
     // Dialogs
     AddEntryDialog { id: addEntryDialog }
-    AddDeckDialog { id: addDeckDialog }
-    AddTagDialog { id: addTagDialog }
+    AddDeckDialog  { id: addDeckDialog }
+    AddTagDialog   { id: addTagDialog }
 
     // Error toast
     Connections { target: appVM.entryVM; function onErrorOccurred(msg) { toast.show(msg) } }
-    Connections { target: appVM.deckVM; function onErrorOccurred(msg) { toast.show(msg) } }
+    Connections { target: appVM.deckVM;  function onErrorOccurred(msg) { toast.show(msg) } }
 
     Rectangle {
         id: toast
@@ -563,7 +1023,6 @@ ApplicationWindow {
             anchors.margins: 8
             spacing: 8
 
-            // Header and tab switch.
             RowLayout {
                 Layout.fillWidth: true
                 Text { text: "Debug console"; color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
@@ -592,7 +1051,6 @@ ApplicationWindow {
                 }
             }
 
-            // Log viewer
             ColumnLayout {
                 visible: debugDrawer.tab === 0
                 Layout.fillWidth: true
@@ -647,7 +1105,6 @@ ApplicationWindow {
                 }
             }
 
-            // Evaluator
             ColumnLayout {
                 visible: debugDrawer.tab === 1
                 Layout.fillWidth: true
@@ -712,7 +1169,6 @@ ApplicationWindow {
                 console.log("eval> " + src + "  =>  " + r)
                 obj.destroy()
             } catch (e) {
-                // Retry as statements (no return value) if expression form failed.
                 try {
                     const obj2 = Qt.createQmlObject(
                         'import QtQuick; QtObject { function run() { ' + src + ' } }',

@@ -53,10 +53,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         # QtQuick.Layouts
         Qt6::qquicklayoutsplugin
         Qt6::qtquicklayoutsplugin
-        # QtQuick.Windows
-        Qt6::quickwindowplugin
-        Qt6::qquickwindowplugin
-        Qt6::qquickwindow2plugin
         # QtQuick.Controls + Basic style
         Qt6::qtquickcontrols2plugin
         Qt6::qquickcontrols2plugin

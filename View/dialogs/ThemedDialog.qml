@@ -23,8 +23,11 @@ Dialog {
     onClosed: Qt.inputMethod.hide()
 
     // Keyboard height in device-independent px (0 when hidden).
+    // Platform.devicePixelRatio routes through Qt.application.screens so we
+    // don't pull QtQuick.Window's Screen singleton (which won't link reliably
+    // on the iOS static build).
     readonly property real _kb: Qt.inputMethod.visible
-        ? Qt.inputMethod.keyboardRectangle.height / Screen.devicePixelRatio
+        ? Qt.inputMethod.keyboardRectangle.height / Platform.devicePixelRatio
         : 0
 
     // Sit near the top when the keyboard is up; otherwise vertically centered.
@@ -40,14 +43,26 @@ Dialog {
 
     Behavior on y { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
+    // Snappy fade-and-rise enter / fade-and-sink exit. Subclasses inherit this
+    // automatically — every Add*/Confirm/Rename dialog now lands the same way.
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.durationMed }
+            NumberAnimation { property: "scale";   from: 0.96; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+        }
+    }
+    exit: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 1; to: 0;    duration: Platform.durationFast }
+            NumberAnimation { property: "scale";   from: 1; to: 0.97; duration: Platform.durationFast }
+        }
+    }
+
     background: Rectangle {
         color: Platform.bg
         radius: Platform.radiusLarge
         border.color: Platform.border
         border.width: 1
-        // Tapping anywhere on the dialog body that isn't an input drops focus,
-        // hiding the keyboard without saving. Inputs sit above this and grab
-        // their own taps, so this only fires on empty space.
         MouseArea {
             anchors.fill: parent
             onClicked: { root.forceActiveFocus(); Qt.inputMethod.hide() }
@@ -70,9 +85,6 @@ Dialog {
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Platform.border }
     }
 
-    // Themed OK/Cancel. With standardButtons (no explicit Button children) the
-    // delegate IS applied to every generated button — that's the fix for the
-    // previously-white system buttons.
     footer: DialogButtonBox {
         padding: 16
         spacing: 8
@@ -84,6 +96,8 @@ Dialog {
             implicitHeight: Platform.touchTarget
             implicitWidth: Math.max(88, _btnText.implicitWidth + 28)
             padding: 10
+            scale: _btn.down ? 0.97 : 1.0
+            Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
             contentItem: Text {
                 id: _btnText
                 text: _btn.text
@@ -99,6 +113,7 @@ Dialog {
                      : _btn.hovered ? Platform.surfaceAlt : Platform.surface
                 border.color: Platform.border
                 border.width: 1
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
             }
         }
     }

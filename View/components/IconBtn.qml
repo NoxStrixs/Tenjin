@@ -18,11 +18,19 @@ Rectangle {
     border.color: active ? Platform.accent : "transparent"
     border.width: 1
 
+    Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
+    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+
+    // Slight press feedback. Falls back to 1.0 when not pressed.
+    scale: ibArea.pressed ? 0.94 : 1.0
+    Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+
     Text {
         anchors.centerIn: parent
         text: ib.glyph
         color: ib.active ? Platform.accent : Platform.textMuted
         font.pixelSize: Platform.fontLarge
+        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
     }
     MouseArea {
         id: ibArea
@@ -32,3 +40,4 @@ Rectangle {
         onClicked: ib.activated()
     }
 }
+

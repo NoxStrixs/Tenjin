@@ -26,7 +26,7 @@ Flickable {
     // Add the keyboard's height as extra scrollable space when it's up, so a
     // focused block can be scrolled clear of the on-screen keyboard instead of sitting under it.
     readonly property real _kb: Qt.inputMethod.visible
-        ? Qt.inputMethod.keyboardRectangle.height / Screen.devicePixelRatio
+        ? Qt.inputMethod.keyboardRectangle.height / Platform.devicePixelRatio
         : 0
     contentHeight: Math.max(bands.implicitHeight + _kb, height)
     clip: true
@@ -456,6 +456,7 @@ Flickable {
         horizontalAlignment: Text.AlignHCenter
     }
 }
+
 
 
 
