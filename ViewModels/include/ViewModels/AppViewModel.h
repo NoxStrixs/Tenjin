@@ -7,6 +7,7 @@
 #include <ViewModels/SidebarViewModel.h>
 
 #include <QObject>
+#include <QSet>
 #include <QString>
 
 #include <memory>
@@ -82,6 +83,12 @@ public:
 
     Q_INVOKABLE QString renderFormula(const QString& latex) const;
 
+    // News item dismissal — id of any news item the user has acknowledged via
+    // its on-launch popup is persisted to QSettings so it never popups again.
+    // The full news list is still browsable from the News button at any time.
+    Q_INVOKABLE bool isNewsDismissed(const QString& newsId) const;
+    Q_INVOKABLE void dismissNews(const QString& newsId);
+
 public slots:
     void setCurrentPage(int page);
     void setStatusMessage(const QString& msg);
@@ -97,12 +104,14 @@ signals:
     void statusMessageChanged();
     void themeChanged();
     void welcomeAcknowledgedChanged();
+    void newsDismissedChanged();
 
 private:
-    int     m_currentPage = PageWords;
-    QString m_statusMessage;
-    int     m_theme               = 0;
-    bool    m_welcomeAcknowledged = false;
+    int           m_currentPage = PageWords;
+    QString       m_statusMessage;
+    int           m_theme               = 0;
+    bool          m_welcomeAcknowledged = false;
+    QSet<QString> m_newsDismissedIds;
 
     std::shared_ptr<Service::EntryService> m_entryService;
     std::shared_ptr<Service::DeckService>  m_deckService;

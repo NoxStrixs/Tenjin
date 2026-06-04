@@ -98,5 +98,15 @@ QtObject {
         Qt.application.screens.length > 0 ? Qt.application.screens[0].desktopAvailableWidth  : 1280
     readonly property int screenHeight:
         Qt.application.screens.length > 0 ? Qt.application.screens[0].desktopAvailableHeight : 1920
+
+    // ── Safe area ─────────────────────────────────────────────────────────────
+    // Hardcoded iOS safe-area insets — modern iPhones with the notch / Dynamic
+    // Island reserve ~47pt at the top and ~34pt at the bottom for the home
+    // indicator. Qt 6.6+ has a proper SafeArea attached property but it lives
+    // in QtQuick.Window, which we're deliberately not linking. These constants
+    // are slight over-estimates so layouts have breathing room; refine later
+    // if a real-device pass shows them off.
+    readonly property int safeAreaTop:    isMobile && Qt.platform.os === "ios" ? 47 : 0
+    readonly property int safeAreaBottom: isMobile && Qt.platform.os === "ios" ? 34 : 0
 }
 

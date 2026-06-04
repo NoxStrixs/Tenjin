@@ -26,6 +26,8 @@ ApplicationWindow {
     // Bundled news items. Each: id (unique), date (YYYY-MM-DD), title, body,
     // popup (whether to surface as a launch popup). Later this list will be
     // replaced/augmented by a fetched JSON feed; the schema stays the same.
+    // The launch-popup flow tracks dismissed ids in QSettings via
+    // appVM.dismissNews(), so a `popup: true` item only ever appears once.
     property var newsItems: [
         { id: "v1.0-launch",
           date: "2026-06-04",
@@ -36,8 +38,23 @@ ApplicationWindow {
           date: "2026-06-04",
           title: "Coming soon: more platforms & polish",
           body:  "We're working on broader platform coverage (Android, polished macOS builds), multilingual UI, in-app reminders, and a redesigned analytics page. Stay tuned.",
-          popup: false }
+          popup: true }
     ]
+
+    // Returns the first news item flagged popup=true that the user hasn't yet
+    // dismissed. Called after the welcome carousel finishes (or right at
+    // startup if welcome was already acknowledged on a prior launch) so a
+    // single important update is surfaced once per ID per device.
+    function _showNextNewsPopup() {
+        for (let i = 0; i < newsItems.length; i++) {
+            const it = newsItems[i]
+            if (it.popup && !appVM.isNewsDismissed(it.id)) {
+                newsLaunchPopup.currentItem = it
+                newsLaunchPopup.open()
+                return
+            }
+        }
+    }
 
     // Apply the persisted theme on startup, and keep Platform in sync if the
     // stored preference changes
@@ -45,6 +62,8 @@ ApplicationWindow {
         Platform.theme = appVM.theme
         if (!appVM.welcomeAcknowledged)
             welcomePopup.open()
+        else
+            _showNextNewsPopup()
     }
     Connections {
         target: appVM
@@ -53,7 +72,9 @@ ApplicationWindow {
 
     // Header
     header: Rectangle {
-        height: Platform.headerHeight
+        // Extra top space on iOS reserves room for the notch / Dynamic
+        // Island; Platform.safeAreaTop is 0 elsewhere.
+        height: Platform.headerHeight + Platform.safeAreaTop
         color: Platform.surface
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
@@ -63,7 +84,7 @@ ApplicationWindow {
 
         // Desktop header
         RowLayout {
-            anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
+            anchors { fill: parent; leftMargin: 16; rightMargin: 16; topMargin: Platform.safeAreaTop }
             spacing: 12
             visible: !Platform.isMobile
 
@@ -155,7 +176,7 @@ ApplicationWindow {
 
         // Mobile header
         RowLayout {
-            anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+            anchors { fill: parent; leftMargin: 12; rightMargin: 12; topMargin: Platform.safeAreaTop }
             spacing: 10
             visible: Platform.isMobile
 
@@ -278,10 +299,10 @@ ApplicationWindow {
         // ScrollView in the middle absorbs any leftover content overflow
         // (long body text on large-font mobile devices), so the dots and
         // Skip/Back/Next buttons always stay in view.
-        width:  Platform.isMobile ? Math.min(root.width  - 24,  480) : 480
-        height: Platform.isMobile ? Math.min(root.height - 120, 580) : 540
-        x: parent ? Math.max(12, (parent.width  - width)  / 2) : 12
-        y: parent ? Math.max(12, (parent.height - height) / 2) : 12
+        width:  Platform.isMobile ? Math.min(root.width  - 16, 560) : 560
+        height: Platform.isMobile ? Math.min(root.height - Platform.safeAreaTop - Platform.safeAreaBottom - 60, 680) : 640
+        x: parent ? Math.max(8, (parent.width  - width)  / 2) : 8
+        y: parent ? Math.max(Platform.safeAreaTop + 8, (parent.height - height) / 2) : 8
 
         property int step: 0
         readonly property int stepCount: 4
@@ -301,6 +322,10 @@ ApplicationWindow {
         function finish() {
             close()
             appVM.setWelcomeAcknowledged(true)
+            // Hand off to the news-on-launch flow so the user gets a single
+            // continuous onboarding sequence rather than two disjoint
+            // popups on the same first launch.
+            root._showNextNewsPopup()
         }
 
         background: Rectangle {
@@ -472,6 +497,179 @@ ApplicationWindow {
                             else
                                 welcomePopup.finish()
                         }
+                    }
+                }
+            }
+        }
+
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.durationMed }
+                NumberAnimation { property: "scale";   from: 0.94; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0;    duration: Platform.durationFast }
+                NumberAnimation { property: "scale";   from: 1; to: 0.96; duration: Platform.durationFast }
+            }
+        }
+    }
+
+    // ── News launch popup ───────────────────────────────────────────────────
+    // Single-item popup for any news entry flagged popup=true that the user
+    // hasn't yet dismissed. Got it = appVM.dismissNews(id) which persists
+    // through QSettings, so the item never popups again. The full news list
+    // remains browsable from the News button at any time.
+    Popup {
+        id: newsLaunchPopup
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        closePolicy: Popup.NoAutoClose
+        padding: 0
+        width:  Platform.isMobile ? Math.min(root.width  - 16, 540) : 540
+        height: Platform.isMobile ? Math.min(root.height - Platform.safeAreaTop - Platform.safeAreaBottom - 60, 520) : 480
+        x: parent ? Math.max(8, (parent.width  - width)  / 2) : 8
+        y: parent ? Math.max(Platform.safeAreaTop + 8, (parent.height - height) / 2) : 8
+
+        property var currentItem: null
+
+        function finish() {
+            if (currentItem)
+                appVM.dismissNews(currentItem.id)
+            close()
+        }
+
+        background: Rectangle {
+            color: Platform.surface
+            radius: Platform.radiusLarge
+            border.color: Platform.border
+            border.width: Platform.borderWidth
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 0
+
+            // Header bar — "What's new" + small dated subhead
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.headerHeight + 8
+                color: "transparent"
+                ColumnLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    spacing: 1
+                    Item { Layout.fillHeight: true }
+                    Text {
+                        text: "What's new"
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontTitle
+                        font.bold: true
+                    }
+                    Text {
+                        text: newsLaunchPopup.currentItem ? newsLaunchPopup.currentItem.date : ""
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontSmall
+                    }
+                    Item { Layout.fillHeight: true }
+                }
+                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border }
+            }
+
+            // Scrollable title + body
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.leftMargin: Platform.spacingLg
+                Layout.rightMargin: Platform.spacingLg
+                Layout.topMargin: Platform.spacingLg
+                clip: true
+
+                ColumnLayout {
+                    width: newsLaunchPopup.width - 2 * Platform.spacingLg
+                    spacing: Platform.spacingMd
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: newsLaunchPopup.currentItem ? newsLaunchPopup.currentItem.title : ""
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontLarge
+                        font.bold: true
+                        wrapMode: Text.WordWrap
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: newsLaunchPopup.currentItem ? newsLaunchPopup.currentItem.body : ""
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontBase
+                        wrapMode: Text.WordWrap
+                        lineHeight: 1.35
+                    }
+                    Item { Layout.preferredHeight: Platform.spacingMd }
+                }
+            }
+
+            // Footer — "See all news" + Got it
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: Platform.spacingLg
+                Layout.rightMargin: Platform.spacingLg
+                Layout.bottomMargin: Platform.spacingLg
+                Layout.topMargin: Platform.spacingMd
+                spacing: Platform.spacingMd
+
+                Rectangle {
+                    Layout.preferredHeight: Platform.touchTarget
+                    Layout.preferredWidth: seeAllLabel.implicitWidth + 24
+                    radius: Platform.radius
+                    color: seeAllArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Text {
+                        id: seeAllLabel
+                        anchors.centerIn: parent
+                        text: "See all news"
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontBase
+                    }
+                    MouseArea {
+                        id: seeAllArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        // Tapping "See all news" should NOT dismiss the
+                        // current item permanently — only the Got it button
+                        // does that. Close the popup and open the news list.
+                        onClicked: {
+                            newsLaunchPopup.close()
+                            newsPopup.open()
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Rectangle {
+                    Layout.preferredHeight: Platform.touchTarget
+                    Layout.preferredWidth: gotItLabel.implicitWidth + 32
+                    radius: Platform.radius
+                    color: gotItArea.containsMouse ? Platform.accentDark : Platform.accent
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    scale: gotItArea.pressed ? 0.97 : 1.0
+                    Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                    Text {
+                        id: gotItLabel
+                        anchors.centerIn: parent
+                        text: "Got it"
+                        color: Platform.bg
+                        font.pixelSize: Platform.fontBase
+                        font.bold: true
+                    }
+                    MouseArea {
+                        id: gotItArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: newsLaunchPopup.finish()
                     }
                 }
             }
@@ -1005,7 +1203,7 @@ ApplicationWindow {
 
     Rectangle {
         id: toast
-        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: 32 }
+        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: 32 + Platform.safeAreaBottom }
         width: toastText.implicitWidth + 32; height: 36
         radius: Platform.radius; color: Platform.danger
         visible: false; opacity: 0; z: 100

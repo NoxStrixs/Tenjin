@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QStringList>
 #include <QUrl>
 
 AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
@@ -43,6 +44,13 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
     QSettings settings;
     m_theme               = settings.value("appearance/theme", 0).toInt();
     m_welcomeAcknowledged = settings.value("onboarding/welcomeAcknowledged", false).toBool();
+
+    // News dismissal — stored as a QStringList. QSettings serializes it as a
+    // comma-separated string on disk; loading round-trips back to a list. We
+    // keep it in-memory as a QSet for O(1) membership checks.
+    const QStringList ids = settings.value("news/dismissed").toStringList();
+    for (const QString& id : ids)
+        m_newsDismissedIds.insert(id);
 }
 
 void AppViewModel::setCurrentPage(int page)
@@ -79,6 +87,27 @@ void AppViewModel::setWelcomeAcknowledged(bool acknowledged)
     emit welcomeAcknowledgedChanged();
 }
 
+bool AppViewModel::isNewsDismissed(const QString& newsId) const
+{
+    return m_newsDismissedIds.contains(newsId);
+}
+
+void AppViewModel::dismissNews(const QString& newsId)
+{
+    if (newsId.isEmpty())
+        return;
+    if (m_newsDismissedIds.contains(newsId))
+        return;
+    m_newsDismissedIds.insert(newsId);
+    QSettings   settings;
+    QStringList ids;
+    ids.reserve(m_newsDismissedIds.size());
+    for (const QString& id : m_newsDismissedIds)
+        ids.append(id);
+    settings.setValue("news/dismissed", ids);
+    emit newsDismissedChanged();
+}
+
 bool AppViewModel::exportData(const QString& fileUrl)
 {
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
@@ -101,7 +130,6 @@ bool AppViewModel::importData(const QString& fileUrl)
                          QString::fromStdString(result.error()));
         return false;
     }
-    // Refresh the views that read from the now-changed collection.
     m_sidebarVM->reload();
     m_deckVM->reloadDecks();
     setStatusMessage(QStringLiteral("Import complete."));

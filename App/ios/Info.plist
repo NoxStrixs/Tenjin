@@ -47,8 +47,19 @@
         <integer>1</integer>
         <integer>2</integer>
     </array>
+
+    <!-- UILaunchScreen MUST be a non-empty dict for iOS to opt the app into
+         the modern launch-screen system and render at the device's native
+         screen resolution. An empty `<dict/>` made iOS fall back to legacy
+         compatibility scaling (the "cropped/shrunken" window symptom on
+         iPhone). The single UIImageRespectsSafeAreaInsets key is enough to
+         satisfy the requirement without needing an asset-catalog entry; we
+         can swap in a UIColorName / UIImageName once a launch asset lands. -->
     <key>UILaunchScreen</key>
-    <dict/>
+    <dict>
+        <key>UIImageRespectsSafeAreaInsets</key>
+        <true/>
+    </dict>
 
     <!-- Cross-device sync: Tenjin exports/imports its whole collection as JSON.
          These two keys make the app's Documents directory visible in the Files
