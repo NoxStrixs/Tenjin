@@ -1,19 +1,13 @@
 name: macOS build
 
-# Builds Tenjin for macOS on macos-14 and publishes an unsigned .dmg as a
-# Release asset. Same optimizations as the Linux pipeline:
-#
-#   - install-qt-action with cache → warm Qt restore in ~5s.
-#   - ccache caches object files across runs (clang + ccache integrates
-#     cleanly via the CMake LAUNCHER variables, same wiring as Linux).
-#   - Ninja for parallel builds.
-#   - Tests / benchmarks / sanitizers off → only ship code is built.
-#   - Concurrency group cancels in-flight runs on the same branch.
-#
-# Signing is intentionally not done in CI — adding an Apple Developer ID
-# requires a paid Apple account and a secret keychain in the runner. Run
-# `xcrun codesign --deep --force --sign "<your-identity>" Tenjin.app` locally
-# and re-zip into a .dmg if you need a signed build.
+# Builds Tenjin for macOS on macos-14 and publishes a .dmg as a Release asset.
+# Notes:
+#   - CMAKE_MACOSX_BUNDLE=ON is passed at configure time so qt_add_executable
+#     produces a .app bundle. Without it,
+#     qt_generate_deploy_qml_app_script (called from App/CMakeLists.txt)
+#     errors out with "Executable targets have to be app bundles".
+#   - Signing is intentionally not done in CI (requires an Apple Developer
+#     keychain secret); the built bundle is ad-hoc signed only.
 
 on:
   push:
@@ -58,8 +52,7 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode.app
 
       - name: Install Homebrew tools
-        run: |
-          brew install ninja ccache create-dmg
+        run: brew install ninja ccache create-dmg
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -90,6 +83,7 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DCMAKE_PREFIX_PATH="$QT_MAC" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="12.0" \
+            -DCMAKE_MACOSX_BUNDLE=ON \
             -DMEDIA_SUPPORT=OFF \
             -DWEBVIEW_SUPPORT=OFF \
             -DBUILD_TESTS=OFF \
@@ -110,21 +104,18 @@ jobs:
           APP=$(find build -name "$TENJIN_APP_NAME.app" -type d | head -n1)
           if [ -z "$APP" ]; then
             echo "::error::$TENJIN_APP_NAME.app not found in build/"
+            echo "All .app bundles:"
             find build -maxdepth 5 -name '*.app' -type d
             exit 1
           fi
           echo "TENJIN_APP_BUNDLE=$APP" >> "$GITHUB_ENV"
           echo "Bundle: $APP"
 
-      # macdeployqt bundles Qt frameworks/plugins into the .app so it can
-      # run on any macOS 12+ machine without a system Qt install.
       - name: macdeployqt
         run: |
           QT_MAC="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
           "$QT_MAC/bin/macdeployqt" "$TENJIN_APP_BUNDLE" -verbose=1 -always-overwrite
 
-      # Ad-hoc sign so dyld accepts the bundle on the user's machine without
-      # them having to drop quarantine attributes manually.
       - name: Ad-hoc codesign
         run: |
           codesign --force --deep --sign - --timestamp=none "$TENJIN_APP_BUNDLE"
@@ -144,8 +135,6 @@ jobs:
             --app-drop-link 425 180 \
             "$DMG" \
             "$(dirname $TENJIN_APP_BUNDLE)" || true
-          # create-dmg occasionally exits non-zero on the cleanup step even
-          # after successfully producing the .dmg. Verify the file exists.
           if [ ! -f "$DMG" ]; then
             echo "::error::.dmg not produced"
             exit 1

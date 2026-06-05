@@ -41,7 +41,6 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
             m_sidebarVM.get(),
             &SidebarViewModel::reload);
 
-    // Restore persisted user preferences.
     QSettings settings;
     m_theme               = settings.value("appearance/theme", 0).toInt();
     m_welcomeAcknowledged = settings.value("onboarding/welcomeAcknowledged", false).toBool();
@@ -55,14 +54,6 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
 
 void AppViewModel::loadBundledNews()
 {
-    // Bundled news. Replaced/augmented by refreshNews() once network fetch
-    // is wired in (which is gated on adding Qt6::Network to the ViewModels
-    // CMakeLists). Schema mirrors the future remote JSON one-for-one:
-    //   id     unique persistent id (used by dismissNews)
-    //   date   YYYY-MM-DD
-    //   title  short heading
-    //   body   plain-text body
-    //   popup  true → surface as a single-item popup on next launch
     auto make =
         [](const char* id, const char* date, const char* title, const char* body, bool popup) {
             QVariantMap m;
@@ -126,6 +117,14 @@ void AppViewModel::setWelcomeAcknowledged(bool acknowledged)
     emit welcomeAcknowledgedChanged();
 }
 
+void AppViewModel::setHighlightedTagId(int tagId)
+{
+    if (m_highlightedTagId == tagId)
+        return;
+    m_highlightedTagId = tagId;
+    emit highlightedTagIdChanged();
+}
+
 bool AppViewModel::isNewsDismissed(const QString& newsId) const
 {
     return m_newsDismissedIds.contains(newsId);
@@ -159,11 +158,10 @@ void AppViewModel::resetNewsDismissals()
 
 void AppViewModel::refreshNews(const QString& url)
 {
-    // Stub: network fetch isn't wired yet (the ViewModels module would need
-    // Qt6::Network added to its CMakeLists). The configured destination
-    // ("https://localhost" today) will be used once that lands. For now we
-    // just re-publish the bundled list so QML clients can wire refresh
-    // gestures without a behavioural change.
+    // Stub: real network fetch is blocked on adding Qt6::Network to the
+    // ViewModels CMakeLists. When that lands, this method will use a
+    // QNetworkAccessManager against the provided url ("https://localhost"
+    // for now) and merge / replace the bundled list on success.
     Q_UNUSED(url);
     loadBundledNews();
     emit newsItemsChanged();

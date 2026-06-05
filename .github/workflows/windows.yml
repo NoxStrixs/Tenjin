@@ -6,14 +6,10 @@ name: Windows build
 # Optimizations:
 #   - install-qt-action cache → warm Qt restore in ~5s.
 #   - sccache (Mozilla's Rust port of ccache, works with MSVC where ccache
-#     doesn't) caches object files via the CMake LAUNCHER variables.
-#   - Ninja generator for parallel builds.
+#     doesn't) via the CMAKE_*_COMPILER_LAUNCHER variables.
+#   - Ninja generator.
 #   - Single-config Release.
 #   - Concurrency group cancels in-flight runs on the same branch.
-#
-# We're using MSVC 2022 / x64 because that's what Qt 6.8.3 ships against by
-# default on the Windows host. MinGW alternative is doable but doubles the
-# install matrix; skipped here.
 
 on:
   push:
@@ -39,8 +35,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # PowerShell .env parser — same logic as the bash ones in linux.yml /
-      # macos.yml, rewritten for the Windows runner's default shell.
       - name: Load .env into environment
         shell: pwsh
         run: |
@@ -61,8 +55,6 @@ jobs:
             }
           }
 
-      # MSVC dev-cmd activation. install-qt-action will pick up the matching
-      # toolchain for arch win64_msvc2022_64.
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -70,8 +62,7 @@ jobs:
 
       - name: Install Ninja & sccache
         shell: pwsh
-        run: |
-          choco install -y ninja sccache
+        run: choco install -y ninja sccache
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -109,30 +100,48 @@ jobs:
             -DSANITIZERS="" `
             -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
 
-      - name: Build
+      - name: Build (verbose)
         shell: pwsh
         run: |
           sccache --start-server
           sccache --zero-stats
-          cmake --build build --config Release
+          # Verbose to surface any silent failures.
+          cmake --build build --config Release --verbose
           echo "===== sccache stats ====="
           sccache --show-stats
 
+      # Broader, case-insensitive exe search. The previous narrow `-Filter`
+      # only matched in the immediate output dir; CMake on Windows often
+      # nests the binary under build\App\ or build\App\Release\. Walk the
+      # whole build tree, skip CMake's compiler-id probe binaries, and dump
+      # everything found for diagnostics.
       - name: Locate built binary
         shell: pwsh
         run: |
-          $exe = Get-ChildItem -Path build -Recurse -Filter "$env:TENJIN_APP_NAME.exe" | Select-Object -First 1
+          Write-Host "===== all .exe files under build/ ====="
+          $allExe = Get-ChildItem -Path build -Recurse -Filter '*.exe' -File -ErrorAction SilentlyContinue
+          $allExe | ForEach-Object { Write-Host "  $($_.FullName)  ($([math]::Round($_.Length/1KB, 1)) KB)" }
+
+          # Try several patterns, most specific first.
+          $candidates = @(
+            @{ Filter = "$env:TENJIN_APP_NAME.exe"; Description = "exact match by name" },
+            @{ Filter = "*Tenjin*.exe";             Description = "fuzzy Tenjin match" }
+          )
+          $exe = $null
+          foreach ($c in $candidates) {
+            $found = $allExe | Where-Object { $_.Name -ilike $c.Filter -and $_.FullName -notmatch 'CompilerId|CMakeFiles\\3' } | Select-Object -First 1
+            if ($found) {
+              Write-Host "Matched via: $($c.Description) → $($found.FullName)"
+              $exe = $found
+              break
+            }
+          }
           if (-not $exe) {
-            Write-Host "::error::$env:TENJIN_APP_NAME.exe not found in build/"
-            Get-ChildItem -Path build -Recurse -Filter "*.exe" | Select-Object -First 20
+            Write-Host "::error::No Tenjin executable found in build tree"
             exit 1
           }
-          $exePath = $exe.FullName
-          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_EXE=$exePath"
-          Write-Host "Binary: $exePath"
+          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_EXE=$($exe.FullName)"
 
-      # windeployqt copies the Qt runtime DLLs + plugins next to the .exe so
-      # the bundle is self-contained.
       - name: windeployqt
         shell: pwsh
         run: |
@@ -143,6 +152,7 @@ jobs:
           & "$QT_WIN\bin\windeployqt.exe" --release --no-translations `
               --no-system-d3d-compiler --no-opengl-sw `
               "$stage\$env:TENJIN_APP_NAME.exe"
+          Write-Host "===== staged ====="
           Get-ChildItem -Path $stage | Select-Object -First 30
           Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_STAGE=$stage"
 

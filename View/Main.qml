@@ -7,17 +7,15 @@ import QtQuick.Dialogs
 ApplicationWindow {
     id: root
     visible: true
-    // Oversized constants on mobile — the OS clamps these to the actual
-    // device screen, never the other way around. Combined with the
-    // Info.plist UILaunchScreen fix this makes iOS render full-screen.
+    // Mobile: oversized constants — with the Info_plist.in UILaunchScreen
+    // fix in place iOS now reports the real native resolution to QQuickView
+    // and clamps these down. Combined with visibility:FullScreen below.
     width:  Platform.isMobile ? 1080 : 1280
     height: Platform.isMobile ? 1920 : 820
     minimumWidth:  Platform.isMobile ? 0 : Platform.minWindowWidth
     minimumHeight: Platform.isMobile ? 0 : Platform.minWindowHeight
     title: "Tenjin"
     color: Platform.bg
-
-    // Force fullscreen on mobile so iOS / Android render edge-to-edge.
     // 1 = AutomaticVisibility, 5 = FullScreen (Window visibility enum ints).
     visibility: Platform.isMobile ? 5 : 1
 
@@ -29,10 +27,8 @@ ApplicationWindow {
     readonly property int _pageNews:     4
     readonly property int _pageSettings: 5
 
-    // ── Callbacks exposed to pages (SettingsPage, etc.) ────────────────────
-    // Pages instantiated inside the StackLayout don't have direct ids on the
-    // popups / dialogs that live on this ApplicationWindow. Routing through
-    // these helpers keeps the page files standalone.
+    // Callbacks exposed to pages (SettingsPage in particular) so they can
+    // reach window-scoped helpers without ids.
     function openWelcomePopup() {
         welcomePopup.step = 0
         welcomePopup.open()
@@ -41,8 +37,8 @@ ApplicationWindow {
     function openExportDialog() { exportDialog.open() }
 
     // Surfaces the first news item flagged popup=true that the user hasn't
-    // yet dismissed. Called after the welcome carousel finishes (or right
-    // at startup if welcome was already acknowledged on a prior launch).
+    // yet dismissed. Run after welcome flow (or at startup if welcome was
+    // already acknowledged on a prior launch).
     function _showNextNewsPopup() {
         const items = appVM.newsItems
         for (let i = 0; i < items.length; i++) {
@@ -57,6 +53,17 @@ ApplicationWindow {
 
     Component.onCompleted: {
         Platform.theme = appVM.theme
+        // Belt and suspenders for mobile fullscreen: after Qt's iOS bootstrap
+        // has reported a real screen size, resize the QML window to match
+        // it. The Info_plist.in fix should be sufficient on its own, but
+        // this catches edge cases where ApplicationWindow's defaults stick.
+        if (Platform.isMobile && Qt.application.screens.length > 0) {
+            const s = Qt.application.screens[0]
+            if (s.size && s.size.width > 0 && s.size.height > 0) {
+                width  = s.size.width
+                height = s.size.height
+            }
+        }
         if (!appVM.welcomeAcknowledged)
             welcomePopup.open()
         else
@@ -105,8 +112,7 @@ ApplicationWindow {
                 }
             }
 
-            // App icon badge — placeholder, replace with Image once a real
-            // asset is wired through the View QML module.
+            // App icon badge — clickable, returns to Words page.
             Rectangle {
                 id: appBadge
                 Layout.preferredWidth: 30
@@ -115,7 +121,7 @@ ApplicationWindow {
                 color: Platform.accent
                 Text {
                     anchors.centerIn: parent
-                    text: "\u5929" // 天
+                    text: "\u5929"
                     color: Platform.bg
                     font.pixelSize: 19
                     font.bold: true
@@ -124,8 +130,6 @@ ApplicationWindow {
                 ToolTip.visible: badgeHover.hovered
                 ToolTip.text: "Tenjin"
                 ToolTip.delay: 500
-                // Tapping the badge returns to the Words page — same as most
-                // mobile/desktop app conventions for "home" affordances.
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
@@ -135,20 +139,27 @@ ApplicationWindow {
 
             Item { Layout.fillWidth: true }
 
-            SearchBox {
-                visible: appVM.currentPage === root._pageWords
-                parentWidth: root.width
-            }
+            // Universal search — searches words, tags, and decks. Always
+            // visible (not gated on page), since results from each kind
+            // route to the matching destination.
+            SearchBox { parentWidth: root.width }
 
-            // About — still a hover popup, since it's a small info card,
-            // not a destination.
+            // About — hover popup with version info.
             IconBtn {
                 id: aboutBtn
                 glyph: "\u24D8"
                 onActivated: aboutPopup.open()
                 onHoveredChanged: hovered ? aboutPopup.open() : aboutPopup.close()
             }
-            // Help / News / Settings now navigate to top-level pages.
+            // Tags — top-level destination, same affordance pattern as
+            // Help/News/Settings below. The "#" glyph is more reliable
+            // across desktop fonts than the 🏷️ emoji.
+            IconBtn {
+                id: tagsBtn
+                glyph: "#"
+                active: appVM.currentPage === root._pageTags
+                onActivated: appVM.currentPage = root._pageTags
+            }
             IconBtn {
                 id: helpBtn
                 glyph: "?"
@@ -180,7 +191,8 @@ ApplicationWindow {
             }
         }
 
-        // Mobile header
+        // Mobile header — drawer toggle, search box (now universal), and
+        // the contextual + Add button (only on content pages).
         RowLayout {
             anchors { fill: parent; leftMargin: 12; rightMargin: 12; topMargin: Platform.safeAreaTop }
             spacing: 10
@@ -207,28 +219,14 @@ ApplicationWindow {
                 }
             }
 
-            // Mobile page title for non-Words pages
-            Text {
-                visible: appVM.currentPage !== root._pageWords
-                text: appVM.currentPage === root._pageDecks    ? "Decks"
-                    : appVM.currentPage === root._pageTags     ? "Tags"
-                    : appVM.currentPage === root._pageHelp     ? "Help"
-                    : appVM.currentPage === root._pageNews     ? "News"
-                    : appVM.currentPage === root._pageSettings ? "Settings"
-                                                                : ""
-                color: Platform.textPrimary
-                font.pixelSize: Platform.fontLarge
-                font.bold: true
-            }
-
+            // Universal search — always visible. Replaces the previous
+            // "page title" slot on non-Words pages since the drawer already
+            // indicates which page is active.
             SearchBox {
-                visible: appVM.currentPage === root._pageWords
                 parentWidth: root.width
-                dropdownEnabled: false
+                dropdownEnabled: true
                 Layout.fillWidth: true
             }
-
-            Item { Layout.fillWidth: true; visible: appVM.currentPage !== root._pageWords }
 
             // Add button — only relevant on the content pages.
             Rectangle {
@@ -245,7 +243,7 @@ ApplicationWindow {
                     anchors.centerIn: parent
                     text: appVM.currentPage === root._pageWords ? "+ Word"
                         : appVM.currentPage === root._pageDecks ? "+ Deck"
-                        : "+ Tag"
+                                                                 : "+ Tag"
                     color: Platform.bg
                     font.pixelSize: Platform.fontBase
                     font.bold: true
@@ -265,7 +263,7 @@ ApplicationWindow {
         }
     }
 
-    // ── About popup (hover, small info card) ───────────────────────────────
+    // ── About popup (hover) ────────────────────────────────────────────────
     Popup {
         id: aboutPopup
         parent: aboutBtn
@@ -485,10 +483,7 @@ ApplicationWindow {
         y: parent ? Math.max(Platform.safeAreaTop + 8, (parent.height - height) / 2) : 8
 
         property var currentItem: null
-        function finish() {
-            if (currentItem) appVM.dismissNews(currentItem.id)
-            close()
-        }
+        function finish() { if (currentItem) appVM.dismissNews(currentItem.id); close() }
         background: Rectangle {
             color: Platform.surface
             radius: Platform.radiusLarge
@@ -559,10 +554,7 @@ ApplicationWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            newsLaunchPopup.close()
-                            appVM.currentPage = root._pageNews
-                        }
+                        onClicked: { newsLaunchPopup.close(); appVM.currentPage = root._pageNews }
                     }
                 }
                 Item { Layout.fillWidth: true }
@@ -604,8 +596,6 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        // Sidebar — only shown for the content pages, not for the utility
-        // destinations (Help / News / Settings).
         Sidebar {
             visible: !Platform.isMobile && !appVM.sidebarVM.collapsed && appVM.currentPage <= root._pageTags
             Layout.preferredWidth: Platform.sidebarWidth
@@ -626,7 +616,7 @@ ApplicationWindow {
             currentIndex: appVM.currentPage
             EntryPage    {}
             DeckListPage {}
-            TagsPage     {}
+            TagsPage     { onAddTagRequested: addTagDialog.open() }
             HelpPage     {}
             NewsPage     {}
             SettingsPage { applicationRoot: root }
@@ -706,7 +696,7 @@ ApplicationWindow {
         }
     }
 
-    // Debug console — unchanged structurally from previous batch.
+    // Debug drawer
     Rectangle {
         id: debugDrawer
         visible: false

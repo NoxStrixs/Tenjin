@@ -26,6 +26,13 @@ class AppViewModel : public QObject
     Q_PROPERTY(QVariantList newsItems READ newsItems NOTIFY newsItemsChanged)
     Q_PROPERTY(QString appDataLocation READ appDataLocation CONSTANT)
 
+    // Tag id that the universal search asked the Tags page to highlight.
+    // -1 = no highlight active. TagsPage can bind to this and briefly
+    // outline / scroll-to the matching tag chip. Cleared automatically by
+    // a write of -1 from the page once it acknowledges the request.
+    Q_PROPERTY(int highlightedTagId READ highlightedTagId WRITE setHighlightedTagId NOTIFY
+                   highlightedTagIdChanged)
+
     Q_PROPERTY(EntryViewModel* entryVM READ entryVM CONSTANT)
     Q_PROPERTY(DeckViewModel* deckVM READ deckVM CONSTANT)
     Q_PROPERTY(SidebarViewModel* sidebarVM READ sidebarVM CONSTANT)
@@ -33,9 +40,6 @@ class AppViewModel : public QObject
     Q_PROPERTY(bool webEngineAvailable READ webEngineAvailable CONSTANT)
 
 public:
-    // Page enum drives Main.qml's top-level StackLayout. The first three are
-    // the content pages (each backed by a list / detail flow); the last three
-    // are utility pages reachable from the header or mobile drawer.
     enum Page_t {
         PageWords    = 0,
         PageDecks    = 1,
@@ -69,6 +73,10 @@ public:
         return m_newsItems;
     }
     QString appDataLocation() const;
+    int     highlightedTagId() const
+    {
+        return m_highlightedTagId;
+    }
 
     EntryViewModel* entryVM() const
     {
@@ -97,17 +105,9 @@ public:
 
     Q_INVOKABLE QString renderFormula(const QString& latex) const;
 
-    // News item dismissal — id of any news item the user has acknowledged via
-    // its on-launch popup is persisted to QSettings so it never popups again.
-    // The full news list is still browsable from the News page at any time.
     Q_INVOKABLE bool isNewsDismissed(const QString& newsId) const;
     Q_INVOKABLE void dismissNews(const QString& newsId);
     Q_INVOKABLE void resetNewsDismissals();
-
-    // News fetch stub. Network fetching against the provided URL will be
-    // wired in a follow-up batch (requires Qt6::Network in the ViewModels
-    // CMakeLists). For now this just emits newsItemsChanged so QML refreshes
-    // bindings; bundled defaults from the constructor remain in effect.
     Q_INVOKABLE void refreshNews(const QString& url = QString());
 
 public slots:
@@ -115,6 +115,7 @@ public slots:
     void setStatusMessage(const QString& msg);
     void setTheme(int theme);
     void setWelcomeAcknowledged(bool acknowledged);
+    void setHighlightedTagId(int tagId);
 
 public:
     Q_INVOKABLE bool exportData(const QString& fileUrl);
@@ -127,6 +128,7 @@ signals:
     void welcomeAcknowledgedChanged();
     void newsDismissedChanged();
     void newsItemsChanged();
+    void highlightedTagIdChanged();
 
 private:
     void loadBundledNews();
@@ -137,6 +139,7 @@ private:
     bool          m_welcomeAcknowledged = false;
     QSet<QString> m_newsDismissedIds;
     QVariantList  m_newsItems;
+    int           m_highlightedTagId = -1;
 
     std::shared_ptr<Service::EntryService> m_entryService;
     std::shared_ptr<Service::DeckService>  m_deckService;

@@ -16,7 +16,10 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        // Mode tabs: Words | Tags | Decks
+        // Mode tabs: Words | Decks. Tags are unified into the standalone
+        // Tags page (reached from the header / mobile drawer / universal
+        // search); the previous in-sidebar tag tree was a duplicate of
+        // that page and was confusing to keep in sync.
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 38
@@ -28,9 +31,9 @@ Rectangle {
             Row {
                 anchors.fill: parent
                 Repeater {
-                    model: ["Words", "Tags", "Decks"]
+                    model: ["Words", "Decks"]
                     Rectangle {
-                        width: parent.width / 3
+                        width: parent.width / 2
                         height: 38
                         color: tabHover.containsMouse && !active ? Platform.surfaceAlt : "transparent"
                         property bool active: sidebarMode === index
@@ -56,8 +59,8 @@ Rectangle {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 sidebarMode = index
-                                // Words/Tags → Words page (0), Decks → Decks page (1).
-                                appVM.currentPage = (index === 2) ? 1 : 0
+                                // Mode 0 → Words page (0), mode 1 → Decks page (1).
+                                appVM.currentPage = index
                             }
                         }
                     }
@@ -65,26 +68,9 @@ Rectangle {
             }
         }
 
-        // Filter input
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 34
-            color: Platform.bg
-            Rectangle {
-                anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                height: 1; color: filterInput.activeFocus ? Platform.accent : Platform.border
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-            }
-            TextField {
-                id: filterInput
-                anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
-                placeholderText: "Filter…"
-                font.pixelSize: 12
-                color: Platform.textPrimary
-                background: Rectangle { color: "transparent" }
-                onTextChanged: appVM.sidebarVM.filterText = text
-            }
-        }
+        // Filter input removed — the header SearchBox is now the universal
+        // search across words, tags, and decks. Sidebar list is shown in
+        // full and filtered only by the global tag-filter popup.
 
         // Add button
         Rectangle {
@@ -107,7 +93,7 @@ Rectangle {
                 Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
                 Text {
                     anchors.centerIn: parent
-                    text: sidebarMode === 0 ? "+ Word" : sidebarMode === 1 ? "+ Tag" : "+ Deck"
+                    text: sidebarMode === 0 ? "+ Word" : "+ Deck"
                     color: Platform.bg
                     font.pixelSize: 12
                     font.bold: true
@@ -119,7 +105,6 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (sidebarMode === 0) sidebarRoot.addEntryRequested()
-                        else if (sidebarMode === 1) sidebarRoot.addTagRequested()
                         else sidebarRoot.addDeckRequested()
                     }
                 }
@@ -245,78 +230,10 @@ Rectangle {
             }
             }
 
-            // Tags (tree: tag → words).
-            // Creation is via the "+ Tag" button above, matching the word/deck pattern.
-            ColumnLayout {
-                spacing: 6
-
-                ListView {
-                    id: tagListView
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    model: appVM.sidebarVM.model
-
-                    delegate: Rectangle {
-                        width: ListView.view.width
-                        height: 38
-                        color: rowHover.hovered ? Platform.surfaceAlt : "transparent"
-
-                        HoverHandler { id: rowHover }
-
-                        RowLayout {
-                            anchors { fill: parent; leftMargin: model.isTag ? 10 : 22; rightMargin: 8 }
-                            spacing: 6
-                            Text {
-                                visible: model.isTag
-                                text: model.expanded ? "▾" : "▸"
-                                color: Platform.textMuted
-                                font.pixelSize: 10
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                text: model.itemName
-                                font.pixelSize: model.isTag ? 12 : 13
-                                font.bold: model.isTag
-                                color: model.isTag ? Platform.accent : Platform.textPrimary
-                                elide: Text.ElideRight
-                            }
-                            // Delete tag (global), only on tag rows, on hover.
-                            Text {
-                                visible: model.isTag && rowHover.hovered
-                                text: "\u2715"
-                                color: delTagArea.containsMouse ? Platform.danger : Platform.textMuted
-                                font.pixelSize: Platform.fontBase
-                                MouseArea {
-                                    id: delTagArea
-                                    anchors.fill: parent
-                                    anchors.margins: -6
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: appVM.entryVM.deleteTag(model.itemId)
-                                }
-                            }
-                        }
-                        Rectangle {
-                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                            height: 1; color: Platform.border; opacity: 0.4
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            z: -1
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (model.isTag)
-                                    appVM.sidebarVM.model.toggleExpanded(index)
-                                else {
-                                    appVM.entryVM.selectEntry(model.itemId)
-                                    appVM.currentPage = 0
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            // Tags removed — TagsPage is the canonical tag UI. The previous
+            // expandable tag → word tree here duplicated TagsPage and drifted
+            // out of sync with it; universal search + the standalone page
+            // cover the same affordances with one source of truth.
 
             // Decks
             ListView {
@@ -409,6 +326,60 @@ Rectangle {
                     font.pixelSize: 12
                     horizontalAlignment: Text.AlignHCenter
                 }
+            }
+        }
+
+        // Tags shortcut — leads to the Tags page (the canonical tag UI).
+        // Lives above Import/Export so the most-used navigation control is
+        // closer to the lists.
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 38
+            color: Platform.surface
+            Rectangle {
+                anchors { left: parent.left; right: parent.right; top: parent.top }
+                height: 1; color: Platform.border
+            }
+            readonly property bool _active: appVM.currentPage === 2
+            Rectangle {
+                anchors.fill: parent
+                color: tagsShortcutArea.containsMouse || parent._active ? Platform.surfaceAlt : "transparent"
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+            }
+            // Active-indicator bar on the left when the Tags page is open.
+            Rectangle {
+                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                width: 3
+                color: parent._active ? Platform.accent : "transparent"
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+            }
+            RowLayout {
+                anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
+                spacing: 10
+                Text {
+                    text: "\uD83C\uDFF7\uFE0F"
+                    font.pixelSize: 14
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: "Manage tags"
+                    color: parent.parent._active ? Platform.accent : Platform.textPrimary
+                    font.pixelSize: 12
+                    font.bold: parent.parent._active
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                }
+                Text {
+                    text: "\u203A"
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontLarge
+                }
+            }
+            MouseArea {
+                id: tagsShortcutArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: appVM.currentPage = 2  // PageTags
             }
         }
 

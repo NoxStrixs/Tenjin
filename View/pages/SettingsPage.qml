@@ -6,24 +6,20 @@ import QtQuick.Layouts
 // Top-level Settings destination. Replaces the previous inline settingsPopup
 // in Main.qml. Driven by appVM.currentPage === PageSettings (=5).
 //
-// The page is a single scrollable column of "sections". Each section has a
-// muted-uppercase heading and one or more clickable rows; row layout is
-// inlined per-row rather than extracted to a helper component, so this file
-// stays self-contained (no new QML_FILES entries beyond SettingsPage.qml,
-// HelpPage.qml, NewsPage.qml in the View module).
+// applicationRoot is an ApplicationWindow (not a QQuickItem), so the
+// property type must be `var` — the Windows QML compiler is stricter than
+// the Linux/macOS one and refuses to assign Window to Item even at runtime.
 Item {
     id: settingsRoot
 
-    // applicationRoot is bound by Main.qml so this page can call back into
-    // ApplicationWindow-scoped helpers (file dialogs, welcome popup) without
-    // needing direct ids.
-    property Item applicationRoot: null
+    // ApplicationWindow injected by Main.qml so this page can call back to
+    // window-scoped helpers (file dialogs, welcome popup) without ids.
+    property var applicationRoot: null
 
     function _openWelcome()  { if (applicationRoot && applicationRoot.openWelcomePopup) applicationRoot.openWelcomePopup() }
     function _openImport()   { if (applicationRoot && applicationRoot.openImportDialog) applicationRoot.openImportDialog() }
     function _openExport()   { if (applicationRoot && applicationRoot.openExportDialog) applicationRoot.openExportDialog() }
 
-    // Compact helper: a section header.
     component SectionHeader: Text {
         Layout.fillWidth: true
         Layout.leftMargin: Platform.spacingLg
@@ -33,8 +29,6 @@ Item {
         font.pixelSize: Platform.fontSmall
         font.bold: true
     }
-
-    // Divider line between rows / sections.
     component SectionDivider: Rectangle {
         Layout.fillWidth: true
         Layout.preferredHeight: 1
@@ -67,7 +61,6 @@ Item {
             // ── Appearance ──────────────────────────────────────────────────
             SectionHeader { text: "Appearance" }
 
-            // Theme row
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 16
@@ -83,7 +76,6 @@ Item {
                         Text { text: "Theme"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
                         Text { text: Platform.isDark ? "Dark" : "Light"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
-                    // Toggle pill
                     Rectangle {
                         Layout.preferredWidth: 52
                         Layout.preferredHeight: 28
@@ -107,13 +99,10 @@ Item {
                     onClicked: appVM.setTheme(Platform.isDark ? 0 : 1)
                 }
             }
-
             SectionDivider {}
 
             // ── Language ────────────────────────────────────────────────────
             SectionHeader { text: "Language" }
-
-            // Locked language row (single option for now)
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 16
@@ -131,13 +120,10 @@ Item {
                     }
                 }
             }
-
             SectionDivider {}
 
             // ── Onboarding ──────────────────────────────────────────────────
             SectionHeader { text: "Onboarding" }
-
-            // Show welcome again
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 16
@@ -163,8 +149,6 @@ Item {
                     onClicked: { appVM.setWelcomeAcknowledged(false); settingsRoot._openWelcome() }
                 }
             }
-
-            // Reset news popups
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 16
@@ -187,19 +171,13 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        appVM.resetNewsDismissals()
-                        appVM.statusMessage = "News popups will reappear on next launch."
-                    }
+                    onClicked: { appVM.resetNewsDismissals(); appVM.statusMessage = "News popups will reappear on next launch." }
                 }
             }
-
             SectionDivider {}
 
             // ── Data ────────────────────────────────────────────────────────
             SectionHeader { text: "Data" }
-
-            // Import
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 16
@@ -217,16 +195,8 @@ Item {
                     }
                     Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
-                MouseArea {
-                    id: importArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: settingsRoot._openImport()
-                }
+                MouseArea { id: importArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settingsRoot._openImport() }
             }
-
-            // Export
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 16
@@ -244,16 +214,8 @@ Item {
                     }
                     Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
-                MouseArea {
-                    id: exportArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: settingsRoot._openExport()
-                }
+                MouseArea { id: exportArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settingsRoot._openExport() }
             }
-
-            // App data location (read-only)
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: dataPathRow.implicitHeight + Platform.spacingMd * 2

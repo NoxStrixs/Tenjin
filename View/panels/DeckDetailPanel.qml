@@ -216,42 +216,183 @@ Item {
 
         // Word list
         ListView {
+            id: deckWordList
             Layout.fillWidth: true
             Layout.fillHeight: true
             model: appVM.deckVM.deckWords
-            clip: true; spacing: 2
+            clip: true
+            spacing: 6
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+            // Header row — count + "tap to open" hint. Hidden when empty.
+            header: Item {
+                width: deckWordList.width
+                height: deckWordList.count > 0 ? Platform.touchTarget * 0.8 : 0
+                visible: deckWordList.count > 0
+                RowLayout {
+                    anchors { fill: parent; leftMargin: 4; rightMargin: 4 }
+                    spacing: 8
+                    Text {
+                        Layout.fillWidth: true
+                        text: deckWordList.count + (deckWordList.count === 1 ? " word" : " words")
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontSmall
+                    }
+                    Text {
+                        text: "Tap a word to open it"
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontSmall
+                        font.italic: true
+                    }
+                }
+            }
 
             delegate: ItemDelegate {
                 id: wd
                 required property var modelData
+                required property int index
                 width: ListView.view.width
-                implicitHeight: Platform.touchTarget
+                implicitHeight: Platform.touchTarget + 16
+
+                readonly property bool _selected: appVM.entryVM.selectedEntryId === wd.modelData.id
+
+                background: Rectangle {
+                    radius: Platform.radius
+                    color: wd._selected ? Platform.surfaceAlt
+                         : wd.hovered  ? Qt.rgba(Platform.surfaceAlt.r, Platform.surfaceAlt.g, Platform.surfaceAlt.b, 0.6)
+                                         : Platform.surface
+                    border.color: wd._selected ? Platform.accent
+                                : wd.hovered  ? Platform.accent
+                                                 : Platform.border
+                    border.width: wd._selected ? 2 : 1
+                    Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on border.width { NumberAnimation { duration: Platform.durationFast } }
+                }
+
+                // Subtle hover lift on desktop.
+                transform: Translate {
+                    y: wd.hovered ? -1 : 0
+                    Behavior on y { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                }
+
+                scale: wd.pressed ? 0.99 : 1.0
+                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
 
                 contentItem: RowLayout {
-                    Text { Layout.fillWidth: true; text: wd.modelData.word; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
-                    // Manual decks can remove; smart decks are computed.
-                    ToolButton {
-                        id: rmBtn
+                    spacing: 10
+
+                    // Position marker — small index pill so users can see
+                    // the deck order at a glance.
+                    Rectangle {
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.leftMargin: 8
+                        implicitWidth: 28
+                        implicitHeight: 22
+                        radius: 11
+                        color: wd._selected ? Platform.accent : Platform.surfaceAlt
+                        border.color: Platform.border
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Text {
+                            anchors.centerIn: parent
+                            text: (wd.index + 1) + ""
+                            color: wd._selected ? Platform.bg : Platform.textMuted
+                            font.pixelSize: Platform.fontSmall
+                            font.bold: true
+                        }
+                    }
+
+                    // Word text — primary affordance.
+                    Text {
+                        Layout.fillWidth: true
+                        text: wd.modelData.word
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontLarge
+                        font.bold: wd._selected
+                        elide: Text.ElideRight
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    // Chevron — affordance for "tap opens the word".
+                    Text {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "\u203A"
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontTitle
+                        rightPadding: 4
+                        opacity: wd.hovered ? 1.0 : 0.45
+                        Behavior on opacity { NumberAnimation { duration: Platform.durationFast } }
+                    }
+
+                    // Remove control — manual decks only. Compact circular
+                    // button that turns danger-red on hover so accidental
+                    // taps are unlikely.
+                    Rectangle {
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.rightMargin: 6
                         visible: !appVM.deckVM.selectedDeckIsSmart
-                        text: "✕"
-                        implicitWidth: Platform.touchTarget; implicitHeight: Platform.touchTarget
-                        contentItem: Text { text: rmBtn.text; color: Platform.danger; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                        onClicked: appVM.deckVM.removeWordFromDeck(appVM.deckVM.selectedDeckId, wd.modelData.id)
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        radius: 15
+                        color: rmArea.containsMouse ? Platform.danger : "transparent"
+                        border.color: rmArea.containsMouse ? Platform.danger : Platform.border
+                        border.width: 1
+                        Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                        Text {
+                            anchors.centerIn: parent
+                            text: "\u2715"
+                            color: rmArea.containsMouse ? Platform.textOnDark : Platform.textMuted
+                            font.pixelSize: Platform.fontBase
+                            font.bold: true
+                            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        }
+                        MouseArea {
+                            id: rmArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            // Stop propagation so the row's tap-to-open
+                            // doesn't fire underneath.
+                            preventStealing: true
+                            onClicked: appVM.deckVM.removeWordFromDeck(appVM.deckVM.selectedDeckId, wd.modelData.id)
+                        }
                     }
                 }
-                background: Rectangle { color: hovered ? Platform.surfaceAlt : "transparent"; radius: Platform.radius - 2 }
+
                 onClicked: { appVM.entryVM.selectEntry(wd.modelData.id); appVM.currentPage = 0 }
             }
 
-            Text {
+            // Empty state — large icon + helpful prompt.
+            Column {
                 anchors.centerIn: parent
-                visible: parent.count === 0
-                text: appVM.deckVM.selectedDeckIsSmart
-                      ? "No words match these tag filters yet."
-                      : "No words yet — use + Add word."
-                color: Platform.textMuted; font.pixelSize: Platform.fontBase
-                horizontalAlignment: Text.AlignHCenter
-                width: parent.width - 40; wrapMode: Text.WordWrap
+                visible: deckWordList.count === 0
+                spacing: 12
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: appVM.deckVM.selectedDeckIsSmart ? "\u2728" : "\uD83D\uDCD6"
+                    font.pixelSize: 52
+                    color: Platform.textMuted
+                }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: appVM.deckVM.selectedDeckIsSmart
+                          ? "No words match these tag filters yet."
+                          : "No words yet."
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontLarge
+                    horizontalAlignment: Text.AlignHCenter
+                }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: !appVM.deckVM.selectedDeckIsSmart
+                    text: "Use + Add word to populate this deck."
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontBase
+                    horizontalAlignment: Text.AlignHCenter
+                }
             }
         }
     }
@@ -262,4 +403,5 @@ Item {
         onConfirmed: appVM.deckVM.deleteDeck(appVM.deckVM.selectedDeckId)
     }
 }
+
 

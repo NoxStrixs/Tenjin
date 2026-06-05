@@ -7,13 +7,13 @@
     <key>CFBundleExecutable</key>
     <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
     <key>CFBundleIdentifier</key>
-    <string>app.tenjin.Tenjin</string>
+    <string>@TENJIN_BUNDLE_ID@</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Tenjin</string>
+    <string>@TENJIN_APP_NAME@</string>
     <key>CFBundleDisplayName</key>
-    <string>Tenjin</string>
+    <string>@TENJIN_APP_DISPLAY_NAME@</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -21,8 +21,8 @@
     <key>CFBundleVersion</key>
     <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
 
-    <!-- The asset catalog (Assets.xcassets/AppIcon.appiconset) is
-         compiled by Xcode and produces the actual icon files. -->
+    <!-- App icon — Xcode compiles the asset catalog (Assets.xcassets /
+         AppIcon.appiconset) into the actual icon files. -->
     <key>CFBundleIconName</key>
     <string>AppIcon</string>
     <key>CFBundleIcons</key>
@@ -37,7 +37,7 @@
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>MinimumOSVersion</key>
-    <string>16.0</string>
+    <string>@TENJIN_IOS_DEPLOYMENT_TARGET@</string>
     <key>CFBundleSupportedPlatforms</key>
     <array>
         <string>iPhoneOS</string>
@@ -50,27 +50,27 @@
 
     <!-- UILaunchScreen MUST be a non-empty dict for iOS to opt the app into
          the modern launch-screen system and render at the device's native
-         screen resolution. An empty `<dict/>` made iOS fall back to legacy
-         compatibility scaling (the "cropped/shrunken" window symptom on
-         iPhone). The single UIImageRespectsSafeAreaInsets key is enough to
-         satisfy the requirement without needing an asset-catalog entry; we
-         can swap in a UIColorName / UIImageName once a launch asset lands. -->
+         screen resolution. An absent or empty `<dict/>` makes iOS fall back
+         to legacy compatibility scaling — that's the "letterboxed /
+         cropped" symptom you've been seeing on the physical iPhone. The
+         single UIImageRespectsSafeAreaInsets key is enough to satisfy the
+         requirement without needing an asset-catalog entry; we can swap in
+         a UIColorName / UIImageName once a real launch asset lands. -->
     <key>UILaunchScreen</key>
     <dict>
         <key>UIImageRespectsSafeAreaInsets</key>
         <true/>
     </dict>
 
-    <!-- Cross-device sync: Tenjin exports/imports its whole collection as JSON.
-         These two keys make the app's Documents directory visible in the Files
-         app and in Finder/iTunes file sharing, so the user can actually move
-         the export file on/off the device. -->
+    <!-- Cross-device sync — Tenjin exports/imports its whole collection as
+         JSON. These two keys make the app's Documents directory visible in
+         the Files app and in Finder file sharing. -->
     <key>UIFileSharingEnabled</key>
     <true/>
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
 
-    <!-- Set "Open in" target for .json export files. -->
+    <!-- "Open in" target for .json export files. -->
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>
@@ -85,10 +85,9 @@
         </dict>
     </array>
 
-    <!-- QtMultimedia / media access usage strings. iOS terminates the app if a
-         protected-resource API is touched without these present. Playback of
-         bundled/local media doesn't always need them, but having them avoids
-         hard crashes if a media path probes the photo library, mic, or camera. -->
+    <!-- QtMultimedia / media access usage strings. iOS terminates the app
+         if any protected-resource API is touched without these present —
+         even local-file playback can probe these. -->
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Tenjin can attach images and videos to your word cards.</string>
     <key>NSMicrophoneUsageDescription</key>
@@ -96,8 +95,8 @@
     <key>NSAppleMusicUsageDescription</key>
     <string>Tenjin can play audio attached to your cards.</string>
 
-    <!-- Declares the app uses no non-exempt encryption, so neither AltStore nor
-         App Store Connect prompts an export-compliance question on each upload. -->
+    <!-- No non-exempt encryption — skips the export-compliance prompt on
+         every TestFlight upload. -->
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
 
