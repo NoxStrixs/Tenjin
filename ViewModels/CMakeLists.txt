@@ -44,6 +44,7 @@ target_include_directories(TenjinViewModels PUBLIC
 target_link_libraries(TenjinViewModels
     PUBLIC   Qt6::Core
              Qt6::Qml
+             Qt6::Network
              EntryService
              DeckService
     PRIVATE  tenjin_warnings

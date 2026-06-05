@@ -34,6 +34,7 @@ Item {
         radius: Platform.radius
         border.color: searchField.activeFocus ? Platform.accent : Platform.border
         border.width: 1
+        Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
 
         RowLayout {
             anchors { fill: parent; leftMargin: 10; rightMargin: 6 }
@@ -64,6 +65,7 @@ Item {
                 text: "\u2715"
                 color: clearArea.containsMouse ? Platform.textPrimary : Platform.textMuted
                 font.pixelSize: Platform.fontBase
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 MouseArea {
                     id: clearArea
                     anchors.fill: parent
@@ -205,6 +207,7 @@ Item {
         }
     }
 }
+
 
 
 

@@ -13,6 +13,7 @@
 #include <QStandardPaths>
 #include <QStringList>
 #include <QUrl>
+#include <QVariantMap>
 
 AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
 {
@@ -45,12 +46,50 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
     m_theme               = settings.value("appearance/theme", 0).toInt();
     m_welcomeAcknowledged = settings.value("onboarding/welcomeAcknowledged", false).toBool();
 
-    // News dismissal — stored as a QStringList. QSettings serializes it as a
-    // comma-separated string on disk; loading round-trips back to a list. We
-    // keep it in-memory as a QSet for O(1) membership checks.
     const QStringList ids = settings.value("news/dismissed").toStringList();
     for (const QString& id : ids)
         m_newsDismissedIds.insert(id);
+
+    loadBundledNews();
+}
+
+void AppViewModel::loadBundledNews()
+{
+    // Bundled news. Replaced/augmented by refreshNews() once network fetch
+    // is wired in (which is gated on adding Qt6::Network to the ViewModels
+    // CMakeLists). Schema mirrors the future remote JSON one-for-one:
+    //   id     unique persistent id (used by dismissNews)
+    //   date   YYYY-MM-DD
+    //   title  short heading
+    //   body   plain-text body
+    //   popup  true → surface as a single-item popup on next launch
+    auto make =
+        [](const char* id, const char* date, const char* title, const char* body, bool popup) {
+            QVariantMap m;
+            m.insert(QStringLiteral("id"), QString::fromUtf8(id));
+            m.insert(QStringLiteral("date"), QString::fromUtf8(date));
+            m.insert(QStringLiteral("title"), QString::fromUtf8(title));
+            m.insert(QStringLiteral("body"), QString::fromUtf8(body));
+            m.insert(QStringLiteral("popup"), popup);
+            return QVariant::fromValue(m);
+        };
+
+    m_newsItems = {
+        make("v1.0-launch",
+             "2026-06-04",
+             "Welcome to Tenjin 1.0",
+             "Tenjin's first public release. Words, decks, spaced-repetition "
+             "reviews, tags, and rich content blocks — all stored locally on "
+             "your device.",
+             false),
+        make("multi-platform",
+             "2026-06-04",
+             "Coming soon: more platforms & polish",
+             "We're working on broader platform coverage (Android, polished "
+             "macOS builds), multilingual UI, in-app reminders, and a "
+             "redesigned analytics page. Stay tuned.",
+             true),
+    };
 }
 
 void AppViewModel::setCurrentPage(int page)
@@ -108,6 +147,28 @@ void AppViewModel::dismissNews(const QString& newsId)
     emit newsDismissedChanged();
 }
 
+void AppViewModel::resetNewsDismissals()
+{
+    if (m_newsDismissedIds.isEmpty())
+        return;
+    m_newsDismissedIds.clear();
+    QSettings settings;
+    settings.remove("news/dismissed");
+    emit newsDismissedChanged();
+}
+
+void AppViewModel::refreshNews(const QString& url)
+{
+    // Stub: network fetch isn't wired yet (the ViewModels module would need
+    // Qt6::Network added to its CMakeLists). The configured destination
+    // ("https://localhost" today) will be used once that lands. For now we
+    // just re-publish the bundled list so QML clients can wire refresh
+    // gestures without a behavioural change.
+    Q_UNUSED(url);
+    loadBundledNews();
+    emit newsItemsChanged();
+}
+
 bool AppViewModel::exportData(const QString& fileUrl)
 {
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
@@ -139,4 +200,9 @@ bool AppViewModel::importData(const QString& fileUrl)
 QString AppViewModel::renderFormula(const QString& latex) const
 {
     return Tenjin::FormulaRenderer::toRichText(latex);
+}
+
+QString AppViewModel::appDataLocation() const
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
 }

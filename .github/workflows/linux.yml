@@ -1,0 +1,200 @@
+name: Linux build
+
+# Builds Tenjin for Linux on an ubuntu-22.04 runner and publishes an AppImage
+# (self-contained, no install needed) as a GitHub Release asset.
+#
+# Optimizations applied:
+#   - install-qt-action's built-in cache: Qt 6.8.3 desktop is restored from
+#     the per-version cache in ~5s on warm runs vs. ~3-4min on cold installs.
+#   - ccache: source recompiles cache to ~/.ccache (also restored across
+#     runs) so incremental builds drop from ~6min to under 1min.
+#   - Ninja: parallel builds across all available cores by default.
+#   - Sccache/ccache MAX_SIZE caps to 500M so the cache action store cap
+#     isn't blown.
+#   - Single-config Release: no Debug symbols → smaller artifact, fewer
+#     compile units.
+#   - Tests / benchmarks / sanitizers all off in CI (BUILD_TESTS=OFF etc.)
+#     so we only build the shipping bits.
+#   - Concurrency group cancels in-flight runs on the same branch so a fast
+#     follow-up commit doesn't tie up runners.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    env:
+      TENJIN_APP_NAME: Tenjin
+      CCACHE_MAXSIZE: 500M
+      CCACHE_COMPRESS: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load .env into environment
+        run: |
+          echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"
+          if [ -f .env ]; then
+            awk -F= '
+              /^[[:space:]]*#/ { next } /^[[:space:]]*$/ { next } NF < 2 { next }
+              { k=$1; $1=""; v=substr($0,2);
+                sub(/^[[:space:]]+/,"",k); sub(/[[:space:]]+$/,"",k);
+                sub(/^[[:space:]]+/,"",v); sub(/[[:space:]]+$/,"",v);
+                if (v ~ /^".*"$/ || v ~ /^'\''.*'\''$/) v=substr(v,2,length(v)-2);
+                print k "=" v
+              }
+            ' .env >> "$GITHUB_ENV"
+          fi
+
+      # System build deps. xkbcommon/libgl/dbus/wayland round out the minimal
+      # set Qt 6 needs to link a GUI app on Ubuntu 22.04. fuse + patchelf
+      # support the AppImage step.
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ninja-build ccache cmake \
+            libgl1-mesa-dev libxkbcommon-x11-0 libdbus-1-3 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+            libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
+            libxcb-xkb1 libxkbcommon0 libfontconfig1 \
+            libfuse2 patchelf wget file
+
+      # install-qt-action: cached. Cold ~3-4min, warm ~5s.
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: "linux"
+          target: "desktop"
+          arch: "linux_gcc_64"
+          modules: "qtmultimedia"
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      # ccache cache. Up to ~500M of compiled object files. Re-used across
+      # runs on the same branch (and other branches via fall-back keys), so
+      # incremental rebuilds skip ~95% of the compile.
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: linux-ccache-${{ github.sha }}
+          restore-keys: |
+            linux-ccache-
+
+      - name: Configure (CMake, Ninja)
+        run: |
+          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          export PATH="$QT_LINUX/bin:$PATH"
+          cmake -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_PREFIX_PATH="$QT_LINUX" \
+            -DMEDIA_SUPPORT=OFF \
+            -DWEBVIEW_SUPPORT=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_BENCHMARKS=OFF \
+            -DSANITIZERS="" \
+            -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
+
+      - name: Build
+        run: |
+          ccache --max-size=$CCACHE_MAXSIZE
+          ccache --zero-stats
+          cmake --build build --config Release
+          echo "===== ccache stats ====="
+          ccache --show-stats
+
+      - name: Verify build artifact
+        run: |
+          BIN=$(find build -name "$TENJIN_APP_NAME" -type f -executable | head -n1)
+          if [ -z "$BIN" ]; then
+            echo "::error::Built binary not found"
+            find build -maxdepth 4 -type f -executable | head -20
+            exit 1
+          fi
+          echo "Binary: $BIN"
+          file "$BIN"
+          du -h "$BIN"
+
+      # AppImage packaging. linuxdeployqt resolves Qt runtime + plugin
+      # dependencies and produces a self-contained .AppImage that runs on
+      # most x86_64 distros without further installation.
+      - name: Package AppImage
+        run: |
+          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          export PATH="$QT_LINUX/bin:$PATH"
+          export LD_LIBRARY_PATH="$QT_LINUX/lib:$LD_LIBRARY_PATH"
+
+          # Build the AppDir staging tree.
+          BIN=$(find build -name "$TENJIN_APP_NAME" -type f -executable | head -n1)
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/scalable/apps
+          cp "$BIN" AppDir/usr/bin/
+
+          # Desktop file — use the repo's tenjin.desktop if present.
+          if [ -f tenjin.desktop ]; then
+            cp tenjin.desktop AppDir/usr/share/applications/
+            cp tenjin.desktop AppDir/
+          else
+            cat > AppDir/usr/share/applications/tenjin.desktop <<EOF
+          [Desktop Entry]
+          Type=Application
+          Name=Tenjin
+          Exec=Tenjin
+          Icon=tenjin
+          Categories=Education;
+          EOF
+            cp AppDir/usr/share/applications/tenjin.desktop AppDir/
+          fi
+
+          # Icon — repo SVG if present, else 1x1 placeholder so linuxdeployqt
+          # doesn't bail out on the missing reference.
+          if [ -f tenjin.svg ]; then
+            cp tenjin.svg AppDir/usr/share/icons/hicolor/scalable/apps/tenjin.svg
+            cp tenjin.svg AppDir/tenjin.svg
+          else
+            echo "::warning::tenjin.svg not in repo; AppImage will ship without an icon"
+            touch AppDir/tenjin.png
+          fi
+
+          # linuxdeployqt is not in apt; pull the AppImage form.
+          wget -q https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
+          chmod +x linuxdeployqt-continuous-x86_64.AppImage
+          ./linuxdeployqt-continuous-x86_64.AppImage \
+            AppDir/usr/share/applications/tenjin.desktop \
+            -appimage -qmake="$QT_LINUX/bin/qmake6" \
+            -extra-plugins=sqldrivers,imageformats \
+            -bundle-non-qt-libs -verbose=1
+
+          IMG=$(ls Tenjin-*.AppImage 2>/dev/null | head -n1)
+          if [ -z "$IMG" ]; then
+            echo "::error::No AppImage produced"
+            ls -la
+            exit 1
+          fi
+          echo "TENJIN_APPIMAGE=$IMG" >> "$GITHUB_ENV"
+          echo "Built: $IMG  ($(du -h $IMG | cut -f1))"
+
+      - name: Publish AppImage to a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: linux-build-${{ github.run_number }}
+          name: Linux build ${{ github.run_number }}
+          files: ${{ env.TENJIN_APPIMAGE }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

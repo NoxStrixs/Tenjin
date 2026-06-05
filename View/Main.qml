@@ -7,47 +7,46 @@ import QtQuick.Dialogs
 ApplicationWindow {
     id: root
     visible: true
-    // Platform.screenWidth/Height resolve via Qt.application.screens — no
-    // QtQuick.Window dependency, so the iOS static build doesn't have to
-    // link a plugin that wasn't reliably loading.
-    width:  Platform.isMobile ? Platform.screenWidth  : 1280
-    height: Platform.isMobile ? Platform.screenHeight : 820
+    // Oversized constants on mobile — the OS clamps these to the actual
+    // device screen, never the other way around. Combined with the
+    // Info.plist UILaunchScreen fix this makes iOS render full-screen.
+    width:  Platform.isMobile ? 1080 : 1280
+    height: Platform.isMobile ? 1920 : 820
     minimumWidth:  Platform.isMobile ? 0 : Platform.minWindowWidth
     minimumHeight: Platform.isMobile ? 0 : Platform.minWindowHeight
     title: "Tenjin"
     color: Platform.bg
 
-    // Force fullscreen on mobile so iOS / Android render edge-to-edge instead
-    // of inside a smaller-than-screen rectangle when width/height computations
-    // race the screen-info population. Literal ints match Window's visibility
-    // enum: 1 = AutomaticVisibility, 5 = FullScreen (stable Qt 6 values).
+    // Force fullscreen on mobile so iOS / Android render edge-to-edge.
+    // 1 = AutomaticVisibility, 5 = FullScreen (Window visibility enum ints).
     visibility: Platform.isMobile ? 5 : 1
 
-    // Bundled news items. Each: id (unique), date (YYYY-MM-DD), title, body,
-    // popup (whether to surface as a launch popup). Later this list will be
-    // replaced/augmented by a fetched JSON feed; the schema stays the same.
-    // The launch-popup flow tracks dismissed ids in QSettings via
-    // appVM.dismissNews(), so a `popup: true` item only ever appears once.
-    property var newsItems: [
-        { id: "v1.0-launch",
-          date: "2026-06-04",
-          title: "Welcome to Tenjin 1.0",
-          body:  "Tenjin's first public release. Words, decks, spaced-repetition reviews, tags, and rich content blocks — all stored locally on your device.",
-          popup: false },
-        { id: "multi-platform",
-          date: "2026-06-04",
-          title: "Coming soon: more platforms & polish",
-          body:  "We're working on broader platform coverage (Android, polished macOS builds), multilingual UI, in-app reminders, and a redesigned analytics page. Stay tuned.",
-          popup: true }
-    ]
+    // Page indices — must match AppViewModel::Page_t.
+    readonly property int _pageWords:    0
+    readonly property int _pageDecks:    1
+    readonly property int _pageTags:     2
+    readonly property int _pageHelp:     3
+    readonly property int _pageNews:     4
+    readonly property int _pageSettings: 5
 
-    // Returns the first news item flagged popup=true that the user hasn't yet
-    // dismissed. Called after the welcome carousel finishes (or right at
-    // startup if welcome was already acknowledged on a prior launch) so a
-    // single important update is surfaced once per ID per device.
+    // ── Callbacks exposed to pages (SettingsPage, etc.) ────────────────────
+    // Pages instantiated inside the StackLayout don't have direct ids on the
+    // popups / dialogs that live on this ApplicationWindow. Routing through
+    // these helpers keeps the page files standalone.
+    function openWelcomePopup() {
+        welcomePopup.step = 0
+        welcomePopup.open()
+    }
+    function openImportDialog() { importDialog.open() }
+    function openExportDialog() { exportDialog.open() }
+
+    // Surfaces the first news item flagged popup=true that the user hasn't
+    // yet dismissed. Called after the welcome carousel finishes (or right
+    // at startup if welcome was already acknowledged on a prior launch).
     function _showNextNewsPopup() {
-        for (let i = 0; i < newsItems.length; i++) {
-            const it = newsItems[i]
+        const items = appVM.newsItems
+        for (let i = 0; i < items.length; i++) {
+            const it = items[i]
             if (it.popup && !appVM.isNewsDismissed(it.id)) {
                 newsLaunchPopup.currentItem = it
                 newsLaunchPopup.open()
@@ -56,8 +55,6 @@ ApplicationWindow {
         }
     }
 
-    // Apply the persisted theme on startup, and keep Platform in sync if the
-    // stored preference changes
     Component.onCompleted: {
         Platform.theme = appVM.theme
         if (!appVM.welcomeAcknowledged)
@@ -70,10 +67,8 @@ ApplicationWindow {
         function onThemeChanged() { Platform.theme = appVM.theme }
     }
 
-    // Header
+    // ── Header ─────────────────────────────────────────────────────────────
     header: Rectangle {
-        // Extra top space on iOS reserves room for the notch / Dynamic
-        // Island; Platform.safeAreaTop is 0 elsewhere.
         height: Platform.headerHeight + Platform.safeAreaTop
         color: Platform.surface
         Rectangle {
@@ -110,16 +105,14 @@ ApplicationWindow {
                 }
             }
 
-            // App icon badge — placeholder. Replaces the previous "Tenjin"
-            // text logo. Swap for an Image { source: "qrc:/..." } once a
-            // real icon asset is wired through the QML module.
+            // App icon badge — placeholder, replace with Image once a real
+            // asset is wired through the View QML module.
             Rectangle {
                 id: appBadge
                 Layout.preferredWidth: 30
                 Layout.preferredHeight: 30
                 radius: Platform.radius
                 color: Platform.accent
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 Text {
                     anchors.centerIn: parent
                     text: "\u5929" // 天
@@ -131,35 +124,48 @@ ApplicationWindow {
                 ToolTip.visible: badgeHover.hovered
                 ToolTip.text: "Tenjin"
                 ToolTip.delay: 500
+                // Tapping the badge returns to the Words page — same as most
+                // mobile/desktop app conventions for "home" affordances.
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: appVM.currentPage = root._pageWords
+                }
             }
 
             Item { Layout.fillWidth: true }
 
             SearchBox {
-                visible: appVM.currentPage === 0
+                visible: appVM.currentPage === root._pageWords
                 parentWidth: root.width
             }
 
+            // About — still a hover popup, since it's a small info card,
+            // not a destination.
             IconBtn {
                 id: aboutBtn
                 glyph: "\u24D8"
                 onActivated: aboutPopup.open()
                 onHoveredChanged: hovered ? aboutPopup.open() : aboutPopup.close()
             }
+            // Help / News / Settings now navigate to top-level pages.
             IconBtn {
                 id: helpBtn
                 glyph: "?"
-                onActivated: helpPopup.open()
+                active: appVM.currentPage === root._pageHelp
+                onActivated: appVM.currentPage = root._pageHelp
             }
             IconBtn {
                 id: newsBtn
-                glyph: "\u2709" // ✉
-                onActivated: newsPopup.open()
+                glyph: "\u2709"
+                active: appVM.currentPage === root._pageNews
+                onActivated: appVM.currentPage = root._pageNews
             }
             IconBtn {
                 id: settingsBtn
-                glyph: "\u2699" // ⚙
-                onActivated: settingsPopup.open()
+                glyph: "\u2699"
+                active: appVM.currentPage === root._pageSettings
+                onActivated: appVM.currentPage = root._pageSettings
             }
             IconBtn {
                 id: themeBtn
@@ -168,7 +174,7 @@ ApplicationWindow {
             }
             IconBtn {
                 id: debugBtn
-                glyph: "\u2328" // ⌨ keyboard — debug/eval console
+                glyph: "\u2328"
                 active: debugDrawer.visible
                 onActivated: debugDrawer.visible = !debugDrawer.visible
             }
@@ -201,24 +207,32 @@ ApplicationWindow {
                 }
             }
 
+            // Mobile page title for non-Words pages
             Text {
-                visible: appVM.currentPage !== 0
-                text: appVM.currentPage === 1 ? "Decks" : "Tags"
+                visible: appVM.currentPage !== root._pageWords
+                text: appVM.currentPage === root._pageDecks    ? "Decks"
+                    : appVM.currentPage === root._pageTags     ? "Tags"
+                    : appVM.currentPage === root._pageHelp     ? "Help"
+                    : appVM.currentPage === root._pageNews     ? "News"
+                    : appVM.currentPage === root._pageSettings ? "Settings"
+                                                                : ""
                 color: Platform.textPrimary
                 font.pixelSize: Platform.fontLarge
                 font.bold: true
             }
 
             SearchBox {
-                visible: appVM.currentPage === 0
+                visible: appVM.currentPage === root._pageWords
                 parentWidth: root.width
                 dropdownEnabled: false
                 Layout.fillWidth: true
             }
 
-            Item { Layout.fillWidth: true; visible: appVM.currentPage !== 0 }
+            Item { Layout.fillWidth: true; visible: appVM.currentPage !== root._pageWords }
 
+            // Add button — only relevant on the content pages.
             Rectangle {
+                visible: appVM.currentPage <= root._pageTags
                 Layout.preferredWidth: mAddLabel.implicitWidth + 24
                 Layout.preferredHeight: Platform.touchTarget
                 radius: Platform.radius
@@ -229,8 +243,8 @@ ApplicationWindow {
                 Text {
                     id: mAddLabel
                     anchors.centerIn: parent
-                    text: appVM.currentPage === 0 ? "+ Word"
-                        : appVM.currentPage === 1 ? "+ Deck"
+                    text: appVM.currentPage === root._pageWords ? "+ Word"
+                        : appVM.currentPage === root._pageDecks ? "+ Deck"
                         : "+ Tag"
                     color: Platform.bg
                     font.pixelSize: Platform.fontBase
@@ -242,8 +256,8 @@ ApplicationWindow {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (appVM.currentPage === 0) addEntryDialog.open()
-                        else if (appVM.currentPage === 1) addDeckDialog.open()
+                        if (appVM.currentPage === root._pageWords) addEntryDialog.open()
+                        else if (appVM.currentPage === root._pageDecks) addDeckDialog.open()
                         else addTagDialog.open()
                     }
                 }
@@ -251,7 +265,7 @@ ApplicationWindow {
         }
     }
 
-    // About popup (header-anchored, hover-driven)
+    // ── About popup (hover, small info card) ───────────────────────────────
     Popup {
         id: aboutPopup
         parent: aboutBtn
@@ -286,7 +300,7 @@ ApplicationWindow {
         }
     }
 
-    // ── Welcome carousel ────────────────────────────────────────────────────
+    // ── Welcome carousel ───────────────────────────────────────────────────
     Popup {
         id: welcomePopup
         parent: Overlay.overlay
@@ -294,11 +308,6 @@ ApplicationWindow {
         dim: true
         closePolicy: Popup.NoAutoClose
         padding: 0
-        // Mobile gets a more generous bottom margin so the footer never
-        // lands under the iOS home indicator / Android nav bar. The
-        // ScrollView in the middle absorbs any leftover content overflow
-        // (long body text on large-font mobile devices), so the dots and
-        // Skip/Back/Next buttons always stay in view.
         width:  Platform.isMobile ? Math.min(root.width  - 16, 560) : 560
         height: Platform.isMobile ? Math.min(root.height - Platform.safeAreaTop - Platform.safeAreaBottom - 60, 680) : 640
         x: parent ? Math.max(8, (parent.width  - width)  / 2) : 8
@@ -322,9 +331,6 @@ ApplicationWindow {
         function finish() {
             close()
             appVM.setWelcomeAcknowledged(true)
-            // Hand off to the news-on-launch flow so the user gets a single
-            // continuous onboarding sequence rather than two disjoint
-            // popups on the same first launch.
             root._showNextNewsPopup()
         }
 
@@ -337,10 +343,7 @@ ApplicationWindow {
 
         contentItem: ColumnLayout {
             spacing: Platform.spacingMd
-
             Item { Layout.preferredHeight: Platform.spacingMd; Layout.fillWidth: true }
-
-            // Top: badge (always visible, never scrolls)
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
                 implicitWidth: 76
@@ -355,22 +358,15 @@ ApplicationWindow {
                     font.bold: true
                 }
             }
-
-            // Middle: scrollable title + body. Layout.fillHeight makes this
-            // section absorb any leftover popup height, and clip lets long
-            // body text scroll instead of pushing the dots/footer out the
-            // bottom of the popup (the bug iOS was hitting at fontBase=16).
             ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: Platform.spacingLg
                 Layout.rightMargin: Platform.spacingLg
                 clip: true
-
                 ColumnLayout {
                     width: welcomePopup.width - 2 * Platform.spacingLg
                     spacing: Platform.spacingMd
-
                     Text {
                         Layout.fillWidth: true
                         Layout.topMargin: Platform.spacingSm
@@ -381,7 +377,6 @@ ApplicationWindow {
                         font.bold: true
                         wrapMode: Text.WordWrap
                     }
-
                     Text {
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignHCenter
@@ -391,11 +386,9 @@ ApplicationWindow {
                         wrapMode: Text.WordWrap
                         lineHeight: 1.35
                     }
-
                     Item { Layout.preferredHeight: Platform.spacingMd }
                 }
             }
-
             Row {
                 Layout.alignment: Qt.AlignHCenter
                 spacing: 10
@@ -412,14 +405,12 @@ ApplicationWindow {
                     }
                 }
             }
-
             RowLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.spacingLg
                 Layout.rightMargin: Platform.spacingLg
                 Layout.bottomMargin: Platform.spacingLg
                 spacing: Platform.spacingMd
-
                 Rectangle {
                     Layout.preferredHeight: Platform.touchTarget
                     Layout.preferredWidth: skipLabel.implicitWidth + 24
@@ -427,49 +418,21 @@ ApplicationWindow {
                     color: skipArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                     visible: welcomePopup.step < welcomePopup.stepCount - 1
-                    Text {
-                        id: skipLabel
-                        anchors.centerIn: parent
-                        text: "Skip"
-                        color: Platform.textMuted
-                        font.pixelSize: Platform.fontBase
-                    }
-                    MouseArea {
-                        id: skipArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: welcomePopup.finish()
-                    }
+                    Text { id: skipLabel; anchors.centerIn: parent; text: "Skip"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+                    MouseArea { id: skipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: welcomePopup.finish() }
                 }
-
                 Item { Layout.fillWidth: true }
-
                 Rectangle {
                     Layout.preferredHeight: Platform.touchTarget
                     Layout.preferredWidth: backLabel.implicitWidth + 28
                     radius: Platform.radius
                     color: backArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                    border.color: Platform.border
-                    border.width: Platform.borderWidth
+                    border.color: Platform.border; border.width: Platform.borderWidth
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                     visible: welcomePopup.step > 0
-                    Text {
-                        id: backLabel
-                        anchors.centerIn: parent
-                        text: "Back"
-                        color: Platform.textPrimary
-                        font.pixelSize: Platform.fontBase
-                    }
-                    MouseArea {
-                        id: backArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: if (welcomePopup.step > 0) welcomePopup.step--
-                    }
+                    Text { id: backLabel; anchors.centerIn: parent; text: "Back"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
+                    MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (welcomePopup.step > 0) welcomePopup.step-- }
                 }
-
                 Rectangle {
                     Layout.preferredHeight: Platform.touchTarget
                     Layout.preferredWidth: nextLabel.implicitWidth + 32
@@ -478,14 +441,7 @@ ApplicationWindow {
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                     scale: nextArea.pressed ? 0.97 : 1.0
                     Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
-                    Text {
-                        id: nextLabel
-                        anchors.centerIn: parent
-                        text: welcomePopup.step < welcomePopup.stepCount - 1 ? "Next" : "Got it"
-                        color: Platform.bg
-                        font.pixelSize: Platform.fontBase
-                        font.bold: true
-                    }
+                    Text { id: nextLabel; anchors.centerIn: parent; text: welcomePopup.step < welcomePopup.stepCount - 1 ? "Next" : "Got it"; color: Platform.bg; font.pixelSize: Platform.fontBase; font.bold: true }
                     MouseArea {
                         id: nextArea
                         anchors.fill: parent
@@ -501,7 +457,6 @@ ApplicationWindow {
                 }
             }
         }
-
         enter: Transition {
             ParallelAnimation {
                 NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.durationMed }
@@ -516,11 +471,7 @@ ApplicationWindow {
         }
     }
 
-    // ── News launch popup ───────────────────────────────────────────────────
-    // Single-item popup for any news entry flagged popup=true that the user
-    // hasn't yet dismissed. Got it = appVM.dismissNews(id) which persists
-    // through QSettings, so the item never popups again. The full news list
-    // remains browsable from the News button at any time.
+    // ── News launch popup ──────────────────────────────────────────────────
     Popup {
         id: newsLaunchPopup
         parent: Overlay.overlay
@@ -534,24 +485,18 @@ ApplicationWindow {
         y: parent ? Math.max(Platform.safeAreaTop + 8, (parent.height - height) / 2) : 8
 
         property var currentItem: null
-
         function finish() {
-            if (currentItem)
-                appVM.dismissNews(currentItem.id)
+            if (currentItem) appVM.dismissNews(currentItem.id)
             close()
         }
-
         background: Rectangle {
             color: Platform.surface
             radius: Platform.radiusLarge
             border.color: Platform.border
             border.width: Platform.borderWidth
         }
-
         contentItem: ColumnLayout {
             spacing: 0
-
-            // Header bar — "What's new" + small dated subhead
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.headerHeight + 8
@@ -560,23 +505,12 @@ ApplicationWindow {
                     anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: 1
                     Item { Layout.fillHeight: true }
-                    Text {
-                        text: "What's new"
-                        color: Platform.textPrimary
-                        font.pixelSize: Platform.fontTitle
-                        font.bold: true
-                    }
-                    Text {
-                        text: newsLaunchPopup.currentItem ? newsLaunchPopup.currentItem.date : ""
-                        color: Platform.textMuted
-                        font.pixelSize: Platform.fontSmall
-                    }
+                    Text { text: "What's new"; color: Platform.textPrimary; font.pixelSize: Platform.fontTitle; font.bold: true }
+                    Text { text: newsLaunchPopup.currentItem ? newsLaunchPopup.currentItem.date : ""; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     Item { Layout.fillHeight: true }
                 }
                 Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border }
             }
-
-            // Scrollable title + body
             ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -584,11 +518,9 @@ ApplicationWindow {
                 Layout.rightMargin: Platform.spacingLg
                 Layout.topMargin: Platform.spacingLg
                 clip: true
-
                 ColumnLayout {
                     width: newsLaunchPopup.width - 2 * Platform.spacingLg
                     spacing: Platform.spacingMd
-
                     Text {
                         Layout.fillWidth: true
                         text: newsLaunchPopup.currentItem ? newsLaunchPopup.currentItem.title : ""
@@ -608,8 +540,6 @@ ApplicationWindow {
                     Item { Layout.preferredHeight: Platform.spacingMd }
                 }
             }
-
-            // Footer — "See all news" + Got it
             RowLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.spacingLg
@@ -617,37 +547,25 @@ ApplicationWindow {
                 Layout.bottomMargin: Platform.spacingLg
                 Layout.topMargin: Platform.spacingMd
                 spacing: Platform.spacingMd
-
                 Rectangle {
                     Layout.preferredHeight: Platform.touchTarget
                     Layout.preferredWidth: seeAllLabel.implicitWidth + 24
                     radius: Platform.radius
                     color: seeAllArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                    Text {
-                        id: seeAllLabel
-                        anchors.centerIn: parent
-                        text: "See all news"
-                        color: Platform.textMuted
-                        font.pixelSize: Platform.fontBase
-                    }
+                    Text { id: seeAllLabel; anchors.centerIn: parent; text: "See all news"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
                     MouseArea {
                         id: seeAllArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        // Tapping "See all news" should NOT dismiss the
-                        // current item permanently — only the Got it button
-                        // does that. Close the popup and open the news list.
                         onClicked: {
                             newsLaunchPopup.close()
-                            newsPopup.open()
+                            appVM.currentPage = root._pageNews
                         }
                     }
                 }
-
                 Item { Layout.fillWidth: true }
-
                 Rectangle {
                     Layout.preferredHeight: Platform.touchTarget
                     Layout.preferredWidth: gotItLabel.implicitWidth + 32
@@ -656,14 +574,7 @@ ApplicationWindow {
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                     scale: gotItArea.pressed ? 0.97 : 1.0
                     Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
-                    Text {
-                        id: gotItLabel
-                        anchors.centerIn: parent
-                        text: "Got it"
-                        color: Platform.bg
-                        font.pixelSize: Platform.fontBase
-                        font.bold: true
-                    }
+                    Text { id: gotItLabel; anchors.centerIn: parent; text: "Got it"; color: Platform.bg; font.pixelSize: Platform.fontBase; font.bold: true }
                     MouseArea {
                         id: gotItArea
                         anchors.fill: parent
@@ -674,7 +585,6 @@ ApplicationWindow {
                 }
             }
         }
-
         enter: Transition {
             ParallelAnimation {
                 NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.durationMed }
@@ -689,447 +599,15 @@ ApplicationWindow {
         }
     }
 
-    // ── Help popup ──────────────────────────────────────────────────────────
-    Popup {
-        id: helpPopup
-        parent: Overlay.overlay
-        modal: true
-        dim: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        padding: 0
-        width:  Platform.isMobile ? Math.min(root.width  - 24, 560) : 560
-        height: Platform.isMobile ? Math.min(root.height - 64, 640) : Math.min(root.height - 80, 640)
-        x: parent ? Math.max(12, (parent.width  - width)  / 2) : 12
-        y: parent ? Math.max(12, (parent.height - height) / 2) : 12
-
-        readonly property var sections: [
-            { h: "Getting started",
-              b: "Tenjin organizes the things you want to remember into Words, gathered into Decks, and labelled with Tags. Everything lives locally on this device unless you export it." },
-            { h: "Adding a word",
-              b: "From the Words page, tap + Word. Give it a headword, then add content blocks below — plain text, formulas (LaTeX), images, audio, video, or links. Drag handles let you arrange the layout." },
-            { h: "Decks & reviews",
-              b: "On the Decks page, create a deck and add words to it. Open a deck and start a Review session — Tenjin uses spaced repetition to schedule what you see next based on how well you knew it." },
-            { h: "Tags & filtering",
-              b: "Tag words on the word's detail page or from the Tags page. The Tags filter in the sidebar / mobile filter bar lets you narrow the Words list to any combination, in Any or All mode." },
-            { h: "Import & export",
-              b: "Your entire collection exports to a single JSON file (sidebar footer on desktop, drawer on mobile). Import the same JSON on another device to move everything across." },
-            { h: "Re-run this walkthrough",
-              b: "Settings (gear icon) → Show welcome again. The carousel will re-open immediately and play through all four steps." }
-        ]
-
-        background: Rectangle {
-            color: Platform.surface
-            radius: Platform.radiusLarge
-            border.color: Platform.border
-            border.width: Platform.borderWidth
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 0
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Platform.headerHeight
-                color: "transparent"
-                RowLayout {
-                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingMd }
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Help"
-                        color: Platform.textPrimary
-                        font.pixelSize: Platform.fontTitle
-                        font.bold: true
-                    }
-                    Rectangle {
-                        Layout.preferredWidth: 32; Layout.preferredHeight: 32
-                        radius: Platform.radius
-                        color: helpCloseArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                        Text { anchors.centerIn: parent; text: "\u2715"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
-                        MouseArea { id: helpCloseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: helpPopup.close() }
-                    }
-                }
-                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border }
-            }
-
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                ColumnLayout {
-                    width: helpPopup.width
-                    spacing: Platform.spacingMd
-
-                    Repeater {
-                        model: helpPopup.sections
-                        delegate: ColumnLayout {
-                            required property var modelData
-                            required property int index
-                            Layout.fillWidth: true
-                            Layout.leftMargin: Platform.spacingLg
-                            Layout.rightMargin: Platform.spacingLg
-                            Layout.topMargin: index === 0 ? Platform.spacingLg : 0
-                            spacing: Platform.spacingSm
-                            Text {
-                                Layout.fillWidth: true
-                                text: modelData.h
-                                color: Platform.textPrimary
-                                font.pixelSize: Platform.fontLarge
-                                font.bold: true
-                            }
-                            Text {
-                                Layout.fillWidth: true
-                                text: modelData.b
-                                color: Platform.textMuted
-                                font.pixelSize: Platform.fontBase
-                                wrapMode: Text.WordWrap
-                                lineHeight: 1.35
-                            }
-                            Rectangle { Layout.fillWidth: true; Layout.topMargin: Platform.spacingSm; Layout.preferredHeight: Platform.borderWidth; color: Platform.border; opacity: 0.5 }
-                        }
-                    }
-
-                    Item { Layout.preferredHeight: Platform.spacingLg }
-                }
-            }
-        }
-
-        enter: Transition {
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Platform.durationMed }
-                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
-            }
-        }
-        exit: Transition {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.durationFast }
-        }
-    }
-
-    // ── News popup ──────────────────────────────────────────────────────────
-    Popup {
-        id: newsPopup
-        parent: Overlay.overlay
-        modal: true
-        dim: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        padding: 0
-        width:  Platform.isMobile ? Math.min(root.width  - 24, 560) : 560
-        height: Platform.isMobile ? Math.min(root.height - 64, 640) : Math.min(root.height - 80, 640)
-        x: parent ? Math.max(12, (parent.width  - width)  / 2) : 12
-        y: parent ? Math.max(12, (parent.height - height) / 2) : 12
-
-        background: Rectangle {
-            color: Platform.surface
-            radius: Platform.radiusLarge
-            border.color: Platform.border
-            border.width: Platform.borderWidth
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 0
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Platform.headerHeight
-                color: "transparent"
-                RowLayout {
-                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingMd }
-                    Text {
-                        Layout.fillWidth: true
-                        text: "News"
-                        color: Platform.textPrimary
-                        font.pixelSize: Platform.fontTitle
-                        font.bold: true
-                    }
-                    Rectangle {
-                        Layout.preferredWidth: 32; Layout.preferredHeight: 32
-                        radius: Platform.radius
-                        color: newsCloseArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                        Text { anchors.centerIn: parent; text: "\u2715"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
-                        MouseArea { id: newsCloseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: newsPopup.close() }
-                    }
-                }
-                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border }
-            }
-
-            ListView {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                model: root.newsItems
-                spacing: Platform.spacingMd
-                topMargin: Platform.spacingLg
-                bottomMargin: Platform.spacingLg
-                leftMargin: Platform.spacingLg
-                rightMargin: Platform.spacingLg
-
-                delegate: Rectangle {
-                    required property var modelData
-                    width: ListView.view.width - 2 * Platform.spacingLg
-                    implicitHeight: newsCol.implicitHeight + 2 * Platform.spacingMd
-                    radius: Platform.radius
-                    color: Platform.bg
-                    border.color: Platform.border
-                    border.width: Platform.borderWidth
-                    ColumnLayout {
-                        id: newsCol
-                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: Platform.spacingMd }
-                        spacing: Platform.spacingXs
-                        Text {
-                            text: modelData.date
-                            color: Platform.textMuted
-                            font.pixelSize: Platform.fontTiny
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: modelData.title
-                            color: Platform.textPrimary
-                            font.pixelSize: Platform.fontLarge
-                            font.bold: true
-                            wrapMode: Text.WordWrap
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: modelData.body
-                            color: Platform.textMuted
-                            font.pixelSize: Platform.fontBase
-                            wrapMode: Text.WordWrap
-                            lineHeight: 1.35
-                        }
-                    }
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    visible: parent.count === 0
-                    text: "No news yet."
-                    color: Platform.textMuted
-                    font.pixelSize: Platform.fontBase
-                }
-
-                ScrollBar.vertical: ScrollBar {}
-            }
-        }
-
-        enter: Transition {
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Platform.durationMed }
-                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
-            }
-        }
-        exit: Transition {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.durationFast }
-        }
-    }
-
-    // ── Settings popup ──────────────────────────────────────────────────────
-    Popup {
-        id: settingsPopup
-        parent: Overlay.overlay
-        modal: true
-        dim: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        padding: 0
-        width:  Platform.isMobile ? Math.min(root.width  - 24, 480) : 480
-        height: Platform.isMobile ? Math.min(root.height - 64, 560) : Math.min(root.height - 80, 560)
-        x: parent ? Math.max(12, (parent.width  - width)  / 2) : 12
-        y: parent ? Math.max(12, (parent.height - height) / 2) : 12
-
-        background: Rectangle {
-            color: Platform.surface
-            radius: Platform.radiusLarge
-            border.color: Platform.border
-            border.width: Platform.borderWidth
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 0
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Platform.headerHeight
-                color: "transparent"
-                RowLayout {
-                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingMd }
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Settings"
-                        color: Platform.textPrimary
-                        font.pixelSize: Platform.fontTitle
-                        font.bold: true
-                    }
-                    Rectangle {
-                        Layout.preferredWidth: 32; Layout.preferredHeight: 32
-                        radius: Platform.radius
-                        color: setCloseArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                        Text { anchors.centerIn: parent; text: "\u2715"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
-                        MouseArea { id: setCloseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settingsPopup.close() }
-                    }
-                }
-                Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border }
-            }
-
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-
-                ColumnLayout {
-                    width: settingsPopup.width
-                    spacing: 0
-
-                    Text {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Platform.spacingLg
-                        Layout.topMargin: Platform.spacingLg
-                        Layout.bottomMargin: Platform.spacingSm
-                        text: "Appearance"
-                        color: Platform.textMuted
-                        font.pixelSize: Platform.fontSmall
-                        font.bold: true
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Platform.touchTarget + 16
-                        color: themeRowArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                        RowLayout {
-                            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
-                            spacing: Platform.spacingMd
-                            Text {
-                                text: Platform.isDark ? "\u2600" : "\u263E"
-                                color: Platform.textMuted
-                                font.pixelSize: Platform.fontLarge
-                            }
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 1
-                                Text { text: "Theme"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                                Text { text: Platform.isDark ? "Dark" : "Light"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
-                            }
-                            Rectangle {
-                                Layout.preferredWidth: 52
-                                Layout.preferredHeight: 28
-                                radius: 14
-                                color: Platform.isDark ? Platform.accent : Platform.border
-                                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                                Rectangle {
-                                    width: 22; height: 22; radius: 11
-                                    y: 3
-                                    x: Platform.isDark ? parent.width - width - 3 : 3
-                                    color: Platform.bg
-                                    Behavior on x { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
-                                }
-                            }
-                        }
-                        MouseArea {
-                            id: themeRowArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: appVM.setTheme(Platform.isDark ? 0 : 1)
-                        }
-                    }
-
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; opacity: 0.5 }
-
-                    Text {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Platform.spacingLg
-                        Layout.topMargin: Platform.spacingLg
-                        Layout.bottomMargin: Platform.spacingSm
-                        text: "Language"
-                        color: Platform.textMuted
-                        font.pixelSize: Platform.fontSmall
-                        font.bold: true
-                    }
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Platform.touchTarget + 16
-                        color: "transparent"
-                        opacity: 0.55
-                        RowLayout {
-                            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
-                            spacing: Platform.spacingMd
-                            Text { text: "\uD83C\uDF10"; font.pixelSize: Platform.fontLarge }
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 1
-                                Text { text: "Interface language"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                                Text { text: "English (more languages coming soon)"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
-                            }
-                        }
-                    }
-
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; opacity: 0.5 }
-
-                    Text {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: Platform.spacingLg
-                        Layout.topMargin: Platform.spacingLg
-                        Layout.bottomMargin: Platform.spacingSm
-                        text: "Onboarding"
-                        color: Platform.textMuted
-                        font.pixelSize: Platform.fontSmall
-                        font.bold: true
-                    }
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Platform.touchTarget + 16
-                        color: welcomeAgainArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                        RowLayout {
-                            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
-                            spacing: Platform.spacingMd
-                            Text { text: "\u21BB"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 1
-                                Text { text: "Show welcome again"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                                Text { text: "Re-open the first-launch carousel now"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
-                            }
-                            Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
-                        }
-                        MouseArea {
-                            id: welcomeAgainArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                appVM.setWelcomeAcknowledged(false)
-                                welcomePopup.step = 0
-                                settingsPopup.close()
-                                welcomePopup.open()
-                            }
-                        }
-                    }
-
-                    Item { Layout.preferredHeight: Platform.spacingLg }
-                }
-            }
-        }
-
-        enter: Transition {
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Platform.durationMed }
-                NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
-            }
-        }
-        exit: Transition {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.durationFast }
-        }
-    }
-
-    // Body
+    // ── Body ───────────────────────────────────────────────────────────────
     RowLayout {
         anchors.fill: parent
         spacing: 0
 
+        // Sidebar — only shown for the content pages, not for the utility
+        // destinations (Help / News / Settings).
         Sidebar {
-            visible: !Platform.isMobile && !appVM.sidebarVM.collapsed
+            visible: !Platform.isMobile && !appVM.sidebarVM.collapsed && appVM.currentPage <= root._pageTags
             Layout.preferredWidth: Platform.sidebarWidth
             Layout.fillHeight: true
             onAddEntryRequested: addEntryDialog.open()
@@ -1137,7 +615,7 @@ ApplicationWindow {
             onAddTagRequested: addTagDialog.open()
         }
         Rectangle {
-            visible: !Platform.isMobile && !appVM.sidebarVM.collapsed
+            visible: !Platform.isMobile && !appVM.sidebarVM.collapsed && appVM.currentPage <= root._pageTags
             Layout.preferredWidth: 1; Layout.fillHeight: true
             color: Platform.border
         }
@@ -1146,9 +624,12 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: appVM.currentPage
-            EntryPage     {}
+            EntryPage    {}
             DeckListPage {}
             TagsPage     {}
+            HelpPage     {}
+            NewsPage     {}
+            SettingsPage { applicationRoot: root }
         }
     }
 
@@ -1163,19 +644,16 @@ ApplicationWindow {
         MobileDrawer {
             anchors.fill: parent
             onNavigate: (page) => {
-                if (page === 0) appVM.entryVM.clearSelection()
+                if (page === root._pageWords) appVM.entryVM.clearSelection()
                 appVM.currentPage = page
                 sidebarDrawer.close()
             }
-            onImportRequested:   { sidebarDrawer.close(); importDialog.open() }
-            onExportRequested:   { sidebarDrawer.close(); exportDialog.open() }
-            onHelpRequested:     { sidebarDrawer.close(); helpPopup.open() }
-            onNewsRequested:     { sidebarDrawer.close(); newsPopup.open() }
-            onSettingsRequested: { sidebarDrawer.close(); settingsPopup.open() }
+            onImportRequested: { sidebarDrawer.close(); importDialog.open() }
+            onExportRequested: { sidebarDrawer.close(); exportDialog.open() }
         }
     }
 
-    // Import / export file pickers
+    // File pickers
     FileDialog {
         id: importDialog
         title: "Import collection"
@@ -1192,7 +670,7 @@ ApplicationWindow {
         onAccepted: appVM.exportData(selectedFile)
     }
 
-    // Dialogs
+    // Add dialogs
     AddEntryDialog { id: addEntryDialog }
     AddDeckDialog  { id: addDeckDialog }
     AddTagDialog   { id: addTagDialog }
@@ -1220,7 +698,7 @@ ApplicationWindow {
             id: toastAnim
             ParallelAnimation {
                 NumberAnimation { target: toast; property: "opacity"; to: 1; duration: 180; easing.type: Easing.OutCubic }
-                NumberAnimation { target: toast; property: "anchors.bottomMargin"; to: 32; duration: 220; easing.type: Easing.OutBack }
+                NumberAnimation { target: toast; property: "anchors.bottomMargin"; to: 32 + Platform.safeAreaBottom; duration: 220; easing.type: Easing.OutBack }
             }
             PauseAnimation  { duration: 2500 }
             NumberAnimation { target: toast; property: "opacity"; to: 0; duration: 300 }
@@ -1228,7 +706,7 @@ ApplicationWindow {
         }
     }
 
-    // Debug console
+    // Debug console — unchanged structurally from previous batch.
     Rectangle {
         id: debugDrawer
         visible: false
@@ -1241,6 +719,8 @@ ApplicationWindow {
             width: 1
             color: Platform.border
         }
+
+        property int tab: 0
 
         ColumnLayout {
             anchors.fill: parent
@@ -1280,7 +760,6 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 6
-
                 ListView {
                     id: logView
                     Layout.fillWidth: true
@@ -1309,7 +788,7 @@ ApplicationWindow {
                                 font.family: "monospace"
                                 color: level === "critical" ? Platform.danger
                                      : level === "warning"  ? Platform.accentDark
-                                     : Platform.textPrimary
+                                                              : Platform.textPrimary
                             }
                         }
                     }
@@ -1334,7 +813,6 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 6
-
                 Text {
                     Layout.fillWidth: true
                     text: "Evaluate a JS expression in the window scope. Result and errors print to the Log tab."
@@ -1379,8 +857,6 @@ ApplicationWindow {
                 }
             }
         }
-
-        property int tab: 0
 
         function runEval() {
             const src = evalInput.text.trim()

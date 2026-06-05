@@ -1,0 +1,189 @@
+name: Android build
+
+# Builds Tenjin for Android on an ubuntu-22.04 runner and publishes an APK
+# (debug-signed; production signing requires a keystore in a secret) as a
+# GitHub Release asset.
+#
+# Optimizations match the other platforms:
+#   - install-qt-action's cache, both for the desktop host toolchain (Qt's
+#     androiddeployqt needs a matching host build) and for the Android
+#     ABI-specific Qt install.
+#   - ccache via CMAKE_*_COMPILER_LAUNCHER. The Android NDK uses Clang so
+#     ccache integration is identical to the macOS / Linux pipelines.
+#   - Single-ABI build (arm64-v8a). Adding armeabi-v7a / x86_64 would double
+#     each compile time and triple the APK size; defer until needed.
+#   - Gradle daemon disabled in CI (--no-daemon) to save runner memory.
+#   - Concurrency group cancels in-flight runs on the same branch.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    env:
+      TENJIN_APP_NAME: Tenjin
+      CCACHE_MAXSIZE: 500M
+      CCACHE_COMPRESS: "true"
+      ANDROID_ABI: arm64-v8a
+      ANDROID_PLATFORM: android-34
+      ANDROID_NDK_VERSION: "26.1.10909125"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load .env into environment
+        run: |
+          echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"
+          if [ -f .env ]; then
+            awk -F= '
+              /^[[:space:]]*#/ { next } /^[[:space:]]*$/ { next } NF < 2 { next }
+              { k=$1; $1=""; v=substr($0,2);
+                sub(/^[[:space:]]+/,"",k); sub(/[[:space:]]+$/,"",k);
+                sub(/^[[:space:]]+/,"",v); sub(/[[:space:]]+$/,"",v);
+                if (v ~ /^".*"$/ || v ~ /^'\''.*'\''$/) v=substr(v,2,length(v)-2);
+                print k "=" v
+              }
+            ' .env >> "$GITHUB_ENV"
+          fi
+
+      - name: Set up JDK 17 (required by Android Gradle Plugin 8.x)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
+            ndk;${{ env.ANDROID_NDK_VERSION }}
+
+      # Qt for Android needs BOTH the desktop (host) install — used by
+      # androiddeployqt to invoke host-side tools — AND the ABI-specific
+      # Android install. install-qt-action handles both with two calls.
+      - name: Install Qt (host / desktop)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: "linux"
+          target: "desktop"
+          arch: "linux_gcc_64"
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      - name: Install Qt for Android
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: "linux"
+          target: "android"
+          arch: "android_arm64_v8a"
+          modules: "qtmultimedia"
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build ccache cmake
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: android-ccache-${{ github.sha }}
+          restore-keys: |
+            android-ccache-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: android-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            android-gradle-
+
+      # Configure with Qt's qt-cmake wrapper — this is the supported entry
+      # point for cross-compiling to Android. It seeds the toolchain file,
+      # NDK paths, and Qt host bin location automatically.
+      - name: Configure (CMake via qt-cmake)
+        run: |
+          QT_HOST="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          QT_ANDROID="${{ github.workspace }}/Qt/Qt/6.8.3/android_arm64_v8a"
+          export PATH="$QT_ANDROID/bin:$QT_HOST/bin:$PATH"
+          export ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/${{ env.ANDROID_NDK_VERSION }}"
+
+          "$QT_ANDROID/bin/qt-cmake" -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DANDROID_ABI=${{ env.ANDROID_ABI }} \
+            -DANDROID_PLATFORM=${{ env.ANDROID_PLATFORM }} \
+            -DQT_HOST_PATH="$QT_HOST" \
+            -DMEDIA_SUPPORT=OFF \
+            -DWEBVIEW_SUPPORT=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_BENCHMARKS=OFF \
+            -DSANITIZERS="" \
+            -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
+
+      - name: Build native libraries
+        run: |
+          ccache --max-size=$CCACHE_MAXSIZE
+          ccache --zero-stats
+          cmake --build build --config Release
+          echo "===== ccache stats ====="
+          ccache --show-stats
+
+      # Qt for Android post-build step: package the native libs, QML assets,
+      # and Qt runtime into an APK via androiddeployqt + Gradle.
+      - name: Build APK (androiddeployqt → Gradle)
+        run: |
+          # The androiddeployqt-driven target is auto-generated by Qt's
+          # CMake integration. The convention is `<target>_make_apk`.
+          cmake --build build --target apk_all || \
+            cmake --build build --target "${TENJIN_APP_NAME}_make_apk"
+
+      - name: Locate APK
+        run: |
+          APK=$(find build -name "*.apk" -type f | grep -i release | head -n1)
+          if [ -z "$APK" ]; then
+            APK=$(find build -name "*.apk" -type f | head -n1)
+          fi
+          if [ -z "$APK" ]; then
+            echo "::error::No APK produced"
+            find build -maxdepth 6 -name '*.apk' -type f
+            exit 1
+          fi
+          # Rename so the release asset includes the build number.
+          OUT="${TENJIN_APP_NAME}-${{ github.run_number }}-android-${{ env.ANDROID_ABI }}.apk"
+          cp "$APK" "$OUT"
+          du -h "$OUT"
+          echo "TENJIN_APK=$OUT" >> "$GITHUB_ENV"
+
+      - name: Publish APK to a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-build-${{ github.run_number }}
+          name: Android build ${{ github.run_number }}
+          files: ${{ env.TENJIN_APK }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

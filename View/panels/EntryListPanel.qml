@@ -66,6 +66,8 @@ Rectangle {
             Layout.fillHeight: true
             clip: true
             model: listRoot.words
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
             delegate: ItemDelegate {
                 id: row
@@ -75,8 +77,11 @@ Rectangle {
 
                 background: Rectangle {
                     color: row.hovered ? Platform.surfaceAlt : "transparent"
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                     Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Platform.border; opacity: 0.4 }
                 }
+                scale: row.pressed ? 0.99 : 1.0
+                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
                 contentItem: Text {
                     text: row.modelData.word
                     color: Platform.textPrimary
@@ -103,5 +108,6 @@ Rectangle {
         }
     }
 }
+
 
 

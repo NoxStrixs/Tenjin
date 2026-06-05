@@ -32,22 +32,27 @@ Rectangle {
                     Rectangle {
                         width: parent.width / 3
                         height: 38
-                        color: "transparent"
+                        color: tabHover.containsMouse && !active ? Platform.surfaceAlt : "transparent"
                         property bool active: sidebarMode === index
+                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                         Text {
                             anchors.centerIn: parent
                             text: modelData
                             font.pixelSize: 12
                             font.bold: parent.active
                             color: parent.active ? Platform.accent : Platform.textMuted
+                            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                         }
                         Rectangle {
                             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                             height: 2
                             color: parent.active ? Platform.accent : "transparent"
+                            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                         }
                         MouseArea {
+                            id: tabHover
                             anchors.fill: parent
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 sidebarMode = index
@@ -67,9 +72,11 @@ Rectangle {
             color: Platform.bg
             Rectangle {
                 anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                height: 1; color: Platform.border
+                height: 1; color: filterInput.activeFocus ? Platform.accent : Platform.border
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
             }
             TextField {
+                id: filterInput
                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                 placeholderText: "Filter…"
                 font.pixelSize: 12
@@ -95,6 +102,9 @@ Rectangle {
                 height: 28
                 radius: Platform.radius
                 color: addBtnArea.containsMouse ? Platform.accentDark : Platform.accent
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                scale: addBtnArea.pressed ? 0.97 : 1.0
+                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
                 Text {
                     anchors.centerIn: parent
                     text: sidebarMode === 0 ? "+ Word" : sidebarMode === 1 ? "+ Tag" : "+ Deck"
@@ -180,16 +190,20 @@ Rectangle {
                     }
 
                 delegate: Rectangle {
+                    id: wordRow
                     width: ListView.view.width
                     height: 38
-                    color: appVM.entryVM.selectedEntryId === modelData.wordId
-                           ? Platform.surfaceAlt : "transparent"
+                    readonly property bool _selected: appVM.entryVM.selectedEntryId === modelData.wordId
+                    color: _selected ? Platform.surfaceAlt
+                         : wordRowArea.containsMouse ? Qt.rgba(Platform.surfaceAlt.r, Platform.surfaceAlt.g, Platform.surfaceAlt.b, 0.5)
+                                                      : "transparent"
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
 
                     Rectangle {
                         anchors { left: parent.left; bottom: parent.bottom }
                         width: 3; height: parent.height
                         color: Platform.accent
-                        visible: appVM.entryVM.selectedEntryId === modelData.wordId
+                        visible: wordRow._selected
                     }
 
                     Text {
@@ -208,7 +222,9 @@ Rectangle {
                         height: 1; color: Platform.border; opacity: 0.5
                     }
                     MouseArea {
+                        id: wordRowArea
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             appVM.entryVM.selectEntry(modelData.wordId)
@@ -459,6 +475,7 @@ Rectangle {
     // Mode state
     property int sidebarMode: 0
 }
+
 
 
 

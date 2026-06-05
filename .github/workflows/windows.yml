@@ -1,0 +1,166 @@
+name: Windows build
+
+# Builds Tenjin for Windows on windows-2022 and publishes a zipped runtime
+# directory (binary + Qt runtime + plugins) as a GitHub Release asset.
+#
+# Optimizations:
+#   - install-qt-action cache → warm Qt restore in ~5s.
+#   - sccache (Mozilla's Rust port of ccache, works with MSVC where ccache
+#     doesn't) caches object files via the CMake LAUNCHER variables.
+#   - Ninja generator for parallel builds.
+#   - Single-config Release.
+#   - Concurrency group cancels in-flight runs on the same branch.
+#
+# We're using MSVC 2022 / x64 because that's what Qt 6.8.3 ships against by
+# default on the Windows host. MinGW alternative is doable but doubles the
+# install matrix; skipped here.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-build:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+
+    env:
+      TENJIN_APP_NAME: Tenjin
+      SCCACHE_DIR: ${{ github.workspace }}\.sccache
+      SCCACHE_CACHE_SIZE: 500M
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # PowerShell .env parser — same logic as the bash ones in linux.yml /
+      # macos.yml, rewritten for the Windows runner's default shell.
+      - name: Load .env into environment
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_APP_NAME=Tenjin"
+          if (Test-Path .env) {
+            Get-Content .env | ForEach-Object {
+              $line = $_.Trim()
+              if ($line -eq "" -or $line.StartsWith("#")) { return }
+              $eq = $line.IndexOf("=")
+              if ($eq -lt 1) { return }
+              $k = $line.Substring(0, $eq).Trim()
+              $v = $line.Substring($eq + 1).Trim()
+              if (($v.StartsWith('"') -and $v.EndsWith('"')) -or
+                  ($v.StartsWith("'") -and $v.EndsWith("'"))) {
+                $v = $v.Substring(1, $v.Length - 2)
+              }
+              Add-Content -Path $env:GITHUB_ENV -Value "$k=$v"
+            }
+          }
+
+      # MSVC dev-cmd activation. install-qt-action will pick up the matching
+      # toolchain for arch win64_msvc2022_64.
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Ninja & sccache
+        shell: pwsh
+        run: |
+          choco install -y ninja sccache
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: "windows"
+          target: "desktop"
+          arch: "win64_msvc2022_64"
+          modules: "qtmultimedia"
+          dir: ${{ github.workspace }}\Qt
+          cache: true
+
+      - name: Cache sccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: windows-sccache-${{ github.sha }}
+          restore-keys: |
+            windows-sccache-
+
+      - name: Configure (CMake, Ninja)
+        shell: pwsh
+        run: |
+          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
+          $env:PATH = "$QT_WIN\bin;$env:PATH"
+          cmake -G Ninja -S . -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache `
+            -DCMAKE_PREFIX_PATH="$QT_WIN" `
+            -DMEDIA_SUPPORT=OFF `
+            -DWEBVIEW_SUPPORT=OFF `
+            -DBUILD_TESTS=OFF `
+            -DBUILD_BENCHMARKS=OFF `
+            -DSANITIZERS="" `
+            -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
+
+      - name: Build
+        shell: pwsh
+        run: |
+          sccache --start-server
+          sccache --zero-stats
+          cmake --build build --config Release
+          echo "===== sccache stats ====="
+          sccache --show-stats
+
+      - name: Locate built binary
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path build -Recurse -Filter "$env:TENJIN_APP_NAME.exe" | Select-Object -First 1
+          if (-not $exe) {
+            Write-Host "::error::$env:TENJIN_APP_NAME.exe not found in build/"
+            Get-ChildItem -Path build -Recurse -Filter "*.exe" | Select-Object -First 20
+            exit 1
+          }
+          $exePath = $exe.FullName
+          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_EXE=$exePath"
+          Write-Host "Binary: $exePath"
+
+      # windeployqt copies the Qt runtime DLLs + plugins next to the .exe so
+      # the bundle is self-contained.
+      - name: windeployqt
+        shell: pwsh
+        run: |
+          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
+          $stage = "stage\$env:TENJIN_APP_NAME"
+          New-Item -ItemType Directory -Path $stage -Force | Out-Null
+          Copy-Item -Path $env:TENJIN_EXE -Destination $stage
+          & "$QT_WIN\bin\windeployqt.exe" --release --no-translations `
+              --no-system-d3d-compiler --no-opengl-sw `
+              "$stage\$env:TENJIN_APP_NAME.exe"
+          Get-ChildItem -Path $stage | Select-Object -First 30
+          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_STAGE=$stage"
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $zip = "$env:TENJIN_APP_NAME-${{ github.run_number }}-windows-x64.zip"
+          Compress-Archive -Path "$env:TENJIN_STAGE\*" -DestinationPath $zip -Force
+          $size = (Get-Item $zip).Length / 1MB
+          Write-Host "Packaged: $zip  ($([math]::Round($size, 1)) MB)"
+          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_ZIP=$zip"
+
+      - name: Publish .zip to a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-build-${{ github.run_number }}
+          name: Windows build ${{ github.run_number }}
+          files: ${{ env.TENJIN_ZIP }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

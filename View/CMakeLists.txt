@@ -67,6 +67,9 @@ qt_add_qml_module(TenjinView
         pages/EntryPage.qml
         pages/ReviewPage.qml
         pages/TagsPage.qml
+        pages/HelpPage.qml
+        pages/NewsPage.qml
+        pages/SettingsPage.qml
 
         # ── panels ──
         panels/AnalyticsPanel.qml

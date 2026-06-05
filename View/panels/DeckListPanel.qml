@@ -17,17 +17,29 @@ Rectangle {
             Layout.fillWidth: true; Layout.fillHeight: true
             model: appVM.deckVM.deckModel
             clip: true; spacing: 4
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
             delegate: ItemDelegate {
+                id: deckDel
                 width: ListView.view.width
                 implicitHeight: Platform.touchTarget
 
+                readonly property bool _selected: appVM.deckVM.selectedDeckId === model.deckId
+
                 background: Rectangle {
-                    color: appVM.deckVM.selectedDeckId === model.deckId ? Platform.surfaceAlt : "transparent"
+                    color: deckDel._selected ? Platform.surfaceAlt
+                         : deckDel.hovered  ? Qt.rgba(Platform.surfaceAlt.r, Platform.surfaceAlt.g, Platform.surfaceAlt.b, 0.5)
+                                             : "transparent"
                     radius: Platform.radius
-                    border.color: appVM.deckVM.selectedDeckId === model.deckId ? Platform.border : "transparent"
+                    border.color: deckDel._selected ? Platform.border : "transparent"
                     border.width: 1
+                    Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
                 }
+
+                scale: deckDel.pressed ? 0.98 : 1.0
+                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
 
                 contentItem: RowLayout {
                     spacing: 8
@@ -47,3 +59,4 @@ Rectangle {
         }
     }
 }
+
