@@ -1,16 +1,15 @@
 name: Android build
 
-# Builds Tenjin for Android on ubuntu-24.04 and publishes an APK (debug-
-# signed; production signing requires a keystore in a secret) as a GitHub
-# Release asset.
+# Builds Tenjin for Android on ubuntu-24.04. Publishes a debug-signed APK
+# as a Release asset. (Production signing requires a keystore in a secret
+# and an Android keystore configuration block in App/CMakeLists.txt.)
 #
-# Notes:
-#   - ubuntu-24.04 for the same reason as linux.yml: <expected> needs GCC 13+
-#     for host-side ViewModels compiles, and the Android NDK Clang already
-#     supports it.
-#   - Android SDK packages MUST be a single space-separated string. With
-#     the `packages: |` block scalar the action concatenated all entries
-#     into one literal package name and failed.
+# Notes on Qt 6.8 Android target naming:
+#   Qt's CMake integration generates an `apk` target per-executable when
+#   the executable is configured for Android. The target builds the
+#   native libraries, runs androiddeployqt, and produces the APK under
+#   `<build>/android-build-<target>/build/outputs/apk/`. There is no
+#   `apk_all` target.
 
 on:
   push:
@@ -54,15 +53,12 @@ jobs:
             ' .env >> "$GITHUB_ENV"
           fi
 
-      - name: Set up JDK 17 (required by Android Gradle Plugin 8.x)
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # IMPORTANT: pass packages as a single space-separated string. The
-      # block-scalar form ( | ) breaks v3 — the action treats the whole
-      # multi-line string as one package name.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -142,10 +138,11 @@ jobs:
           echo "===== ccache stats ====="
           ccache --show-stats
 
-      - name: Build APK (androiddeployqt → Gradle)
-        run: |
-          cmake --build build --target apk_all || \
-            cmake --build build --target "${TENJIN_APP_NAME}_make_apk"
+      # Qt 6 Android: the generated APK target is just `apk`. `apk_all`
+      # doesn't exist; the previous attempt was a misread of older Qt
+      # 5 / qmake conventions.
+      - name: Build APK
+        run: cmake --build build --target apk
 
       - name: Locate APK
         run: |

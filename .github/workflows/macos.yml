@@ -1,13 +1,16 @@
 name: macOS build
 
-# Builds Tenjin for macOS on macos-14 and publishes a .dmg as a Release asset.
-# Notes:
-#   - CMAKE_MACOSX_BUNDLE=ON is passed at configure time so qt_add_executable
-#     produces a .app bundle. Without it,
-#     qt_generate_deploy_qml_app_script (called from App/CMakeLists.txt)
-#     errors out with "Executable targets have to be app bundles".
-#   - Signing is intentionally not done in CI (requires an Apple Developer
-#     keychain secret); the built bundle is ad-hoc signed only.
+# Builds Tenjin for macOS on macos-14, publishes a .dmg.
+#
+# The key macOS-specific gotcha (Qt 6.8): SQL driver plugins ship as
+# Mach-O bundles in macOS Qt. They can be dlopen'd at runtime but cannot
+# be passed to the linker as a positional argument — `ld` rejects them
+# with "unsupported mach-o filetype". Anything in App/CMakeLists.txt that
+# tries to statically import Qt6::QSQLiteDriverPlugin breaks the macOS
+# link step even though it works fine on iOS/Android (which use static
+# Qt). The pre-configure sed step below comments out those imports for
+# the macOS CI build; the user-facing PATCH_App_CMakeLists_macOS.md has
+# the persistent fix (wrap the imports in `if(IOS OR ANDROID)`).
 
 on:
   push:
@@ -46,6 +49,24 @@ jobs:
                 print k "=" v
               }
             ' .env >> "$GITHUB_ENV"
+          fi
+
+      # Pre-configure patch. Walks App/CMakeLists.txt and disables explicit
+      # references to QSQLiteDriverPlugin which on macOS shared Qt produce
+      # `ld: unsupported mach-o filetype` on the bundle plugin. QtSql
+      # itself stays linked, and the SQLite driver is loaded at runtime
+      # from the deployed Frameworks/plugins/ directory after macdeployqt.
+      - name: Patch App/CMakeLists.txt for macOS shared Qt
+        run: |
+          if [ -f App/CMakeLists.txt ]; then
+            if grep -q 'QSQLiteDriverPlugin' App/CMakeLists.txt; then
+              cp App/CMakeLists.txt App/CMakeLists.txt.bak
+              sed -i '' 's|.*Qt6::QSQLiteDriverPlugin.*|# &  # patched out by macos.yml — Mach-O bundle, can not be statically linked|' App/CMakeLists.txt
+              echo "===== patched lines ====="
+              grep -n 'QSQLiteDriverPlugin' App/CMakeLists.txt
+            else
+              echo "No QSQLiteDriverPlugin reference found — nothing to patch."
+            fi
           fi
 
       - name: Select Xcode
@@ -104,13 +125,18 @@ jobs:
           APP=$(find build -name "$TENJIN_APP_NAME.app" -type d | head -n1)
           if [ -z "$APP" ]; then
             echo "::error::$TENJIN_APP_NAME.app not found in build/"
-            echo "All .app bundles:"
             find build -maxdepth 5 -name '*.app' -type d
             exit 1
           fi
           echo "TENJIN_APP_BUNDLE=$APP" >> "$GITHUB_ENV"
           echo "Bundle: $APP"
 
+      # macdeployqt fixes up runtime plugin loading — it copies the
+      # sqldrivers/libqsqlite.dylib bundle into the .app's Contents/PlugIns
+      # so QtSql can dlopen it at startup. The macOS CI build can't link
+      # against the plugin (Mach-O bundle), but at runtime QtSql discovers
+      # it via QCoreApplication::libraryPaths() once macdeployqt has placed
+      # it inside the bundle.
       - name: macdeployqt
         run: |
           QT_MAC="${{ github.workspace }}/Qt/Qt/6.8.3/macos"

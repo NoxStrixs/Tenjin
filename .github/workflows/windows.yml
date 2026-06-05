@@ -1,15 +1,15 @@
 name: Windows build
 
-# Builds Tenjin for Windows on windows-2022 and publishes a zipped runtime
-# directory (binary + Qt runtime + plugins) as a GitHub Release asset.
+# Builds Tenjin for Windows on windows-2022, publishes a zipped runtime
+# directory as a Release asset.
 #
-# Optimizations:
-#   - install-qt-action cache → warm Qt restore in ~5s.
-#   - sccache (Mozilla's Rust port of ccache, works with MSVC where ccache
-#     doesn't) via the CMAKE_*_COMPILER_LAUNCHER variables.
-#   - Ninja generator.
-#   - Single-config Release.
-#   - Concurrency group cancels in-flight runs on the same branch.
+# Note on the build target: `cmake --build build --config Release` on its
+# own builds the default target (ninja's `all`), which sometimes produced
+# only the static libraries on past CI runs while silently skipping the
+# executable. To make the failure mode visible, this workflow lists the
+# generated targets up front and then builds `Tenjin` (the executable
+# target) explicitly. If linking fails, the workflow halts here instead
+# of advancing to a "binary not found" branch downstream.
 
 on:
   push:
@@ -86,6 +86,7 @@ jobs:
       - name: Configure (CMake, Ninja)
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
           $env:PATH = "$QT_WIN\bin;$env:PATH"
           cmake -G Ninja -S . -B build `
@@ -99,45 +100,50 @@ jobs:
             -DBUILD_BENCHMARKS=OFF `
             -DSANITIZERS="" `
             -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::cmake configure failed ($LASTEXITCODE)"
+            exit $LASTEXITCODE
+          }
 
-      - name: Build (verbose)
+      # Dump the available CMake targets up front. If the executable
+      # target isn't named "Tenjin" the next step will fail loud and we
+      # can adjust without guessing what name CMake picked.
+      - name: List CMake targets
         shell: pwsh
         run: |
+          Write-Host "===== top-level targets configured by CMake ====="
+          cmake --build build --target help | Select-Object -First 80
+
+      - name: Build executable target
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
           sccache --start-server
           sccache --zero-stats
-          # Verbose to surface any silent failures.
-          cmake --build build --config Release --verbose
-          echo "===== sccache stats ====="
+          # Force-build the executable target by name. If the link fails
+          # (e.g. missing plugin, MSVC error, dependency not found), the
+          # workflow stops here instead of advancing with no binary.
+          cmake --build build --config Release --target $env:TENJIN_APP_NAME --verbose
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::Build of target $env:TENJIN_APP_NAME failed with exit $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          Write-Host "===== sccache stats ====="
           sccache --show-stats
 
-      # Broader, case-insensitive exe search. The previous narrow `-Filter`
-      # only matched in the immediate output dir; CMake on Windows often
-      # nests the binary under build\App\ or build\App\Release\. Walk the
-      # whole build tree, skip CMake's compiler-id probe binaries, and dump
-      # everything found for diagnostics.
       - name: Locate built binary
         shell: pwsh
         run: |
           Write-Host "===== all .exe files under build/ ====="
           $allExe = Get-ChildItem -Path build -Recurse -Filter '*.exe' -File -ErrorAction SilentlyContinue
           $allExe | ForEach-Object { Write-Host "  $($_.FullName)  ($([math]::Round($_.Length/1KB, 1)) KB)" }
-
-          # Try several patterns, most specific first.
-          $candidates = @(
-            @{ Filter = "$env:TENJIN_APP_NAME.exe"; Description = "exact match by name" },
-            @{ Filter = "*Tenjin*.exe";             Description = "fuzzy Tenjin match" }
-          )
-          $exe = $null
-          foreach ($c in $candidates) {
-            $found = $allExe | Where-Object { $_.Name -ilike $c.Filter -and $_.FullName -notmatch 'CompilerId|CMakeFiles\\3' } | Select-Object -First 1
-            if ($found) {
-              Write-Host "Matched via: $($c.Description) → $($found.FullName)"
-              $exe = $found
-              break
-            }
-          }
+          # Filter out CMake's compiler-id probe binaries.
+          $exe = $allExe `
+            | Where-Object { $_.FullName -notmatch 'CompilerId|CMakeFiles\\3' } `
+            | Where-Object { $_.BaseName -ieq $env:TENJIN_APP_NAME } `
+            | Select-Object -First 1
           if (-not $exe) {
-            Write-Host "::error::No Tenjin executable found in build tree"
+            Write-Host "::error::No '$($env:TENJIN_APP_NAME).exe' found in build tree"
             exit 1
           }
           Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_EXE=$($exe.FullName)"

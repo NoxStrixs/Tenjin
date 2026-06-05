@@ -1,16 +1,7 @@
 name: Linux build
 
-# Builds Tenjin for Linux on ubuntu-24.04 (needed for GCC 13+ which ships
-# <expected>, used by Service/DatabaseManager/Types.h under -std=c++23 —
-# ubuntu-22.04 ships GCC 11 which doesn't have it). Publishes an AppImage
-# as a GitHub Release asset.
-#
-# Optimizations:
-#   - install-qt-action's built-in cache: Qt 6.8.3 restored in ~5s warm.
-#   - ccache: source recompiles cache to ~/.ccache (also restored).
-#   - Ninja for parallel builds.
-#   - Single-config Release.
-#   - Concurrency group cancels in-flight runs on the same branch.
+# Builds Tenjin for Linux on ubuntu-24.04 (GCC 13+ for <expected>).
+# Publishes an AppImage as a GitHub Release asset.
 
 on:
   push:
@@ -51,7 +42,6 @@ jobs:
             ' .env >> "$GITHUB_ENV"
           fi
 
-      # System packages. ubuntu-24.04 ships GCC 13 by default — verify it.
       - name: Install system packages
         run: |
           sudo apt-get update
@@ -62,7 +52,7 @@ jobs:
             libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
             libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
             libxcb-xkb1 libxkbcommon0 libfontconfig1 \
-            libfuse2t64 patchelf wget file
+            libfuse2t64 patchelf wget file librsvg2-bin
           echo "===== compiler versions ====="
           gcc --version
           g++ --version
@@ -131,9 +121,13 @@ jobs:
           export PATH="$QT_LINUX/bin:$PATH"
           export LD_LIBRARY_PATH="$QT_LINUX/lib:$LD_LIBRARY_PATH"
 
-          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/scalable/apps
+          mkdir -p AppDir/usr/bin \
+                   AppDir/usr/share/applications \
+                   AppDir/usr/share/icons/hicolor/scalable/apps \
+                   AppDir/usr/share/icons/hicolor/256x256/apps
           cp "$TENJIN_BIN" AppDir/usr/bin/
 
+          # Desktop file — prefer the repo's if present.
           if [ -f tenjin.desktop ]; then
             cp tenjin.desktop AppDir/usr/share/applications/
             cp tenjin.desktop AppDir/
@@ -149,18 +143,25 @@ jobs:
             cp AppDir/usr/share/applications/tenjin.desktop AppDir/
           fi
 
+          # Icon. linuxdeployqt rejects zero-byte files, so the previous
+          # `touch tenjin.png` fallback was useless. Prefer the repo's SVG
+          # (rasterize to PNG so legacy desktop environments without SVG
+          # support still show an icon); otherwise inline a real 16×16 PNG.
           if [ -f tenjin.svg ]; then
             cp tenjin.svg AppDir/usr/share/icons/hicolor/scalable/apps/tenjin.svg
             cp tenjin.svg AppDir/tenjin.svg
+            rsvg-convert -w 256 -h 256 tenjin.svg -o AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png
+            cp AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png AppDir/tenjin.png
           else
-            echo "::warning::tenjin.svg not in repo; AppImage will ship without an icon"
-            touch AppDir/tenjin.png
+            echo "::warning::tenjin.svg not in repo; AppImage will ship a placeholder icon"
+            # Minimal valid 16×16 transparent PNG (113 bytes). Not pretty
+            # but linuxdeployqt accepts it.
+            python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAABlBMVEUAAAD///+l2Z/dAAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg=='))" > AppDir/tenjin.png
+            cp AppDir/tenjin.png AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png
           fi
 
           wget -q https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
           chmod +x linuxdeployqt-continuous-x86_64.AppImage
-          # linuxdeployqt is built against an older glibc; tell it to ignore
-          # the runner's newer glibc check.
           export APPIMAGE_EXTRACT_AND_RUN=1
           ./linuxdeployqt-continuous-x86_64.AppImage \
             AppDir/usr/share/applications/tenjin.desktop \
