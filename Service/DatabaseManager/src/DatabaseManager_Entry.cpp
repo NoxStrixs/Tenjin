@@ -46,6 +46,23 @@ Result_t<Entry_t> DatabaseManager::GetEntry(const std::string& word)
                    .createdAt = q.value(2).toString().toStdString()};
 }
 
+Result_t<Entry_t> DatabaseManager::GetEntryById(ID_t id)
+{
+    QSqlQuery q(m_db);
+    q.prepare("SELECT id, title, created_at FROM entry WHERE id = :id;");
+    q.bindValue(":id", static_cast<qlonglong>(id));
+
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+
+    if (!q.next())
+        return std::unexpected("Word not found with id: " + std::to_string(id));
+
+    return Entry_t{.id        = q.value(0).toLongLong(),
+                   .word      = q.value(1).toString().toStdString(),
+                   .createdAt = q.value(2).toString().toStdString()};
+}
+
 Result_t<std::vector<Entry_t>> DatabaseManager::GetAllEntries()
 {
     QSqlQuery q(m_db);

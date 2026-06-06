@@ -3,14 +3,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import TenjinView
 
-// Tag filter UI
+// Tag filter UI. Chips flow into a wrapping grid so several short tag
+// names fit per row — the previous one-per-row ListView made the popup
+// feel taller than it needed to be on long tag sets.
 //
-// QtQuick.Window used to be imported here for the `Window` attached property
-// (root.Window.width/height). On iOS static builds the QtQuick.Window plugin
-// won't reliably link, so the engine reported `module "QtQuick.Window" is
-// not installed` at launch. We now route window-relative sizing through the
-// Platform singleton, which derives display info from Qt.application — a
-// QML language built-in with no plugin to dead-strip.
+// QtQuick.Window deliberately not imported: it dead-strips on iOS static
+// builds and crashes startup. Sizing and overlay dimensions go through
+// the Platform singleton instead.
 Item {
     id: root
 
@@ -20,10 +19,10 @@ Item {
     readonly property var _vm: appVM.entryVM
     readonly property var _activeIds: _vm.activeTagIds
     readonly property int _activeCount: _activeIds.length
-    // 0 = Any, 1 = All. Matches FilterMode_t::Or / FilterMode_t::And.
+    // 0 = Any (OR), 1 = All (AND). Mirrors FilterMode_t::Or / FilterMode_t::And.
     readonly property int _matchMode: _vm.tagMatchMode
 
-    // Trigger button
+    // Trigger button.
     Rectangle {
         id: trigger
         readonly property bool _hover: triggerArea.containsMouse
@@ -37,15 +36,12 @@ Item {
                            : Platform.surface
         border.color: _hasFilters ? Platform.accent : Platform.border
         border.width: Platform.borderWidth
-
-        Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
-        Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
 
         Row {
             id: triggerRow
             anchors.centerIn: parent
             spacing: Platform.spacingSm
-
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Tags"
@@ -62,7 +58,7 @@ Item {
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: popup.opened ? "▴" : "▾"
+                text: popup.opened ? "\u25B4" : "\u25BE"
                 color: trigger._hasFilters ? Platform.textOnDark : Platform.textMuted
                 font.pixelSize: Platform.fontTiny
             }
@@ -77,21 +73,24 @@ Item {
         }
     }
 
-    // Popup
     Popup {
         id: popup
         parent: trigger
         x: 0
         y: trigger.height + Platform.spacingXs
 
-        // Mobile: cap to a comfortable max width derived from screen size.
-        // Desktop: hug the trigger, but at least as wide as the surrounding
-        // host so it doesn't look truncated.
+        // Popup width: enough room for chips to wrap meaningfully. On
+        // mobile, fill most of the screen; on desktop, give a comfortable
+        // 360 px and clamp to the screen so it never overflows a small
+        // window. Platform.screenWidth provides the fallback that used to
+        // come from root.Window.width.
+        readonly property int _screenW: Platform.screenWidth > 0 ? Platform.screenWidth : 1280
+        readonly property int _screenH: Platform.screenHeight > 0 ? Platform.screenHeight : 1920
         width: Platform.isMobile
-               ? Math.min(360, Platform.screenWidth - 2 * Platform.spacingLg)
-               : Math.max(trigger.implicitWidth, root.width)
+               ? Math.min(_screenW - 2 * Platform.spacingLg, 420)
+               : Math.min(_screenW - 4 * Platform.spacingLg, 360)
 
-        readonly property int _maxHeight: Math.round(Platform.screenHeight * 0.7)
+        readonly property int _maxHeight: Math.round(_screenH * 0.7)
         height: Math.min(implicitHeight, _maxHeight)
 
         padding: Platform.spacingMd
@@ -107,154 +106,163 @@ Item {
             border.width: Platform.borderWidth
         }
 
+        // Subtle open/close transition.
         enter: Transition {
             ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.durationFast }
-                NumberAnimation { property: "scale";   from: 0.96; to: 1; duration: Platform.durationFast; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "scale";   from: 0.96; to: 1.0; duration: Platform.durationMed; easing.type: Easing.OutCubic }
             }
-        }
-        exit: Transition {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.durationFast }
         }
 
         onAboutToShow: tagListInternal.reload()
 
         contentItem: ColumnLayout {
-            id: contents
             spacing: Platform.spacingMd
 
-            // Header: search and Any/All toggle
-            ColumnLayout {
+            // Search field.
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.touchTarget - 4
+                radius: Platform.radius
+                color: Platform.bg
+                border.color: searchField.activeFocus ? Platform.accent : Platform.border
+                border.width: Platform.borderWidth
+                Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+
+                TextField {
+                    id: searchField
+                    anchors {
+                        fill: parent
+                        leftMargin: Platform.spacingMd
+                        rightMargin: Platform.spacingMd
+                    }
+                    placeholderText: "Search tags\u2026"
+                    placeholderTextColor: Platform.textMuted
+                    background: Item {}
+                    color: Platform.textPrimary
+                    font.pixelSize: Platform.fontSmall
+                    verticalAlignment: TextInput.AlignVCenter
+                    onTextChanged: tagListInternal.refilter()
+                    Keys.onEscapePressed: { text = ""; popup.close() }
+                }
+            }
+
+            // Any / All segmented toggle.
+            RowLayout {
                 Layout.fillWidth: true
                 spacing: Platform.spacingSm
 
-                // Search field
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Platform.touchTarget - 4
-                    radius: Platform.radius
-                    color: Platform.bg
-                    border.color: searchField.activeFocus ? Platform.accent : Platform.border
-                    border.width: Platform.borderWidth
-
-                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
-
-                    TextField {
-                        id: searchField
-                        anchors {
-                            fill: parent
-                            leftMargin: Platform.spacingMd
-                            rightMargin: Platform.spacingMd
-                        }
-                        placeholderText: "Search tags…"
-                        background: Item {}
-                        color: Platform.textPrimary
-                        font.pixelSize: Platform.fontSmall
-                        verticalAlignment: TextInput.AlignVCenter
-                        onTextChanged: tagListInternal.refilter()
-                        Keys.onEscapePressed: { text = ""; popup.close() }
-                    }
-                }
-
-                // Any/All segmented toggle. Mirrors smart-deck filter modes:
-                // Any = entry has at least one of the selected tags (OR),
-                // All = entry has every selected tag (AND).
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Platform.spacingSm
-
-                    Repeater {
-                        model: [ { label: "Any", mode: 0 },
-                                 { label: "All", mode: 1 } ]
-                        delegate: TagChip {
-                            required property var modelData
-                            Layout.fillWidth: true
-                            tagName:     modelData.label
-                            active:      root._matchMode === modelData.mode
-                            interactive: true
-                            onClicked:   root._vm.tagMatchMode = modelData.mode
-                        }
+                Repeater {
+                    model: [ { label: "Any", mode: 0 },
+                             { label: "All", mode: 1 } ]
+                    delegate: TagChip {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        tagName:     modelData.label
+                        active:      root._matchMode === modelData.mode
+                        interactive: true
+                        onClicked:   root._vm.tagMatchMode = modelData.mode
                     }
                 }
             }
 
-            // Tag list
-            Rectangle {
-                id: listFrame
+            // Active-count + Clear row. Lives above the grid so users can
+            // see at a glance how many tags they've selected and clear
+            // them without scrolling to the footer.
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.max(
-                    Platform.chipHeight * 3,
-                    Math.min(tagList.contentHeight + 2,
-                             Platform.chipHeight * Platform.popupMaxRows))
+                visible: root._activeCount > 0
+                spacing: Platform.spacingSm
+                Text {
+                    Layout.fillWidth: true
+                    text: root._activeCount + (root._activeCount === 1 ? " tag selected" : " tags selected")
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontSmall
+                }
+                Text {
+                    text: "Clear all"
+                    color: clearArea.containsMouse ? Platform.danger : Platform.accentDark
+                    font.pixelSize: Platform.fontSmall
+                    font.bold: true
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    MouseArea {
+                        id: clearArea
+                        anchors.fill: parent
+                        anchors.margins: -6
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root._vm.clearTagFilters()
+                    }
+                }
+            }
+
+            // Tag grid. Flow wraps chips left-to-right top-to-bottom; the
+            // surrounding Flickable handles overflow when the user has a
+            // long tag set.
+            Flickable {
+                id: tagGrid
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(
+                    Math.max(flow.implicitHeight + 2 * Platform.spacingSm,
+                             Platform.chipHeight * 3),
+                    Math.round(popup._maxHeight * 0.55))
                 Layout.fillHeight: true
-                color: "transparent"
+                clip: true
+                contentWidth: width
+                contentHeight: flow.implicitHeight + 2 * Platform.spacingSm
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-                ListView {
-                    id: tagList
-                    anchors.fill: parent
-                    clip: true
-                    spacing: Platform.spacingXs
-                    model: ListModel { id: tagModel }
-                    boundsBehavior: Flickable.StopAtBounds
+                Flow {
+                    id: flow
+                    width: parent.width
+                    spacing: Platform.spacingSm
+                    padding: Platform.spacingXs
 
-                    delegate: Item {
-                        // Delegate row spans the list and contains a
-                        // natural-width chip at the left. Whole row is tappable
-                        // so users can hit the row, not just the pill.
-                        required property var modelData
-                        width: tagList.width
-                        height: Platform.chipHeight + Platform.spacingXs
-
-                        TagChip {
-                            anchors {
-                                left: parent.left
-                                verticalCenter: parent.verticalCenter
-                                leftMargin: Platform.spacingXs
-                                rightMargin: Platform.spacingXs
-                            }
-                            tagName:     parent.modelData.name
-                            tagId:       parent.modelData.id
-                            active:      parent.modelData.active
+                    Repeater {
+                        model: ListModel { id: tagModel }
+                        delegate: TagChip {
+                            required property var model
+                            tagName:     model.name
+                            tagId:       model.id
+                            active:      model.active
                             interactive: true
                             onClicked: {
-                                if (parent.modelData.active)
-                                    root._vm.removeTagFilter(parent.modelData.id)
-                                else
-                                    root._vm.addTagFilter(parent.modelData.id)
+                                if (model.active) root._vm.removeTagFilter(model.id)
+                                else              root._vm.addTagFilter(model.id)
                             }
                         }
                     }
+                }
 
-                    // Empty state
+                // Empty state.
+                Column {
+                    anchors.centerIn: parent
+                    visible: tagModel.count === 0
+                    spacing: Platform.spacingSm
                     Text {
-                        anchors.centerIn: parent
-                        visible: tagList.count === 0
-                        width: parent.width - 2 * Platform.spacingMd
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "\uD83C\uDFF7\uFE0F"
+                        font.pixelSize: 32
+                        color: Platform.textMuted
+                    }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
                         horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
                         text: searchField.text.length > 0
                               ? "No tags match \"" + searchField.text + "\"."
                               : "No tags yet — create one from the Tags page."
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontSmall
+                        wrapMode: Text.WordWrap
                     }
                 }
             }
 
-            // Footer: Clear and Close
+            // Done footer.
             RowLayout {
                 Layout.fillWidth: true
-                spacing: Platform.spacingMd
-
-                TagChip {
-                    visible: root._activeCount > 0
-                    tagName: "Clear all"
-                    interactive: true
-                    onClicked: root._vm.clearTagFilters()
-                }
-
                 Item { Layout.fillWidth: true }
-
                 TagChip {
                     tagName: "Done"
                     interactive: true
@@ -264,21 +272,10 @@ Item {
             }
         }
 
-        // We rebuild it on three triggers:
-        //   1. popup opens (refresh upstream data)
-        //   2. search text changes (refilter)
-        //   3. activeTagIds or tag list changes (re-sort actives to the top)
         QtObject {
             id: tagListInternal
-            // All tags fetched from the VM, cached so the user typing in
-            // the search field doesn't re-hit the database on every keystroke.
             property var _all: []
-
-            function reload() {
-                _all = root._vm.getAllTags()
-                refilter()
-            }
-
+            function reload() { _all = root._vm.getAllTags(); refilter() }
             function refilter() {
                 tagModel.clear()
                 const query = searchField.text.trim().toLowerCase()
@@ -288,13 +285,11 @@ Item {
                         if (activeIds[i] === id) return true
                     return false
                 }
-
                 const actives = []
                 const inactives = []
                 for (let i = 0; i < _all.length; ++i) {
                     const t = _all[i]
-                    if (query.length > 0 && t.name.toLowerCase().indexOf(query) < 0)
-                        continue
+                    if (query.length > 0 && t.name.toLowerCase().indexOf(query) < 0) continue
                     const row = { id: t.id, name: t.name, active: isActive(t.id) }
                     if (row.active) actives.push(row)
                     else            inactives.push(row)
@@ -307,7 +302,6 @@ Item {
             }
         }
 
-        // React to upstream VM signals while the popup is open.
         Connections {
             target: root._vm
             function onTagFiltersChanged() { if (popup.opened) tagListInternal.refilter() }

@@ -24,6 +24,7 @@ public:
     // Word
     Result_t<Entry_t>              CreateWord(const std::string& word);
     Result_t<Entry_t>              GetEntry(const std::string& word) const;
+    Result_t<Entry_t>              GetEntryById(ID_t id) const;
     Result_t<std::vector<Entry_t>> GetAllEntries() const;
     Result_t<bool>                 DeleteEntry(ID_t wordId);
 

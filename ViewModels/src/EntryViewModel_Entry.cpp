@@ -2,15 +2,16 @@
 
 #include <EntryService/EntryService.h>
 
-bool EntryViewModel::addWord(const QString& word)
+qint64 EntryViewModel::addWord(const QString& word)
 {
     auto result = m_entryService->CreateWord(word.toStdString());
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
-        return false;
+        return -1;
     }
-    emit entryListChanged();
-    return true;
+    const qint64 newId = static_cast<qint64>(result.value().id);
+    emit         entryListChanged();
+    return newId;
 }
 
 bool EntryViewModel::deleteEntry(qint64 wordId)
@@ -74,4 +75,63 @@ QVariantList EntryViewModel::getAllEntries()
         out.append(m);
     }
     return out;
+}
+
+// ── Typed relations ─────────────────────────────────────────────────
+//
+// Relations live in the entry_relation table with (entry_id, related_entry_id,
+// relation_type) — schema kV1. The DB layer returns IDs only, so we look up
+// the related entry's title here to give QML something to render.
+
+QVariantList EntryViewModel::selectedEntryRelations() const
+{
+    QVariantList out;
+    if (m_selectedWordId <= 0)
+        return out;
+    auto rels = m_entryService->GetRelationsForEntry(m_selectedWordId);
+    if (!rels)
+        return out;
+    for (const auto& r : rels.value()) {
+        QVariantMap m;
+        m["id"]        = QVariant::fromValue(r.id);
+        m["relatedId"] = QVariant::fromValue(r.wordRelationId);
+        m["kind"]      = QString::fromStdString(r.relationType);
+        // Resolve the related entry's title via GetEntryById. If the lookup
+        // fails (e.g. the related entry was deleted), leave word blank;
+        // QML treats blank as "(deleted)" and offers a delete-relation
+        // action so the user can clean up.
+        auto entry = m_entryService->GetEntryById(r.wordRelationId);
+        m["word"]  = entry ? QString::fromStdString(entry.value().word) : QString{};
+        out.append(m);
+    }
+    return out;
+}
+
+bool EntryViewModel::addRelation(qint64 entryId, qint64 relatedId, const QString& kind)
+{
+    if (entryId <= 0 || relatedId <= 0 || entryId == relatedId)
+        return false;
+    auto r = m_entryService->AddRelation(static_cast<Service::ID_t>(entryId),
+                                         static_cast<Service::ID_t>(relatedId),
+                                         kind.toStdString());
+    if (!r) {
+        emit errorOccurred(QString::fromStdString(r.error()));
+        return false;
+    }
+    if (entryId == m_selectedWordId)
+        emit selectedEntryRelationsChanged();
+    return true;
+}
+
+bool EntryViewModel::removeRelation(qint64 relationId)
+{
+    if (relationId <= 0)
+        return false;
+    auto r = m_entryService->RemoveRelation(static_cast<Service::ID_t>(relationId));
+    if (!r) {
+        emit errorOccurred(QString::fromStdString(r.error()));
+        return false;
+    }
+    emit selectedEntryRelationsChanged();
+    return true;
 }

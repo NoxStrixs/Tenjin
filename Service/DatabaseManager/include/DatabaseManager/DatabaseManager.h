@@ -22,8 +22,11 @@ public:
     DatabaseManager& operator=(const DatabaseManager&) = delete;
 
     // Word
-    Result_t<Entry_t>              AddEntry(const std::string& word);
-    Result_t<Entry_t>              GetEntry(const std::string& word);
+    Result_t<Entry_t> AddEntry(const std::string& word);
+    Result_t<Entry_t> GetEntry(const std::string& word);
+    // By-id getter — used to surface the title of a related entry returned
+    // from GetRelationsForEntry (which only carries IDs).
+    Result_t<Entry_t>              GetEntryById(ID_t id);
     Result_t<std::vector<Entry_t>> GetAllEntries();
     Result_t<bool>                 DeleteEntry(ID_t id);
 

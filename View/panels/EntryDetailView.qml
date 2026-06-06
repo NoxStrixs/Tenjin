@@ -274,12 +274,211 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: appVM.entryVM.addContentBlock(parent.modelData.type)
+                        onClicked: {
+                            appVM.entryVM.addContentBlock(parent.modelData.type)
+                            // Scroll the block grid to the bottom so the new
+                            // block is in view. callLater defers the read of
+                            // contentHeight until after the model has been
+                            // refreshed and GridContentView has relaid out
+                            // — item #10 in the improvement plan.
+                            Qt.callLater(function() {
+                                if (blockGrid.contentHeight > blockGrid.height)
+                                    blockGrid.contentY = blockGrid.contentHeight - blockGrid.height
+                                else
+                                    blockGrid.contentY = 0
+                            })
+                        }
+                    }
+                }
+            }
+        }
+
+        // Related words section. Groups by kind so the page surfaces
+        // Synonyms / Antonyms / Translations etc. separately. Always
+        // visible (even when empty) so users discover the affordance; the
+        // + Add Relation button is gated to edit mode like the other
+        // structural editors above.
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Platform.border
+            visible: appVM.entryVM.selectedEntryId > 0
+        }
+
+        ColumnLayout {
+            id: relationsLayout
+            Layout.fillWidth: true
+            visible: appVM.entryVM.selectedEntryId > 0
+            spacing: 10
+
+            // _grouped is rebuilt whenever selectedEntryRelations changes,
+            // yielding { synonym: [...], antonym: [...], ... }. The
+            // canonical order matches AddRelationDialog._kinds so the
+            // page is stable across sessions.
+            readonly property var _relations: appVM.entryVM.selectedEntryRelations
+            readonly property var _kindOrder: [
+                { id: "synonym",     label: "Synonyms"     },
+                { id: "antonym",     label: "Antonyms"     },
+                { id: "related",     label: "Related"      },
+                { id: "translation", label: "Translations" },
+                { id: "inflection",  label: "Inflections"  }
+            ]
+
+            function _groupedRelations() {
+                const groups = { synonym: [], antonym: [], related: [], translation: [], inflection: [] }
+                for (let i = 0; i < _relations.length; i++) {
+                    const r = _relations[i]
+                    if (groups[r.kind] !== undefined) groups[r.kind].push(r)
+                    else (groups.related = groups.related).push(r)  // unknown kind → "Related"
+                }
+                return groups
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Text {
+                    Layout.fillWidth: true
+                    text: "Related words"
+                    color: Platform.textPrimary
+                    font.pixelSize: Platform.fontLarge
+                    font.bold: true
+                }
+                Rectangle {
+                    visible: appVM.entryVM.editMode
+                    implicitHeight: Platform.touchTarget * 0.85
+                    implicitWidth: addRelLbl.implicitWidth + 22
+                    radius: Platform.radius
+                    color: addRelArea.containsMouse ? Platform.accent : Platform.surfaceAlt
+                    border.color: Platform.border
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Text {
+                        id: addRelLbl
+                        anchors.centerIn: parent
+                        text: "+ Add relation"
+                        color: addRelArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
+                        font.pixelSize: Platform.fontSmall
+                        font.bold: true
+                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    }
+                    MouseArea {
+                        id: addRelArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            addRelationDialog.sourceEntryId = appVM.entryVM.selectedEntryId
+                            addRelationDialog.open()
+                        }
+                    }
+                }
+            }
+
+            // Empty state.
+            Text {
+                visible: relationsLayout._relations.length === 0
+                Layout.fillWidth: true
+                text: appVM.entryVM.editMode
+                      ? "No related words yet. Tap + Add relation to link a synonym, antonym, translation, or inflection."
+                      : "No related words yet."
+                color: Platform.textMuted
+                font.pixelSize: Platform.fontBase
+                wrapMode: Text.WordWrap
+            }
+
+            // One ColumnLayout per kind group. Repeater materialises only
+            // the groups that have entries — empty groups are hidden.
+            Repeater {
+                model: relationsLayout._kindOrder
+                delegate: ColumnLayout {
+                    id: kindGroupDelegate
+                    required property var modelData
+                    Layout.fillWidth: true
+
+                    readonly property var _entries: {
+                        const g = relationsLayout._groupedRelations()
+                        return g[modelData.id] || []
+                    }
+                    visible: _entries.length > 0
+                    spacing: 4
+
+                    Text {
+                        text: modelData.label + " · " + kindGroupDelegate._entries.length
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontSmall
+                        font.bold: true
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Repeater {
+                            model: kindGroupDelegate._entries
+                            delegate: Rectangle {
+                                required property var modelData
+                                implicitHeight: Platform.chipHeight
+                                implicitWidth: row.implicitWidth + 18
+                                radius: Platform.chipRadius
+                                color: chipHover.containsMouse ? Platform.surfaceAlt : Platform.surface
+                                border.color: Platform.border
+                                border.width: 1
+                                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+
+                                Row {
+                                    id: row
+                                    anchors.centerIn: parent
+                                    spacing: 6
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: modelData.word.length > 0
+                                              ? modelData.word
+                                              : "(deleted)"
+                                        color: modelData.word.length > 0
+                                               ? Platform.textPrimary
+                                               : Platform.textMuted
+                                        font.pixelSize: Platform.fontSmall
+                                        font.italic: modelData.word.length === 0
+                                    }
+                                    Text {
+                                        visible: appVM.entryVM.editMode
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "\u2715"
+                                        color: removeArea.containsMouse ? Platform.danger : Platform.textMuted
+                                        font.pixelSize: Platform.fontSmall
+                                        font.bold: true
+                                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                                        MouseArea {
+                                            id: removeArea
+                                            anchors.fill: parent
+                                            anchors.margins: -6
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: appVM.entryVM.removeRelation(modelData.id)
+                                        }
+                                    }
+                                }
+                                MouseArea {
+                                    id: chipHover
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: modelData.relatedId > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    // Tap the chip (not the ×) to open the related entry.
+                                    onClicked: if (modelData.relatedId > 0)
+                                                   appVM.entryVM.selectEntry(modelData.relatedId)
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
+
+    // AddRelationDialog is hosted here so it can read selectedEntryId at
+    // open time. Kept inside the EntryDetailView scope rather than at
+    // Main.qml because nothing outside this view opens it.
+    AddRelationDialog { id: addRelationDialog }
 
     ConfirmDialog {
         id: deleteEntryConfirm
@@ -290,5 +489,3 @@ Item {
         }
     }
 }
-
-

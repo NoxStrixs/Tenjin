@@ -16,6 +16,11 @@ Result_t<Entry_t> EntryService::GetEntry(const std::string& word) const
     return m_db->GetEntry(word);
 }
 
+Result_t<Entry_t> EntryService::GetEntryById(ID_t id) const
+{
+    return m_db->GetEntryById(id);
+}
+
 Result_t<std::vector<Entry_t>> EntryService::GetAllEntries() const
 {
     return m_db->GetAllEntries();

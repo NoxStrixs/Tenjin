@@ -367,6 +367,30 @@ Rectangle {
                         persistentSelection: true
                         onEditingFinished: root.contentEdited(root.blockId, getFormattedText(0, length))
 
+                        // Strip foreign formatting on paste. TextArea normally
+                        // pastes the clipboard's text/html representation,
+                        // which carries fonts / colors / sizes from whatever
+                        // app the user copied from. Intercept the standard
+                        // Paste shortcut and insert the clipboard's plain-text
+                        // form instead. Our intentional in-app bold / italic
+                        // / underline still works because those are applied
+                        // by cursorSelection.font, not by foreign HTML.
+                        // Item #6 in the improvement plan.
+                        Keys.onPressed: (event) => {
+                            if (event.matches(StandardKey.Paste)) {
+                                event.accepted = true
+                                const plain = appVM.clipboardPlainText()
+                                if (plain.length > 0) {
+                                    // Delete the current selection (if any)
+                                    // so paste replaces, matching the default
+                                    // Cmd/Ctrl+V behaviour.
+                                    if (selectionStart !== selectionEnd)
+                                        remove(selectionStart, selectionEnd)
+                                    insert(cursorPosition, plain)
+                                }
+                            }
+                        }
+
                         // Apply formatting to the current selection.
                         // We use getFormattedText() and pull out the
                     // body fragment Qt marks with Start/EndFragment comments,
@@ -764,6 +788,7 @@ Rectangle {
         }
     }
 }
+
 
 
 

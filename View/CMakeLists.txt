@@ -58,6 +58,7 @@ qt_add_qml_module(TenjinView
         dialogs/AddDeckDialog.qml
         dialogs/AddEntryDialog.qml
         dialogs/AddTagDialog.qml
+        dialogs/AddRelationDialog.qml
         dialogs/ConfirmDialog.qml
         dialogs/RenameTagDialog.qml
         dialogs/ThemedDialog.qml

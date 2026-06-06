@@ -105,6 +105,14 @@ public:
 
     Q_INVOKABLE QString renderFormula(const QString& latex) const;
 
+    // Returns the current clipboard contents as plain text. QClipboard::text()
+    // ignores HTML/RTF entirely, so calling this and inserting the result
+    // strips foreign formatting from pastes — the right behaviour for our
+    // rich-text content blocks, which keep bold/italic/underline as an
+    // intentional in-app feature but should never inherit web-page fonts,
+    // colors, or sizes.
+    Q_INVOKABLE QString clipboardPlainText() const;
+
     Q_INVOKABLE bool isNewsDismissed(const QString& newsId) const;
     Q_INVOKABLE void dismissNews(const QString& newsId);
     Q_INVOKABLE void resetNewsDismissals();

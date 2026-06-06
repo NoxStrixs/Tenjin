@@ -78,6 +78,14 @@ class EntryViewModel : public QObject
     Q_PROPERTY(int tagMatchMode READ tagMatchMode WRITE setTagMatchMode NOTIFY tagMatchModeChanged)
     Q_PROPERTY(QVariantList wordTags READ wordTags NOTIFY wordTagsChanged)
 
+    // Typed relations between entries. Rebuilt whenever the selected entry
+    // changes (or a relation is added/removed). Each entry is
+    // { id, relatedId, word, kind } where kind is one of the canonical
+    // strings: "synonym", "antonym", "related", "translation", "inflection".
+    // QML groups by kind to render Synonyms / Antonyms / etc. sections.
+    Q_PROPERTY(QVariantList selectedEntryRelations READ selectedEntryRelations NOTIFY
+                   selectedEntryRelationsChanged)
+
 public:
     explicit EntryViewModel(std::shared_ptr<Service::EntryService> wordService,
                             QObject*                               parent = nullptr);
@@ -135,8 +143,11 @@ public slots:
     void saveEdit();
     void cancelEdit();
 
-    bool addWord(const QString& word);
-    bool deleteEntry(qint64 wordId);
+    // Creates a new entry and returns its database id on success, or -1 on
+    // failure. Returning the id lets the caller (AddEntryDialog) navigate
+    // straight to the new entry's detail page without a second lookup.
+    qint64 addWord(const QString& word);
+    bool   deleteEntry(qint64 wordId);
 
     bool addContentBlock(int type, const QString& content = QString());
     bool updateContentBlock(
@@ -155,6 +166,16 @@ public slots:
 
     Q_INVOKABLE QString importMedia(const QString& sourceUrl);
     Q_INVOKABLE QString resolveMediaUrl(const QString& storedPath) const;
+
+    // ── Typed relations ─────────────────────────────────────────────
+    // The relation `kind` is a free-form string at the DB layer, but the
+    // UI treats the following five values as the canonical set:
+    //   "synonym", "antonym", "related", "translation", "inflection"
+    // QML's AddRelationDialog only emits these, and the grouped relations
+    // section in EntryDetailView renders sections for each.
+    QVariantList     selectedEntryRelations() const;
+    Q_INVOKABLE bool addRelation(qint64 entryId, qint64 relatedId, const QString& kind);
+    Q_INVOKABLE bool removeRelation(qint64 relationId);
 
     // Search filters
     void setSearchQuery(const QString& q);
@@ -190,6 +211,7 @@ signals:
     void tagMatchModeChanged();
     void wordTagsChanged();
     void entryListChanged();
+    void selectedEntryRelationsChanged();
     void errorOccurred(const QString& msg);
 
 private:

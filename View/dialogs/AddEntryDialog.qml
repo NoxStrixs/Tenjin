@@ -3,11 +3,20 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+// "Add Word" dialog. On accept, the new entry is created and the dialog
+// immediately navigates to that entry's detail page so the user can keep
+// editing — saves a round-trip through the Words list (item #9 in the
+// improvement plan).
 ThemedDialog {
     id: root
     title: "Add Word"
-    width: Platform.isMobile ? Math.min(parent.width - 32, 400) : 400
+    width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 400, 400) : 400
     padding: 24
+
+    // Explicit centering — keeps the dialog from inheriting whatever
+    // coordinates Overlay.overlay last held.
+    x: parent ? Math.round((parent.width  - width)  / 2) : 0
+    y: parent ? Math.round((parent.height - height) / 2) : 0
 
     onAboutToShow: {
         wordInput.text = ""
@@ -15,7 +24,16 @@ ThemedDialog {
     }
     onAccepted: {
         const w = wordInput.text.trim()
-        if (w.length > 0) appVM.entryVM.addWord(w)
+        if (w.length === 0) return
+        // addWord returns the new entry's id, or -1 on failure.
+        const newId = appVM.entryVM.addWord(w)
+        if (newId >= 0) {
+            appVM.entryVM.selectEntry(newId)
+            appVM.currentPage = 0  // PageWords — the entry list / detail page.
+            // Drop straight into edit mode so the user can add content
+            // blocks right away. beginEdit is a public slot on EntryViewModel.
+            appVM.entryVM.beginEdit()
+        }
     }
 
     ColumnLayout {
@@ -37,11 +55,14 @@ ThemedDialog {
             color: Platform.bg
             border.color: wordInput.activeFocus ? Platform.accent : Platform.border
             border.width: wordInput.activeFocus ? 2 : 1
+            Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+            Behavior on border.width { NumberAnimation { duration: Platform.durationFast } }
 
             TextField {
                 id: wordInput
                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                 placeholderText: "e.g. ephemeral"
+                placeholderTextColor: Platform.textMuted
                 font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
                 background: Rectangle { color: "transparent" }
@@ -50,7 +71,7 @@ ThemedDialog {
         }
 
         Text {
-            text: "The word will appear in your list. Open it to add definitions, notes, and media."
+            text: "We'll open the new word so you can add definitions, notes, and media right away."
             font.pixelSize: 11
             color: Platform.textMuted
             wrapMode: Text.WordWrap

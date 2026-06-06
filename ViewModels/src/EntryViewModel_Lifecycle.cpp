@@ -27,6 +27,7 @@ void EntryViewModel::selectEntry(qint64 wordId)
     reloadContent();
     reloadTags();
     emit selectedEntryChanged();
+    emit selectedEntryRelationsChanged();
 }
 
 void EntryViewModel::clearSelection()
@@ -37,6 +38,7 @@ void EntryViewModel::clearSelection()
     m_wordTags.clear();
     emit wordTagsChanged();
     emit selectedEntryChanged();
+    emit selectedEntryRelationsChanged();
 }
 
 void EntryViewModel::beginEdit()

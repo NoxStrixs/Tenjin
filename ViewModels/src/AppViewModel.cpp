@@ -8,7 +8,9 @@
 #include <ViewModels/ReviewViewModel.h>
 #include <ViewModels/SidebarViewModel.h>
 
+#include <QClipboard>
 #include <QDir>
+#include <QGuiApplication>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStringList>
@@ -198,6 +200,17 @@ bool AppViewModel::importData(const QString& fileUrl)
 QString AppViewModel::renderFormula(const QString& latex) const
 {
     return Tenjin::FormulaRenderer::toRichText(latex);
+}
+
+QString AppViewModel::clipboardPlainText() const
+{
+    // QClipboard::text() returns the clipboard's text/plain representation,
+    // not text/html. Pasting via this path strips foreign font, color, size
+    // attributes that come from web-page copies — only the literal
+    // characters survive. Tenjin's in-app bold/italic/underline are
+    // applied separately through the cursorSelection font API.
+    const auto* cb = QGuiApplication::clipboard();
+    return cb ? cb->text() : QString{};
 }
 
 QString AppViewModel::appDataLocation() const

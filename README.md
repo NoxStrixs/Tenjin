@@ -11,3 +11,9 @@
 * Add animations?
 * Improve analytics
 * Add push notifications
+
+
+## Bugs
+* No need a reset button
+*   Delete all words, tags, decks buttons
+* Tags are removing words from sidebar view; however, still searchable and exist
