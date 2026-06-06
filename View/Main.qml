@@ -649,7 +649,7 @@ ApplicationWindow {
         title: "Import collection"
         fileMode: FileDialog.OpenFile
         nameFilters: ["Tenjin export (*.json)", "All files (*)"]
-        onAccepted: appVM.importData(selectedFile)
+        onAccepted: appVM.importData(file)
     }
     FileDialog {
         id: exportDialog
@@ -657,7 +657,7 @@ ApplicationWindow {
         fileMode: FileDialog.SaveFile
         nameFilters: ["Tenjin export (*.json)"]
         defaultSuffix: "json"
-        onAccepted: appVM.exportData(selectedFile)
+        onAccepted: appVM.exportData(file)
     }
 
     // Add dialogs

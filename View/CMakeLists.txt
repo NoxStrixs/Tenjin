@@ -20,6 +20,8 @@ set(_TENJIN_QML_IMPORTS
     QtQuick.Dialogs
     QtQml
     QtQml.Models
+    Qt.labs.platform
+    Qt.labs.folderlistmodel
 )
 if(MEDIA_SUPPORT)
     list(APPEND _TENJIN_QML_IMPORTS QtMultimedia)

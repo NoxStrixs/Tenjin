@@ -77,6 +77,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         Qt6::qmlmodelsplugin
         Qt6::modelsplugin
         Qt6::qtqmlmodelsplugin
+        Qt6::qmlfolderlistmodelplugin
+        Qt6::qtlabsfolderlistmodelplugin
         # QtMultimedia
         Qt6::quickmultimediaplugin
         Qt6::multimediaquickplugin
