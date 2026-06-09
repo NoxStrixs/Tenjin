@@ -42,6 +42,12 @@ void EntryViewModel::rebuildSearchResults()
         if (auto words = m_entryService->SearchEntriesByName(q, m_searchInContent)) {
             const QString ql = m_searchQuery.trimmed().toLower();
             for (const auto& w : *words) {
+                // kV2 multi-language filter. Entries with no language
+                // (e.g. post-migration kV1 -> kV2 entries) always show.
+                // Filter only hides explicitly-other-language entries.
+                if (!m_languageFilter.isEmpty() && !w.language.empty() &&
+                    QString::fromStdString(w.language) != m_languageFilter)
+                    continue;
                 QVariantMap m;
                 m["kind"]  = QStringLiteral("word");
                 m["id"]    = QVariant::fromValue(w.id);
@@ -57,7 +63,7 @@ void EntryViewModel::rebuildSearchResults()
                             const int     idx = c.toLower().indexOf(ql);
                             if (idx >= 0) {
                                 const int start = std::max(0, idx - 20);
-                                snippet         = (start > 0 ? QStringLiteral("…") : QString()) +
+                                snippet = (start > 0 ? QStringLiteral("…") : QString()) +
                                           c.mid(start, 60).simplified() +
                                           (c.size() > start + 60 ? QStringLiteral("…") : QString());
                                 break;

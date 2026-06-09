@@ -2,7 +2,6 @@ import TenjinView
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
 
 Rectangle {
     id: sidebarRoot
@@ -417,8 +416,21 @@ Rectangle {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: parent.modelData.act === 0 ? importDialog.open()
-                                                                  : exportDialog.open()
+                            onClicked: {
+                                if (parent.modelData.act === 0) {
+                                    // Import — show the QML picker that
+                                    // lists files in appVM.documentsFolder.
+                                    importPickerDialog.open()
+                                } else {
+                                    // Export — write to Documents folder,
+                                    // toast the resulting path so the user
+                                    // can find it (Files app on iOS,
+                                    // ~/Documents on desktop).
+                                    const path = appVM.exportToDocuments()
+                                    if (path && path.length > 0)
+                                        appVM.statusMessage = "Exported to " + path
+                                }
+                            }
                         }
                     }
                 }
@@ -426,22 +438,15 @@ Rectangle {
         }
     }
 
-    FileDialog {
-        id: exportDialog
-        title: "Export collection"
-        fileMode: FileDialog.SaveFile
-        defaultSuffix: "json"
-        nameFilters: ["Tenjin export (*.json)"]
-        onAccepted: appVM.exportData(selectedFile)
-    }
-
-    FileDialog {
-        id: importDialog
-        title: "Import collection"
-        fileMode: FileDialog.OpenFile
-        nameFilters: ["Tenjin export (*.json)", "All files (*)"]
-        onAccepted: appVM.importData(selectedFile)
-    }
+    // FileDialog was the wrong abstraction for cross-platform export/import:
+    // QtQuick.Dialogs.FileDialog emits "no native option" on iOS (no
+    // platform picker, no Quick fallback). Replaced with:
+    //   Export → appVM.exportToDocuments() writes a timestamped JSON to
+    //            ~/Documents (or the iOS sandboxed Documents that's
+    //            visible via Files.app) and toasts the path.
+    //   Import → ImportPickerDialog lists existing JSON exports in that
+    //            folder and lets the user pick one.
+    ImportPickerDialog { id: importPickerDialog }
 
     // Mode state
     property int sidebarMode: 0

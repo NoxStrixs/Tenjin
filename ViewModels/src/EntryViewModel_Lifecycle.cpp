@@ -9,7 +9,8 @@ EntryViewModel::EntryViewModel(std::shared_ptr<Service::EntryService> wordServic
       m_contentModel(std::make_unique<ContentBlockModel>(this))
 {
     QSettings settings;
-    m_tagMatchMode = settings.value("filters/tagMatchMode", 1).toInt();
+    m_tagMatchMode   = settings.value("filters/tagMatchMode", 1).toInt();
+    m_languageFilter = settings.value("multilang/currentFilter", QString{}).toString();
 }
 
 void EntryViewModel::selectEntry(qint64 wordId)

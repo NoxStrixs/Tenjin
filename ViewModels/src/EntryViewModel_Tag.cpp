@@ -151,6 +151,114 @@ bool EntryViewModel::deleteTag(qint64 tagId)
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
     }
+    // The DB cascade removed entry_tag + deck_tag_filter rows for this
+    // tag, but the in-memory filter set and per-entry tag caches don't
+    // know that. Without the cleanup below the views keep applying a
+    // now-dangling tag filter — words "disappear" because the search
+    // tries to match a deleted tag id, even though the words themselves
+    // are still on disk.
+    bool filterChanged = false;
+    if (m_activeTagIds.removeAll(tagId) > 0)
+        filterChanged = true;
+    if (filterChanged)
+        emit tagFiltersChanged();
+    reloadTags();
+    rebuildSearchResults();
+    emit entryListChanged();
+    emit wordTagsChanged();
+    return true;
+}
+
+void EntryViewModel::reloadAfterDataChange()
+{
+    // Called after a bulk wipe (Settings danger zone) or after tag +
+    // smart-deck deletes. Clears any cached filter set that might
+    // reference deleted ids, re-pulls per-entry tag data, and refreshes
+    // the search-result cache so views don't keep showing stale rows.
+    m_activeTagIds.clear();
+    emit tagFiltersChanged();
+    reloadTags();
+    rebuildSearchResults();
+    emit entryListChanged();
+    emit wordTagsChanged();
+    emit selectedEntryChanged();
+    emit selectedEntryRelationsChanged();
+}
+
+// ── kV2 multi-language ─────────────────────────────────────────────
+
+void EntryViewModel::setCurrentLanguageFilter(const QString& code)
+{
+    if (m_languageFilter == code)
+        return;
+    m_languageFilter = code;
+    QSettings settings;
+    settings.setValue("multilang/currentFilter", code);
+    emit currentLanguageFilterChanged();
+    rebuildSearchResults();
+    emit entryListChanged();
+}
+
+bool EntryViewModel::setEntryLanguage(qint64 entryId, const QString& code)
+{
+    auto r =
+        m_entryService->SetEntryLanguage(static_cast<Service::ID_t>(entryId), code.toStdString());
+    if (!r) {
+        emit errorOccurred(QString::fromStdString(r.error()));
+        return false;
+    }
+    // If we just relabelled the currently-selected entry, the QML
+    // bindings calling entryLanguage(selectedEntryId) won't refresh on
+    // their own -- entryLanguage is a Q_INVOKABLE function, not a
+    // property, so it doesn't NOTIFY. Re-emit selectedEntryChanged to
+    // force every dependent binding (the picker chip, the read-mode
+    // label) to re-read the entry. Without this the user sees the
+    // dropdown snap back to its previous selection.
+    if (entryId == m_selectedWordId)
+        emit selectedEntryChanged();
+    rebuildSearchResults();
+    emit entryListChanged();
+    return true;
+}
+
+QString EntryViewModel::entryLanguage(qint64 entryId) const
+{
+    if (entryId <= 0)
+        return {};
+    auto e = m_entryService->GetEntryById(static_cast<Service::ID_t>(entryId));
+    return e ? QString::fromStdString(e.value().language) : QString{};
+}
+
+void EntryViewModel::setLastAddedBlockId(qint64 v)
+{
+    if (m_lastAddedBlockId == v)
+        return;
+    m_lastAddedBlockId = v;
+    emit lastAddedBlockIdChanged();
+}
+
+bool EntryViewModel::renameEntry(qint64 entryId, const QString& newName)
+{
+    if (entryId <= 0)
+        return false;
+    const QString trimmed = newName.trimmed();
+    if (trimmed.isEmpty()) {
+        emit errorOccurred(QStringLiteral("Entry name cannot be empty."));
+        return false;
+    }
+    auto r =
+        m_entryService->RenameEntry(static_cast<Service::ID_t>(entryId), trimmed.toStdString());
+    if (!r) {
+        emit errorOccurred(QString::fromStdString(r.error()));
+        return false;
+    }
+    // If we just renamed the currently-selected entry, refresh its
+    // cached title so the header binding updates without a re-select.
+    if (entryId == m_selectedWordId) {
+        m_selectedWord = trimmed;
+        emit selectedEntryChanged();
+    }
+    rebuildSearchResults();
     emit entryListChanged();
     return true;
 }

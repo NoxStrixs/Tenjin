@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
 import TenjinView
 
 // A single content block
@@ -31,8 +30,13 @@ Rectangle {
     readonly property bool isDefinition: blockType === 0
     readonly property var posOptions: ["", "noun", "verb", "adjective", "adverb", "pronoun", "preposition", "conjunction", "interjection", "other"]
 
-    readonly property var typeNames: ["definition", "media", "note"]
-    readonly property bool isMedia: blockType === 1
+    readonly property var typeNames: ["definition", "media", "note", "divider", "formula", "header", "tense"]
+    readonly property bool isMedia:    blockType === 1
+    readonly property bool isNote:     blockType === 2
+    readonly property bool isDivider:  blockType === 3
+    readonly property bool isFormula:  blockType === 4
+    readonly property bool isHeader:   blockType === 5
+    readonly property bool isTense:    blockType === 6
 
     property bool webEngineAvailable: (typeof appVM !== "undefined"
                                        && appVM.webEngineAvailable !== undefined)
@@ -64,8 +68,33 @@ Rectangle {
 
     color: held ? Platform.surfaceAlt : Platform.surface
     radius: Platform.radius
-    border.color: (editMode || held) ? Platform.accent : Platform.border
-    border.width: 1
+    // Newly-added blocks pulse for ~2s: accent-coloured 2px border plus a
+    // small scale wobble. The match is driven by EntryViewModel.lastAddedBlockId
+    // which addContentBlock sets after creating each block.
+    readonly property bool _isNewlyAdded: appVM.entryVM.lastAddedBlockId === root.blockId
+                                           && root.blockId > 0
+    border.color: _isNewlyAdded ? Platform.accent
+                                : (editMode || held) ? Platform.accent
+                                                       : Platform.border
+    border.width: _isNewlyAdded ? 2 : 1
+    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+    Behavior on border.width { NumberAnimation { duration: Platform.durationFast } }
+
+    SequentialAnimation on scale {
+        running: root._isNewlyAdded
+        loops: 3
+        NumberAnimation { from: 1.0;  to: 1.02; duration: 200; easing.type: Easing.OutCubic }
+        NumberAnimation { from: 1.02; to: 1.0;  duration: 200; easing.type: Easing.InCubic }
+    }
+    // Clear the pulse after ~2s so a second add of a different block
+    // pulses cleanly. Triggered by the binding becoming true.
+    Timer {
+        interval: 2200
+        running: root._isNewlyAdded
+        repeat: false
+        onTriggered: appVM.entryVM.lastAddedBlockId = -1
+    }
+
     clip: true
 
     implicitWidth: parent ? parent.width : 0
@@ -97,20 +126,60 @@ Rectangle {
             Rectangle {
                 visible: !root.isMedia
                 Layout.alignment: Qt.AlignVCenter
-                implicitWidth: typeLabel.implicitWidth + 16
+                // For non-note blocks: snug chip around the static type label.
+                // For notes: wider chip so the TextField has room to breathe.
+                implicitWidth: root.isNote && root.editMode
+                               ? Math.max(noteLabelEdit.implicitWidth + 24, 110)
+                               : typeLabel.implicitWidth + 16
                 implicitHeight: Platform.isMobile ? 28 : 22
                 radius: height / 2
                 color: Platform.surfaceAlt
-                border.color: Platform.border
+                border.color: root.isNote && root.editMode && noteLabelEdit.activeFocus
+                              ? Platform.accent : Platform.border
                 border.width: 1
+                Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
 
+                // Static label -- visible for every type EXCEPT notes
+                // (whose label is user-editable below). For notes in read
+                // mode we still use this Text, fed from the pos field.
                 Text {
                     id: typeLabel
                     anchors.centerIn: parent
-                    text: root.typeNames[root.blockType] ?? "note"
+                    visible: !(root.isNote && root.editMode)
+                    text: {
+                        if (root.isNote)
+                            return root.blockPos.length > 0 ? root.blockPos : "Note"
+                        return root.typeNames[root.blockType] ?? "note"
+                    }
                     color: Platform.accentDark
                     font.pixelSize: Platform.fontBase - 2
                     font.bold: true
+                }
+
+                // Editable label for notes. Reuses the pos field as a
+                // generic "custom label" for note blocks -- the pos
+                // column on the content table is otherwise only set by
+                // Definition blocks. posEdited() flows through the same
+                // service path setBlockPartOfSpeech uses for definitions.
+                TextField {
+                    id: noteLabelEdit
+                    visible: root.isNote && root.editMode
+                    anchors.fill: parent
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    text: root.blockPos
+                    placeholderText: "Label (e.g. Etymology)"
+                    placeholderTextColor: Platform.textMuted
+                    color: Platform.accentDark
+                    font.pixelSize: Platform.fontBase - 2
+                    font.bold: true
+                    verticalAlignment: TextInput.AlignVCenter
+                    selectByMouse: true
+                    background: Rectangle { color: "transparent" }
+                    onEditingFinished: {
+                        if (text.trim() !== root.blockPos)
+                            root.posEdited(root.blockId, text.trim())
+                    }
                 }
             }
 
@@ -239,13 +308,228 @@ Rectangle {
             }
         }
 
-        // Body: text editor / viewer, or media picker + preview.
+        // Body: text editor / viewer, or media / divider / header / tense
+        // / formula component.
         Loader {
             id: contentLoader
             Layout.fillWidth: true
-            sourceComponent: root.isMedia
-                             ? mediaArea
-                             : (root.editMode ? editArea : viewArea)
+            sourceComponent: {
+                if (root.isMedia)    return mediaArea
+                if (root.isDivider)  return dividerArea
+                if (root.isHeader)   return headerArea
+                if (root.isTense)    return tenseArea
+                if (root.isFormula)  return formulaArea
+                return root.editMode ? editArea : viewArea
+            }
+        }
+    }
+
+    // Divider — a thin accent line that breaks the visual flow between
+    // sections. No editable payload.
+    Component {
+        id: dividerArea
+        Rectangle {
+            implicitHeight: 2
+            implicitWidth: contentLoader.width
+            color: Platform.accent
+            opacity: 0.55
+        }
+    }
+
+    // Header — large bold text that introduces a section. Edit mode
+    // uses a single-line TextField with the same styling so the visual
+    // is consistent between read and write modes.
+    Component {
+        id: headerArea
+        Loader {
+            sourceComponent: root.editMode ? headerEdit : headerView
+        }
+    }
+    Component {
+        id: headerView
+        Text {
+            width: contentLoader.width
+            text: root.blockContent.length > 0 ? root.blockContent
+                                               : "Section heading"
+            color: root.blockContent.length > 0 ? Platform.textPrimary : Platform.textMuted
+            font.pixelSize: Platform.fontTitle + 4
+            font.bold: true
+            font.italic: root.blockContent.length === 0
+            wrapMode: Text.WordWrap
+        }
+    }
+    Component {
+        id: headerEdit
+        TextField {
+            id: headerInput
+            width: contentLoader.width
+            text: root.blockContent
+            placeholderText: "Section heading"
+            placeholderTextColor: Platform.textMuted
+            color: Platform.textPrimary
+            font.pixelSize: Platform.fontTitle + 4
+            font.bold: true
+            background: Rectangle { color: "transparent" }
+            onEditingFinished: root.contentEdited(root.blockId, text)
+        }
+    }
+
+    // Tense — verb conjugation table. The block's body is a JSON object
+    // mapping tense name → form. We render Present / Past / Future /
+    // Conditional by default; if the JSON has additional keys (gerund,
+    // imperative, …) they appear after the canonical four.
+    Component {
+        id: tenseArea
+        ColumnLayout {
+            id: tenseRoot
+            width: contentLoader.width
+            spacing: 6
+
+            readonly property var canonicalTenses: ["present", "past", "future", "conditional"]
+
+            function _parse(s) {
+                if (!s || s.length === 0) return {}
+                try { return JSON.parse(s) || {} } catch (e) { return {} }
+            }
+            function _orderedKeys(obj) {
+                const out = []
+                for (let i = 0; i < canonicalTenses.length; i++) out.push(canonicalTenses[i])
+                for (const k in obj) if (out.indexOf(k) < 0) out.push(k)
+                return out
+            }
+            function _serialize() {
+                const obj = {}
+                for (let i = 0; i < tenseRepeater.count; i++) {
+                    const item = tenseRepeater.itemAt(i)
+                    if (item) obj[item.tenseName] = item.formValue
+                }
+                return JSON.stringify(obj)
+            }
+
+            property var _data: _parse(root.blockContent)
+            property var _keys: _orderedKeys(_data)
+
+            Repeater {
+                id: tenseRepeater
+                model: tenseRoot._keys
+                delegate: RowLayout {
+                    id: tenseRow
+                    required property var modelData
+                    readonly property string tenseName: modelData
+                    property string formValue: tenseRoot._data[tenseName] || ""
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Rectangle {
+                        Layout.preferredWidth: 110
+                        Layout.preferredHeight: 32
+                        radius: Platform.radius
+                        color: Platform.surfaceAlt
+                        border.color: Platform.border
+                        border.width: 1
+                        Text {
+                            anchors.centerIn: parent
+                            text: tenseRow.tenseName.charAt(0).toUpperCase() + tenseRow.tenseName.slice(1)
+                            color: Platform.textMuted
+                            font.pixelSize: Platform.fontSmall
+                            font.bold: true
+                        }
+                    }
+
+                    Loader {
+                        Layout.fillWidth: true
+                        sourceComponent: root.editMode ? tenseEdit : tenseView
+                    }
+
+                    Component {
+                        id: tenseView
+                        Text {
+                            text: tenseRow.formValue.length > 0 ? tenseRow.formValue : "—"
+                            color: tenseRow.formValue.length > 0 ? Platform.textPrimary : Platform.textMuted
+                            font.pixelSize: Platform.fontBase
+                            font.italic: tenseRow.formValue.length === 0
+                        }
+                    }
+                    Component {
+                        id: tenseEdit
+                        TextField {
+                            text: tenseRow.formValue
+                            placeholderText: "form"
+                            placeholderTextColor: Platform.textMuted
+                            color: Platform.textPrimary
+                            font.pixelSize: Platform.fontBase
+                            background: Rectangle {
+                                color: Platform.bg
+                                radius: Platform.radius
+                                border.color: parent.activeFocus ? Platform.accent : Platform.border
+                                border.width: parent.activeFocus ? 2 : 1
+                            }
+                            onTextChanged: tenseRow.formValue = text
+                            onEditingFinished: root.contentEdited(root.blockId, tenseRoot._serialize())
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Formula — read-only LaTeX rendered via FormulaRenderer (existing
+    // code path; the AppViewModel.renderFormula Q_INVOKABLE returns the
+    // rich-text HTML).
+    Component {
+        id: formulaArea
+        Loader {
+            sourceComponent: root.editMode ? formulaEdit : formulaView
+        }
+    }
+    Component {
+        id: formulaView
+        Text {
+            width: contentLoader.width
+            text: root.blockContent.length > 0
+                  ? appVM.renderFormula(root.blockContent)
+                  : "(empty formula)"
+            color: root.blockContent.length > 0 ? Platform.textPrimary : Platform.textMuted
+            textFormat: Text.RichText
+            font.pixelSize: Platform.fontLarge
+            wrapMode: Text.WordWrap
+        }
+    }
+    Component {
+        id: formulaEdit
+        ColumnLayout {
+            width: contentLoader.width
+            spacing: 4
+            TextField {
+                Layout.fillWidth: true
+                text: root.blockContent
+                placeholderText: "\\frac{a}{b}, \\sqrt{x}, \\sum_{i=0}^n …"
+                placeholderTextColor: Platform.textMuted
+                color: Platform.textPrimary
+                font.pixelSize: Platform.fontBase
+                font.family: "monospace"
+                background: Rectangle {
+                    color: Platform.bg
+                    radius: Platform.radius
+                    border.color: parent.activeFocus ? Platform.accent : Platform.border
+                    border.width: parent.activeFocus ? 2 : 1
+                }
+                onEditingFinished: root.contentEdited(root.blockId, text)
+            }
+            Text {
+                Layout.fillWidth: true
+                text: "Preview:"
+                color: Platform.textMuted
+                font.pixelSize: Platform.fontSmall
+            }
+            Text {
+                Layout.fillWidth: true
+                text: root.blockContent.length > 0 ? appVM.renderFormula(root.blockContent) : ""
+                textFormat: Text.RichText
+                color: Platform.textPrimary
+                font.pixelSize: Platform.fontLarge
+                wrapMode: Text.WordWrap
+            }
         }
     }
 
@@ -611,18 +895,14 @@ Rectangle {
                 wrapMode: Text.WordWrap
             }
 
-            FileDialog {
+            MediaPickerDialog {
                 id: mediaFileDialog
-                title: "Select media (photo library or files)"
-                // image/* and video/* MIME types surface the Photos library on
-                // iOS in addition to Files; the explicit extensions cover desktop.
-                nameFilters: [
-                    "Images & video (*.png *.jpg *.jpeg *.gif *.heic *.bmp *.webp *.svg *.mp4 *.webm *.mkv *.mov)",
-                    "Audio (*.mp3 *.wav *.ogg *.flac *.m4a)",
-                    "All files (*)"
-                ]
-                onAccepted: {
-                    const stored = appVM.entryVM.importMedia(mediaFileDialog.selectedFile)
+                // ImportPickerDialog-style picker lists media in
+                // appVM.documentsFolder. Replaces the old FileDialog,
+                // which emitted "no native option" on iOS. Item #17.
+                onPicked: (path) => {
+                    const stored = appVM.entryVM.importMedia(
+                        "file://" + path)
                     if (stored.length > 0)
                         root.contentEdited(root.blockId, stored)
                 }

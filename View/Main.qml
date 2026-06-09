@@ -151,15 +151,9 @@ ApplicationWindow {
                 onActivated: aboutPopup.open()
                 onHoveredChanged: hovered ? aboutPopup.open() : aboutPopup.close()
             }
-            // Tags — top-level destination, same affordance pattern as
-            // Help/News/Settings below. The "#" glyph is more reliable
-            // across desktop fonts than the 🏷️ emoji.
-            IconBtn {
-                id: tagsBtn
-                glyph: "#"
-                active: appVM.currentPage === root._pageTags
-                onActivated: appVM.currentPage = root._pageTags
-            }
+            // Tags page is reached via the Sidebar's "Manage tags" footer
+            // (the canonical entry-point). The previous header "#" IconBtn
+            // duplicated that affordance and cluttered the top bar.
             IconBtn {
                 id: helpBtn
                 glyph: "?"
@@ -616,10 +610,16 @@ ApplicationWindow {
             currentIndex: appVM.currentPage
             EntryPage    {}
             DeckListPage {}
-            TagsPage     { onAddTagRequested: addTagDialog.open() }
-            HelpPage     {}
-            NewsPage     {}
-            SettingsPage { applicationRoot: root }
+            TagsPage     {
+                onAddTagRequested: addTagDialog.open()
+                onBackRequested:   appVM.currentPage = root._pageWords
+            }
+            HelpPage     { onBackRequested: appVM.currentPage = root._pageWords }
+            NewsPage     { onBackRequested: appVM.currentPage = root._pageWords }
+            SettingsPage {
+                applicationRoot: root
+                onBackRequested: appVM.currentPage = root._pageWords
+            }
         }
     }
 

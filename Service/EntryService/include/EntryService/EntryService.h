@@ -26,7 +26,22 @@ public:
     Result_t<Entry_t>              GetEntry(const std::string& word) const;
     Result_t<Entry_t>              GetEntryById(ID_t id) const;
     Result_t<std::vector<Entry_t>> GetAllEntries() const;
-    Result_t<bool>                 DeleteEntry(ID_t wordId);
+
+    // Danger-zone bulk wipes. FK cascade rules in the schema clean up
+    // dependent rows automatically.
+    Result_t<int> DeleteAllEntries();
+    Result_t<int> DeleteAllTags();
+
+    // Per-entry language code (ISO 639-1 like "en", "es", "ja"; empty
+    // string = unspecified). Drives the lightweight multi-language
+    // filter on EntryViewModel.
+    Result_t<bool>                     SetEntryLanguage(ID_t id, const std::string& code);
+    Result_t<std::vector<std::string>> GetAllLanguages() const;
+    Result_t<bool>                     DeleteEntry(ID_t wordId);
+
+    // Rename the entry's title. Surfaces UNIQUE violations from the DB
+    // so the UI can show a clear error when the new name collides.
+    Result_t<bool> RenameEntry(ID_t wordId, const std::string& newName);
 
     // Content Blocks
     Result_t<ContentBlock_t>              AddContentBlock(const ContentBlock_t& block);

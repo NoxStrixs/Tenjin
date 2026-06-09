@@ -19,6 +19,10 @@ enum class ContentType_t : int {
     Note       = 2,
     Divider    = 3,
     Formula    = 4, // LaTeX payload, rendered read-only
+    Header     = 5, // Section heading — large bold text
+    Tense      = 6, // Verb conjugation table; body is JSON object of
+                    // tense → form pairs ({"present":"go","past":"went",
+                    // "future":"will go","conditional":"would go"})
 };
 
 inline std::string ToKindString(ContentType_t t)
@@ -34,6 +38,10 @@ inline std::string ToKindString(ContentType_t t)
         return "divider";
     case ContentType_t::Formula:
         return "formula";
+    case ContentType_t::Header:
+        return "header";
+    case ContentType_t::Tense:
+        return "tense";
     }
     return "note";
 }
@@ -48,6 +56,10 @@ inline ContentType_t FromKindString(std::string_view s)
         return ContentType_t::Divider;
     if (s == "formula")
         return ContentType_t::Formula;
+    if (s == "header")
+        return ContentType_t::Header;
+    if (s == "tense")
+        return ContentType_t::Tense;
     return ContentType_t::Note;
 }
 
@@ -60,6 +72,7 @@ struct Entry_t {
     ID_t        id = 0;
     std::string word;
     std::string createdAt;
+    std::string language; // kV2: ISO 639-1 code, "" = unspecified
 };
 
 struct Tag_t {

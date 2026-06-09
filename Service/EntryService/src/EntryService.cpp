@@ -210,4 +210,26 @@ Result_t<std::vector<Tag_t>> EntryService::SearchTagsByName(const std::string& s
     return m_db->SearchTagsByName(substring);
 }
 
+Result_t<int> EntryService::DeleteAllEntries()
+{
+    return m_db->DeleteAllEntries();
+}
+Result_t<int> EntryService::DeleteAllTags()
+{
+    return m_db->DeleteAllTags();
+}
+
+Result_t<bool> EntryService::SetEntryLanguage(ID_t id, const std::string& code)
+{
+    return m_db->SetEntryLanguage(id, code);
+}
+Result_t<bool> EntryService::RenameEntry(ID_t id, const std::string& newName)
+{
+    return m_db->RenameEntry(id, newName);
+}
+Result_t<std::vector<std::string>> EntryService::GetAllLanguages() const
+{
+    return m_db->GetAllLanguages();
+}
+
 } // namespace Service

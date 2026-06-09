@@ -81,10 +81,38 @@ class EntryViewModel : public QObject
     // Typed relations between entries. Rebuilt whenever the selected entry
     // changes (or a relation is added/removed). Each entry is
     // { id, relatedId, word, kind } where kind is one of the canonical
-    // strings: "synonym", "antonym", "related", "translation", "inflection".
+    // strings: synonym, antonym, related, translation, inflection.
     // QML groups by kind to render Synonyms / Antonyms / etc. sections.
     Q_PROPERTY(QVariantList selectedEntryRelations READ selectedEntryRelations NOTIFY
                    selectedEntryRelationsChanged)
+
+    // Id of the most recently added content block. QML's ContentBlock
+    // delegate binds against this to pulse-highlight itself when it
+    // matches; consumed by the caller (EntryDetailView) which resets it
+    // after the pulse Animation completes. -1 = nothing recent.
+    Q_PROPERTY(qint64 lastAddedBlockId READ lastAddedBlockId WRITE setLastAddedBlockId NOTIFY
+                   lastAddedBlockIdChanged)
+    qint64 lastAddedBlockId() const
+    {
+        return m_lastAddedBlockId;
+    }
+    // Setter body lives in EntryViewModel_Tag.cpp -- moc's header parser
+    // can't reliably read multi-statement inline bodies with `if` /
+    // `return` / `emit` in them, even though the compiler can. Keep
+    // anything non-trivial out of headers in classes that go through moc.
+    void setLastAddedBlockId(qint64 v);
+
+    // kV2 multi-language: per-entry ISO 639-1 code + a global filter.
+    // The Q_PROPERTY plus its inline READ getter must live OUT of any
+    // public slots: / signals: section -- moc cannot generate code for
+    // inline bodies in those sections. Mutators (setCurrentLanguageFilter,
+    // setEntryLanguage, etc.) are in public slots: below.
+    Q_PROPERTY(QString currentLanguageFilter READ currentLanguageFilter WRITE
+                   setCurrentLanguageFilter NOTIFY currentLanguageFilterChanged)
+    QString currentLanguageFilter() const
+    {
+        return m_languageFilter;
+    }
 
 public:
     explicit EntryViewModel(std::shared_ptr<Service::EntryService> wordService,
@@ -167,10 +195,10 @@ public slots:
     Q_INVOKABLE QString importMedia(const QString& sourceUrl);
     Q_INVOKABLE QString resolveMediaUrl(const QString& storedPath) const;
 
-    // ── Typed relations ─────────────────────────────────────────────
+    // -- Typed relations ---------------------------------------------
     // The relation `kind` is a free-form string at the DB layer, but the
     // UI treats the following five values as the canonical set:
-    //   "synonym", "antonym", "related", "translation", "inflection"
+    //   synonym, antonym, related, translation, inflection
     // QML's AddRelationDialog only emits these, and the grouped relations
     // section in EntryDetailView renders sections for each.
     QVariantList     selectedEntryRelations() const;
@@ -201,6 +229,31 @@ public slots:
     Q_INVOKABLE bool renameTag(qint64 tagId, const QString& name);
     Q_INVOKABLE bool isTagFiltered(qint64 tagId) const;
 
+    // -- Multi-language (lightweight) --------------------------------
+    // Each entry can be tagged with an ISO 639-1 code via setEntryLanguage.
+    // currentLanguageFilter narrows searchResults to a single language;
+    // empty string means all languages and is the default. Persisted in
+    // QSettings under multilang/currentFilter so the filter survives
+    // restarts. The Q_PROPERTY itself and its inline READ getter are
+    // declared in the public: block above (moc rejects inline bodies
+    // inside public slots:). Only the non-inline mutators live here.
+    void                setCurrentLanguageFilter(const QString& code);
+    Q_INVOKABLE bool    setEntryLanguage(qint64 entryId, const QString& code);
+    Q_INVOKABLE QString entryLanguage(qint64 entryId) const;
+
+    // Rename the entry's title. Returns true on success; on failure
+    // (empty name, duplicate title) emits errorOccurred with a message
+    // the UI can surface. Refreshes the search-result cache + sidebar
+    // so the new title shows up everywhere the old one did.
+    Q_INVOKABLE bool renameEntry(qint64 entryId, const QString& newName);
+
+    // Called by AppViewModel after a bulk-delete operation (Settings
+    // danger zone, tag-delete with affected decks). Clears active tag
+    // filters, reloads the per-entry tag cache and the search-result
+    // cache, and re-emits the signals every view binds to. Safe to call
+    // even when nothing actually changed.
+    Q_INVOKABLE void reloadAfterDataChange();
+
 signals:
     void selectedEntryChanged();
     void editModeChanged();
@@ -212,6 +265,8 @@ signals:
     void wordTagsChanged();
     void entryListChanged();
     void selectedEntryRelationsChanged();
+    void currentLanguageFilterChanged();
+    void lastAddedBlockIdChanged();
     void errorOccurred(const QString& msg);
 
 private:
@@ -234,6 +289,8 @@ private:
     QList<qint64> m_activeTagIds;
     int           m_tagMatchMode = 1;
     QVariantList  m_wordTags;
+    QString       m_languageFilter; // kV2 -- empty = all languages
+    qint64        m_lastAddedBlockId = -1;
 
     std::vector<Service::ContentBlock_t> m_editSnapshot;
 };

@@ -24,7 +24,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntries(const std::string&
 
     QSqlQuery q(m_db);
     q.prepare(
-        "SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
+        "SELECT DISTINCT w.id, w.title, w.created_at, w.language FROM entry w "
         "JOIN entry_content_fts fts ON fts.rowid = (SELECT id FROM entry_content WHERE entry_id "
         "= w.id LIMIT 1) "
         "WHERE entry_content_fts MATCH :query "
@@ -38,7 +38,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntries(const std::string&
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                 .word      = q.value(1).toString().toStdString(),
-                                .createdAt = q.value(2).toString().toStdString()});
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }
@@ -78,7 +79,7 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::SearchContent(const std::
 Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByName(const std::string& substring)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, title, created_at FROM entry "
+    q.prepare("SELECT id, title, created_at, language FROM entry "
               "WHERE title LIKE :pat ESCAPE '\\' "
               "ORDER BY title ASC;");
     QString pat = QString::fromStdString(substring);
@@ -92,7 +93,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByName(const std::s
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                 .word      = q.value(1).toString().toStdString(),
-                                .createdAt = q.value(2).toString().toStdString()});
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }
@@ -121,7 +123,7 @@ Result_t<std::vector<Tag_t>> DatabaseManager::SearchTagsByName(const std::string
 Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByContent(const std::string& substring)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
+    q.prepare("SELECT DISTINCT w.id, w.title, w.created_at, w.language FROM entry w "
               "JOIN entry_content wc ON wc.entry_id = w.id "
               "WHERE wc.content LIKE :pat ESCAPE '\\' "
               "ORDER BY w.title ASC;");
@@ -136,7 +138,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByContent(const std
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                 .word      = q.value(1).toString().toStdString(),
-                                .createdAt = q.value(2).toString().toStdString()});
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }

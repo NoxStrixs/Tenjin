@@ -121,7 +121,17 @@ const Step kV1 = {
 
 // Ordered: index i upgrades to version i+1.
 // Append a new Step here and bump kSchemaVersion to evolve the schema.
-const std::vector<const Step*> kSteps = {&kV1};
+
+// kV2 — multi-language support, lightweight path. Adds a per-entry
+// language code column (ISO 639-1 like "en", "es", "ja"; empty string
+// means "unspecified"). Existing rows default to ''. The index speeds
+// up the language filter applied by EntryViewModel::currentLanguageFilter.
+const Step kV2 = {
+    "ALTER TABLE entry ADD COLUMN language TEXT NOT NULL DEFAULT '';",
+    "CREATE INDEX IF NOT EXISTS idx_entry_language ON entry(language);",
+};
+
+const std::vector<const Step*> kSteps = {&kV1, &kV2};
 
 int currentVersion(QSqlDatabase& db)
 {
@@ -139,12 +149,37 @@ void setVersion(QSqlDatabase& db, int v)
                                  q.lastError().text().toStdString());
 }
 
+// True when the given table has a column with this name. Used by
+// Migrate() to detect partial migrations (user_version was bumped but
+// the ALTER TABLE never actually landed) and re-run them.
+bool columnExists(QSqlDatabase& db, const char* table, const char* column)
+{
+    QSqlQuery q(db);
+    if (!q.exec(QStringLiteral("PRAGMA table_info(%1);").arg(table)))
+        return false;
+    while (q.next()) {
+        if (q.value(1).toString() == QLatin1String(column))
+            return true;
+    }
+    return false;
+}
+
 void exec(QSqlDatabase& db, const char* sql)
 {
     QSqlQuery q(db);
-    if (!q.exec(QString::fromUtf8(sql)))
-        throw std::runtime_error("Schema step failed: " + q.lastError().text().toStdString() +
+    if (!q.exec(QString::fromUtf8(sql))) {
+        const QString err = q.lastError().text();
+        // SQLite returns "duplicate column name" when ALTER TABLE ADD
+        // COLUMN tries to add a column that already exists. Treat this
+        // as benign so migrations are idempotent: if a prior attempt
+        // added the column but failed to commit user_version (e.g. the
+        // process was killed between the ALTER and the PRAGMA), the
+        // re-run won't blow up here.
+        if (err.contains(QLatin1String("duplicate column"), Qt::CaseInsensitive))
+            return;
+        throw std::runtime_error("Schema step failed: " + err.toStdString() +
                                  " | SQL: " + std::string(sql));
+    }
 }
 
 } // namespace
@@ -153,8 +188,20 @@ void Migrate(QSqlDatabase& db)
 {
     exec(db, "PRAGMA foreign_keys = ON;");
 
-    const int from = currentVersion(db);
+    int       from = currentVersion(db);
     const int to   = kSchemaVersion;
+
+    // Self-heal: if user_version claims we have kV2 schema but the
+    // language column is actually missing (a partial migration left the
+    // DB in a wedge state), step back one version so kV2 re-runs. The
+    // duplicate-column guard in exec() makes the re-run safe even if
+    // the column actually IS there. Without this check, all SELECTs
+    // that read "language" silently fail and the UI looks empty even
+    // though entries exist.
+    if (from >= 2 && !columnExists(db, "entry", "language")) {
+        from = 1;
+    }
+
     if (from >= to)
         return;
 

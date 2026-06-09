@@ -10,6 +10,9 @@ import QtQuick.Layouts
 Item {
     id: newsRoot
 
+    // Asks Main.qml to return to Words. Wired in Main.qml's StackLayout host.
+    signal backRequested()
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -23,6 +26,32 @@ Item {
             Layout.topMargin: Platform.pagePadding
             Layout.rightMargin: Platform.pagePadding
             Layout.bottomMargin: Platform.spacingMd
+
+            // Back to Words.
+            Rectangle {
+                Layout.preferredWidth: Platform.touchTarget
+                Layout.preferredHeight: Platform.touchTarget
+                radius: Platform.radius
+                color: newsBackArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                border.color: Platform.border
+                border.width: 1
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u2039"
+                    color: Platform.textPrimary
+                    font.pixelSize: Platform.fontTitle
+                    font.bold: true
+                }
+                MouseArea {
+                    id: newsBackArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: newsRoot.backRequested()
+                }
+            }
+
             Text {
                 Layout.fillWidth: true
                 text: "News"

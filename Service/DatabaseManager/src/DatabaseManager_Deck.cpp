@@ -184,7 +184,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
     if (!deck->bIsSmart) {
         // Manual deck: read directly from deck_entry junction
         QSqlQuery q(m_db);
-        q.prepare("SELECT w.id, w.title, w.created_at FROM entry w "
+        q.prepare("SELECT w.id, w.title, w.created_at, w.language FROM entry w "
                   "JOIN deck_entry dw ON dw.entry_id = w.id "
                   "WHERE dw.deck_id = :deckId "
                   "ORDER BY w.title ASC;");
@@ -197,7 +197,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
         while (q.next()) {
             words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                     .word      = q.value(1).toString().toStdString(),
-                                    .createdAt = q.value(2).toString().toStdString()});
+                                    .createdAt = q.value(2).toString().toStdString(),
+                                    .language  = q.value(3).toString().toStdString()});
         }
         return words;
     }
@@ -229,7 +230,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vect
     QString sql;
     if (mode == FilterMode_t::And) {
         // Word must have ALL specified tags
-        sql = QString("SELECT w.id, w.title, w.created_at FROM entry w "
+        sql = QString("SELECT w.id, w.title, w.created_at, w.language FROM entry w "
                       "JOIN entry_tag wt ON wt.entry_id = w.id "
                       "WHERE wt.tag_id IN (%1) "
                       "GROUP BY w.id "
@@ -239,7 +240,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vect
                   .arg(tagIds.size());
     } else {
         // Word must have at least one of the specified tags
-        sql = QString("SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
+        sql = QString("SELECT DISTINCT w.id, w.title, w.created_at, w.language FROM entry w "
                       "JOIN entry_tag wt ON wt.entry_id = w.id "
                       "WHERE wt.tag_id IN (%1) "
                       "ORDER BY w.title ASC;")
@@ -258,8 +259,38 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vect
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                 .word      = q.value(1).toString().toStdString(),
-                                .createdAt = q.value(2).toString().toStdString()});
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }
+
+// Lists smart decks that filter on the given tag. Drives the "deleting
+// this tag will affect these decks" confirmation popup. Only smart
+// decks are returned — manual decks aren't filtered by tags so they're
+// unaffected by tag deletes.
+Result_t<std::vector<Deck_t>> DatabaseManager::GetSmartDecksUsingTag(ID_t tagId)
+{
+    QSqlQuery q(m_db);
+    q.prepare("SELECT DISTINCT d.id, d.name, d.is_smart, d.filter_mode, d.created_at "
+              "FROM deck d "
+              "JOIN deck_tag_filter f ON f.deck_id = d.id "
+              "WHERE f.tag_id = :tag AND d.is_smart = 1 "
+              "ORDER BY d.name;");
+    q.bindValue(":tag", QVariant::fromValue(tagId));
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+
+    std::vector<Deck_t> out;
+    while (q.next()) {
+        out.push_back(Deck_t{.id         = q.value(0).toLongLong(),
+                             .name       = q.value(1).toString().toStdString(),
+                             .bIsSmart   = q.value(2).toBool(),
+                             .filterMode = q.value(3).toString() == "OR" ? FilterMode_t::Or
+                                                                         : FilterMode_t::And,
+                             .createdAt  = q.value(4).toString().toStdString()});
+    }
+    return out;
+}
+
 } // namespace Service

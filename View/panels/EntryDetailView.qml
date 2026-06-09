@@ -21,9 +21,69 @@ Item {
 
     clip: true
 
+    // -- Related Words resizable section --
+    // _relationsHeight is user-set via the drag handle above the
+    // Related Words ColumnLayout. -1 means "not set yet" -- in that
+    // case _effectiveRelationsHeight falls back to a sensible default
+    // (~38% of the available vertical space). _relationsMinHeight
+    // depends on edit mode: enough for the "+ Add relation" button +
+    // header in edit mode, just one chip-row in read mode.
+    property real _relationsHeight: -1
+    readonly property real _relationsMinHeight:
+        appVM.entryVM.editMode ? 110 : 70
+    readonly property real _effectiveRelationsHeight:
+        _relationsHeight >= 0
+            ? Math.max(_relationsMinHeight, _relationsHeight)
+            : Math.max(_relationsMinHeight, Math.round(detailRoot.height * 0.32))
+
+    // Invisible focus sink. Tapping outside any input transfers focus
+    // here, which collapses the on-screen keyboard. Without this, iOS
+    // / Android keep the IME open until the user explicitly hits Done
+    // and the page feels stuck in edit mode. Item #2 in the plan.
+    Item {
+        id: focusSink
+        width: 0
+        height: 0
+        focus: false
+        // Keep keyboard-related Keys handlers from firing when focused.
+        Keys.onPressed: (event) => event.accepted = false
+    }
+
+    // Tap-anywhere-to-dismiss. gesturePolicy: WithinBounds lets nested
+    // TextField/MouseArea/Flickable still receive their own taps;
+    // this handler only fires for "background" taps that bubbled up
+    // because no child accepted them.
+    TapHandler {
+        gesturePolicy: TapHandler.WithinBounds
+        onTapped: {
+            if (Qt.inputMethod.visible) {
+                Qt.inputMethod.hide()
+                focusSink.forceActiveFocus()
+            }
+        }
+    }
+
+    // Reserve bottom inset when the OS keyboard is up so the focused
+    // field doesn't get covered. iOS's automatic content-inset works
+    // poorly with our Flickable-inside-ColumnLayout layout, so we drive
+    // it explicitly from Qt.inputMethod.keyboardRectangle. Item #7.
+    readonly property real _keyboardInset: Qt.inputMethod.visible
+        ? Math.max(0, Qt.inputMethod.keyboardRectangle.height
+                   - (Platform.safeAreaBottom || 0))
+        : 0
+
     ColumnLayout {
-        anchors { fill: parent; margins: Platform.pagePadding }
+        anchors {
+            fill: parent
+            margins: Platform.pagePadding
+            // Animate the keyboard inset so the layout slides rather
+            // than snapping when the IME shows/hides.
+            bottomMargin: Platform.pagePadding + detailRoot._keyboardInset
+        }
         spacing: 16
+        Behavior on anchors.bottomMargin {
+            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+        }
 
         // Header: title and actions
         ColumnLayout {
@@ -41,13 +101,71 @@ Item {
                     onClicked: detailRoot.backRequested()
                 }
 
+                // Title — plain Text in read mode, editable TextField in
+                // edit mode so the user can rename the entry. The previous
+                // version was always a Text bound to selectedWord, which
+                // looked broken in edit mode (no visible cue that the title
+                // was uneditable, and no way to rename).
                 Text {
+                    visible: !appVM.entryVM.editMode
                     text: appVM.entryVM.selectedWord
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontTitle
                     font.bold: true
                     Layout.fillWidth: true
                     elide: Text.ElideRight
+                }
+                Rectangle {
+                    visible: appVM.entryVM.editMode
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: titleEdit.implicitHeight + 8
+                    radius: Platform.radius
+                    color: Platform.bg
+                    border.color: titleEdit.activeFocus ? Platform.accent : Platform.border
+                    border.width: titleEdit.activeFocus ? 2 : 1
+                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                    TextField {
+                        id: titleEdit
+                        anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
+                        // Binding to selectedWord. The user typing breaks
+                        // this binding (QML auto-replaces it with the
+                        // assignment from the keystroke). To recover, we
+                        // restore the binding with Qt.binding() whenever
+                        // the field hides (Cancel/Save) and whenever a
+                        // rename commits, so the next time edit mode is
+                        // entered the field shows the persisted title --
+                        // not stale typed text.
+                        text: appVM.entryVM.selectedWord
+                        onVisibleChanged: {
+                            if (!visible) {
+                                text = Qt.binding(function() {
+                                    return appVM.entryVM.selectedWord
+                                })
+                            }
+                        }
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontTitle
+                        font.bold: true
+                        selectByMouse: true
+                        background: Rectangle { color: "transparent" }
+                        onEditingFinished: {
+                            const t = text.trim()
+                            // Empty or unchanged: restore the binding and
+                            // bail.
+                            if (t.length === 0 || t === appVM.entryVM.selectedWord) {
+                                text = Qt.binding(function() {
+                                    return appVM.entryVM.selectedWord
+                                })
+                                return
+                            }
+                            appVM.entryVM.renameEntry(appVM.entryVM.selectedEntryId, t)
+                            // Re-bind after rename so the field reflects
+                            // the canonical title (which is now == t).
+                            text = Qt.binding(function() {
+                                return appVM.entryVM.selectedWord
+                            })
+                        }
+                    }
                 }
 
                 ActionButton {
@@ -228,6 +346,263 @@ Item {
             }
         }
 
+        // Per-entry language. Lets the user assign / change the language
+        // for THIS entry independently of the global filter. The chip
+        // shows the current code (or "—" when unspecified); tap to cycle
+        // through availableLanguages + a "+ new" affordance, edit-mode-only.
+        // This completes the #13 multi-language work — Settings drives the
+        // global filter, this drives per-entry assignment.
+        // Per-entry language picker. Edit-mode-only ComboBox showing the
+        // builtin language catalogue plus any custom codes already in
+        // use. Selecting (none) clears the language. Read-mode shows
+        // the current code as a static chip (or hides the row entirely
+        // when nothing is set).
+        RowLayout {
+            id: langRow
+            Layout.fillWidth: true
+            spacing: 8
+            visible: appVM.entryVM.selectedEntryId > 0
+
+            readonly property string currentCode:
+                appVM.entryVM.entryLanguage(appVM.entryVM.selectedEntryId)
+            readonly property bool   hasLang: langRow.currentCode.length > 0
+
+            function buildOptions() {
+                const opts = [{ code: "", label: "(none)" }]
+                const builtin = appVM.builtinLanguages
+                const seen = {}
+                for (let i = 0; i < builtin.length; i++) {
+                    const b = builtin[i]
+                    opts.push({ code: b.code, label: b.code + "  --  " + b.name })
+                    seen[b.code] = true
+                }
+                const custom = appVM.availableLanguages
+                for (let j = 0; j < custom.length; j++) {
+                    if (!seen[custom[j]])
+                        opts.push({ code: custom[j], label: custom[j] + "  (custom)" })
+                }
+                return opts
+            }
+            property var options: buildOptions()
+            Connections {
+                target: appVM
+                function onAvailableLanguagesChanged() { langRow.options = langRow.buildOptions() }
+            }
+
+            Text {
+                text: "Language:"
+                color: Platform.textMuted
+                font.pixelSize: Platform.fontBase
+            }
+
+            // Read mode: static chip showing the current code (or hidden
+            // when nothing is set, so the row collapses to just the
+            // "Language:" label and feels less intrusive).
+            Rectangle {
+                visible: !appVM.entryVM.editMode && langRow.hasLang
+                Layout.preferredHeight: Platform.chipHeight
+                Layout.preferredWidth: langRoChip.implicitWidth + 28
+                radius: Platform.chipRadius
+                color: Platform.accent
+                Text {
+                    id: langRoChip
+                    anchors.centerIn: parent
+                    text: langRow.currentCode
+                    color: Platform.textOnDark
+                    font.pixelSize: Platform.fontSmall
+                    font.bold: true
+                    font.family: "monospace"
+                }
+            }
+            Text {
+                visible: !appVM.entryVM.editMode && !langRow.hasLang
+                text: "(none)"
+                color: Platform.textMuted
+                font.pixelSize: Platform.fontSmall
+                font.italic: true
+            }
+
+            // Edit mode: ComboBox + Add-custom button.
+            ComboBox {
+                id: entryLangCombo
+                visible: appVM.entryVM.editMode
+                Layout.preferredWidth: 220
+                Layout.preferredHeight: Platform.touchTarget
+                font.pixelSize: Platform.fontBase
+                model: langRow.options
+                textRole: "label"
+                valueRole: "code"
+
+                function _syncToEntry() {
+                    const code = langRow.currentCode
+                    for (let i = 0; i < langRow.options.length; i++) {
+                        if (langRow.options[i].code === code) {
+                            currentIndex = i
+                            return
+                        }
+                    }
+                    currentIndex = 0
+                }
+                Component.onCompleted: _syncToEntry()
+                onModelChanged: _syncToEntry()
+                onVisibleChanged: if (visible) _syncToEntry()
+                Connections {
+                    target: appVM.entryVM
+                    function onSelectedEntryChanged() { entryLangCombo._syncToEntry() }
+                }
+
+                onActivated: (idx) => {
+                    const sel = langRow.options[idx]
+                    if (sel && appVM.entryVM.selectedEntryId > 0)
+                        appVM.entryVM.setEntryLanguage(appVM.entryVM.selectedEntryId, sel.code)
+                }
+
+                // App-consistent skin (matches ContentBlock pos picker
+                // and SettingsPage language combo).
+                background: Rectangle {
+                    radius: Platform.radius
+                    color: Platform.surface
+                    border.color: entryLangCombo.activeFocus ? Platform.accent : Platform.border
+                    border.width: entryLangCombo.activeFocus ? 2 : 1
+                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                }
+                contentItem: Text {
+                    leftPadding: 12
+                    rightPadding: entryLangCombo.indicator.width + 6
+                    text: entryLangCombo.displayText
+                    color: Platform.textPrimary
+                    font: entryLangCombo.font
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                }
+                indicator: Text {
+                    anchors {
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                        rightMargin: 12
+                    }
+                    text: "\u25BE"
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontBase
+                }
+                popup: Popup {
+                    y: entryLangCombo.height + 2
+                    width: entryLangCombo.width
+                    implicitHeight: Math.min(contentItem.implicitHeight, 320)
+                    padding: 1
+                    background: Rectangle {
+                        color: Platform.surface
+                        radius: Platform.radius
+                        border.color: Platform.border
+                        border.width: 1
+                    }
+                    contentItem: ListView {
+                        clip: true
+                        implicitHeight: contentHeight
+                        model: entryLangCombo.popup.visible ? entryLangCombo.delegateModel : null
+                        currentIndex: entryLangCombo.highlightedIndex
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    }
+                }
+                delegate: ItemDelegate {
+                    id: entryLangDelegate
+                    required property var modelData
+                    required property int index
+                    width: entryLangCombo.width
+                    height: 32
+                    highlighted: entryLangCombo.highlightedIndex === index
+                    contentItem: Text {
+                        leftPadding: 10
+                        text: entryLangDelegate.modelData.label
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontBase
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
+                    background: Rectangle {
+                        color: entryLangDelegate.highlighted ? Platform.surfaceAlt : "transparent"
+                    }
+                }
+            }
+
+            Rectangle {
+                visible: appVM.entryVM.editMode
+                Layout.preferredWidth: entryAddLangLbl.implicitWidth + 22
+                Layout.preferredHeight: Platform.touchTarget
+                radius: Platform.radius
+                color: entryAddLangArea.containsMouse ? Platform.surfaceAlt : Platform.surface
+                border.color: Platform.border
+                border.width: 1
+                Text {
+                    id: entryAddLangLbl
+                    anchors.centerIn: parent
+                    text: "+ Custom"
+                    color: Platform.textPrimary
+                    font.pixelSize: Platform.fontSmall
+                    font.bold: true
+                }
+                MouseArea {
+                    id: entryAddLangArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: entryCustomLangDialog.open()
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
+        // Custom-code dialog for languages outside the builtin catalogue.
+        ThemedDialog {
+            id: entryCustomLangDialog
+            title: "Add custom language code"
+            width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 400, 420) : 420
+            padding: 20
+            x: parent ? Math.round((parent.width  - width)  / 2) : 0
+            y: parent ? Math.round((parent.height - height) / 2) : 0
+            onAboutToShow: entryCustomLangInput.text = ""
+            standardButtons: entryCustomLangInput.text.trim().length > 0
+                             ? (Dialog.Ok | Dialog.Cancel)
+                             : Dialog.Cancel
+            onAccepted: {
+                const c = entryCustomLangInput.text.trim().toLowerCase()
+                if (c.length > 0 && appVM.entryVM.selectedEntryId > 0)
+                    appVM.entryVM.setEntryLanguage(appVM.entryVM.selectedEntryId, c)
+            }
+            ColumnLayout {
+                spacing: 10
+                width: parent.width
+                Text {
+                    Layout.fillWidth: true
+                    text: "Assign a language code not in the built-in list (rare ISO codes, conlangs, etc.)."
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontSmall
+                    wrapMode: Text.WordWrap
+                }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Platform.touchTarget
+                    radius: Platform.radius
+                    color: Platform.bg
+                    border.color: entryCustomLangInput.activeFocus ? Platform.accent : Platform.border
+                    border.width: 1
+                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                    TextField {
+                        id: entryCustomLangInput
+                        anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                        placeholderText: "e.g. yue, tlh, nv"
+                        placeholderTextColor: Platform.textMuted
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontBase
+                        font.family: "monospace"
+                        background: Rectangle { color: "transparent" }
+                        Keys.onReturnPressed: entryCustomLangDialog.accept()
+                    }
+                }
+            }
+        }
+
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border }
 
         // Content blocks
@@ -249,6 +624,8 @@ Item {
                     { type: 0, label: "Definition" },
                     { type: 1, label: "Media Path" },
                     { type: 2, label: "Note" },
+                    { type: 5, label: "Header"  },
+                    { type: 6, label: "Tense"   },
                     { type: 4, label: "Formula" },
                     { type: 3, label: "Divider" }
                 ]
@@ -305,31 +682,97 @@ Item {
             visible: appVM.entryVM.selectedEntryId > 0
         }
 
-        ColumnLayout {
-            id: relationsLayout
+        // Drag handle for the Related Words section below. Uses a
+        // DragHandler (Qt 6 pointer-handler) rather than a MouseArea
+        // because translation is reported in scene coords, unaffected
+        // by the handle itself moving as the section resizes. Hit area
+        // is 18px tall (comfortable on touch); the visual pill is
+        // centred so it doesn't dominate the page.
+        Rectangle {
+            id: relationsDragHandle
             Layout.fillWidth: true
+            Layout.preferredHeight: 18
+            visible: appVM.entryVM.selectedEntryId > 0
+            color: relationsDragger.active || relHandleHover.hovered
+                   ? Platform.surfaceAlt : "transparent"
+            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+
+            // Pill visual -- conventional drag-handle look.
+            Rectangle {
+                anchors.centerIn: parent
+                width: 64
+                height: 5
+                radius: 2.5
+                color: relationsDragger.active
+                       ? Platform.accent
+                       : relHandleHover.hovered
+                           ? Platform.accentDark
+                           : Platform.textMuted
+                opacity: relationsDragger.active || relHandleHover.hovered ? 1.0 : 0.55
+                Behavior on color   { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on opacity { NumberAnimation { duration: Platform.durationFast } }
+            }
+
+            HoverHandler {
+                id: relHandleHover
+                cursorShape: Qt.SplitVCursor
+            }
+
+            DragHandler {
+                id: relationsDragger
+                target: null               // we don't move the handle itself
+                cursorShape: Qt.SplitVCursor
+                property real heightAtPress: 0
+                onActiveChanged: {
+                    if (active) heightAtPress = detailRoot._effectiveRelationsHeight
+                }
+                onTranslationChanged: {
+                    if (!active) return
+                    // translation.y is the cumulative drag delta since
+                    // press in scene coords. Dragging up -> negative y
+                    // -> section grows. Dragging down -> positive y ->
+                    // shrinks.
+                    const minH = detailRoot._relationsMinHeight
+                    const maxH = Math.max(minH,
+                        blockGrid.height + heightAtPress - 140)
+                    detailRoot._relationsHeight =
+                        Math.max(minH, Math.min(maxH, heightAtPress - translation.y))
+                }
+            }
+        }
+
+        ColumnLayout {
+            id: relationsRoot
+            Layout.fillWidth: true
+            Layout.fillHeight: false
+            Layout.minimumHeight: detailRoot._relationsMinHeight
+            Layout.preferredHeight: detailRoot._effectiveRelationsHeight
+            Layout.maximumHeight: detailRoot._effectiveRelationsHeight
             visible: appVM.entryVM.selectedEntryId > 0
             spacing: 10
+            clip: true
 
             // _grouped is rebuilt whenever selectedEntryRelations changes,
             // yielding { synonym: [...], antonym: [...], ... }. The
             // canonical order matches AddRelationDialog._kinds so the
             // page is stable across sessions.
-            readonly property var _relations: appVM.entryVM.selectedEntryRelations
-            readonly property var _kindOrder: [
+            readonly property var relations: appVM.entryVM.selectedEntryRelations
+            readonly property var kindOrder: [
                 { id: "synonym",     label: "Synonyms"     },
                 { id: "antonym",     label: "Antonyms"     },
                 { id: "related",     label: "Related"      },
                 { id: "translation", label: "Translations" },
                 { id: "inflection",  label: "Inflections"  }
             ]
-
-            function _groupedRelations() {
+            // Group _relations by kind. Recomputed by callers; we don't
+            // cache it as a property to avoid re-evaluating on every
+            // delegate creation (the Repeater handles that).
+            function groupedRelations() {
                 const groups = { synonym: [], antonym: [], related: [], translation: [], inflection: [] }
-                for (let i = 0; i < _relations.length; i++) {
-                    const r = _relations[i]
+                for (let i = 0; i < relationsRoot.relations.length; i++) {
+                    const r = relationsRoot.relations[i]
                     if (groups[r.kind] !== undefined) groups[r.kind].push(r)
-                    else (groups.related = groups.related).push(r)  // unknown kind → "Related"
+                    else groups.related.push(r)  // unknown kind -> "Related"
                 }
                 return groups
             }
@@ -376,7 +819,7 @@ Item {
 
             // Empty state.
             Text {
-                visible: relationsLayout._relations.length === 0
+                visible: relationsRoot.relations.length === 0
                 Layout.fillWidth: true
                 text: appVM.entryVM.editMode
                       ? "No related words yet. Tap + Add relation to link a synonym, antonym, translation, or inflection."
@@ -387,23 +830,22 @@ Item {
             }
 
             // One ColumnLayout per kind group. Repeater materialises only
-            // the groups that have entries — empty groups are hidden.
+            // the groups that have entries -- empty groups are hidden.
             Repeater {
-                model: relationsLayout._kindOrder
+                model: relationsRoot.kindOrder
                 delegate: ColumnLayout {
-                    id: kindGroupDelegate
+                    id: kindGroup
                     required property var modelData
                     Layout.fillWidth: true
-
-                    readonly property var _entries: {
-                        const g = relationsLayout._groupedRelations()
-                        return g[modelData.id] || []
+                    readonly property var entries: {
+                        const g = relationsRoot.groupedRelations()
+                        return g[kindGroup.modelData.id] || []
                     }
-                    visible: _entries.length > 0
+                    visible: kindGroup.entries.length > 0
                     spacing: 4
 
                     Text {
-                        text: modelData.label + " · " + kindGroupDelegate._entries.length
+                        text: kindGroup.modelData.label + " \u00B7 " + kindGroup.entries.length
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontSmall
                         font.bold: true
@@ -414,31 +856,48 @@ Item {
                         spacing: 6
 
                         Repeater {
-                            model: kindGroupDelegate._entries
+                            model: kindGroup.entries
                             delegate: Rectangle {
+                                id: relChip
                                 required property var modelData
                                 implicitHeight: Platform.chipHeight
-                                implicitWidth: row.implicitWidth + 18
+                                implicitWidth: relChipRow.implicitWidth + 18
                                 radius: Platform.chipRadius
-                                color: chipHover.containsMouse ? Platform.surfaceAlt : Platform.surface
+                                color: relChipArea.containsMouse ? Platform.surfaceAlt : Platform.surface
                                 border.color: Platform.border
                                 border.width: 1
                                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
 
+                                // Outer click target -- declared FIRST so it
+                                // sits BENEATH the Row in stacking order. QML
+                                // stacks later siblings on top; without this
+                                // ordering the outer area swallows clicks
+                                // meant for the inner x removeArea, causing
+                                // "click x to delete" to navigate to the
+                                // related word instead.
+                                MouseArea {
+                                    id: relChipArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: relChip.modelData.relatedId > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    onClicked: if (relChip.modelData.relatedId > 0)
+                                                   appVM.entryVM.selectEntry(relChip.modelData.relatedId)
+                                }
+
                                 Row {
-                                    id: row
+                                    id: relChipRow
                                     anchors.centerIn: parent
                                     spacing: 6
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: modelData.word.length > 0
-                                              ? modelData.word
+                                        text: relChip.modelData.word.length > 0
+                                              ? relChip.modelData.word
                                               : "(deleted)"
-                                        color: modelData.word.length > 0
+                                        color: relChip.modelData.word.length > 0
                                                ? Platform.textPrimary
                                                : Platform.textMuted
                                         font.pixelSize: Platform.fontSmall
-                                        font.italic: modelData.word.length === 0
+                                        font.italic: relChip.modelData.word.length === 0
                                     }
                                     Text {
                                         visible: appVM.entryVM.editMode
@@ -454,18 +913,17 @@ Item {
                                             anchors.margins: -6
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: appVM.entryVM.removeRelation(modelData.id)
+                                            // Stop the click from bubbling --
+                                            // belt-and-braces with the
+                                            // sibling-order fix above, in case
+                                            // the chip is ever wrapped in
+                                            // something that propagates.
+                                            onClicked: (mouse) => {
+                                                appVM.entryVM.removeRelation(relChip.modelData.id)
+                                                mouse.accepted = true
+                                            }
                                         }
                                     }
-                                }
-                                MouseArea {
-                                    id: chipHover
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: modelData.relatedId > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                    // Tap the chip (not the ×) to open the related entry.
-                                    onClicked: if (modelData.relatedId > 0)
-                                                   appVM.entryVM.selectEntry(modelData.relatedId)
                                 }
                             }
                         }
@@ -489,3 +947,6 @@ Item {
         }
     }
 }
+
+
+

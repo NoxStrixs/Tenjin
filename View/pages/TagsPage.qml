@@ -19,6 +19,10 @@ Item {
     // Re-emitted by Main.qml's instantiation onto the addTagDialog.
     signal addTagRequested()
 
+    // Asks Main.qml to navigate back to Words. Wired in Main.qml's
+    // StackLayout host onto appVM.currentPage = _pageWords.
+    signal backRequested()
+
     property var allTags: appVM.entryVM.getAllTags()
     function refresh() { allTags = appVM.entryVM.getAllTags() }
 
@@ -92,10 +96,39 @@ Item {
         anchors { fill: parent; margins: Platform.pagePadding }
         spacing: 12
 
-        // Title row + + Tag button.
+        // Title row: back button, page title, + Tag button.
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
+
+            // Back to Words. The "<" character is more reliable in monospace
+            // / desktop fonts than the "\u2039" glyph this app uses elsewhere,
+            // but both render fine; pick the one that matches the rest of
+            // the app's chevrons.
+            Rectangle {
+                Layout.preferredWidth: Platform.touchTarget
+                Layout.preferredHeight: Platform.touchTarget
+                radius: Platform.radius
+                color: tagsBackArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                border.color: Platform.border
+                border.width: 1
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u2039"
+                    color: Platform.textPrimary
+                    font.pixelSize: Platform.fontTitle
+                    font.bold: true
+                }
+                MouseArea {
+                    id: tagsBackArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: tagsPageRoot.backRequested()
+                }
+            }
+
             Text {
                 Layout.fillWidth: true
                 text: "Tags"
@@ -314,11 +347,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                deleteTagConfirm.pendingId = tagRow.modelData.id
-                                deleteTagConfirm.pendingName = tagRow.modelData.name
-                                deleteTagConfirm.open()
-                            }
+                            onClicked: tagsPageRoot._openTagDeleteConfirm(tagRow.modelData.id, tagRow.modelData.name)
                         }
                     }
                 }
@@ -347,10 +376,35 @@ Item {
 
     ConfirmDialog {
         id: deleteTagConfirm
-        property int pendingId: -1
-        property string pendingName: ""
-        message: "Delete tag \"" + pendingName + "\"? It will be removed from all words."
-        onConfirmed: if (pendingId >= 0) appVM.entryVM.deleteTag(pendingId)
+        property int     pendingId:    -1
+        property string  pendingName:  ""
+        property var     affectedDecks: []
+        message: {
+            const base = "Delete tag \"" + pendingName + "\"? Words keep their other tags."
+            if (affectedDecks.length === 0) return base
+            const names = affectedDecks.map(d => "\u2022 " + d.name).join("\n")
+            return base + "\n\nThese smart decks filter on this tag and will also be removed:\n\n" + names
+        }
+        onConfirmed: {
+            if (pendingId < 0) return
+            if (affectedDecks.length > 0) {
+                appVM.deleteTagAndAffectedDecks(pendingId)
+            } else {
+                appVM.entryVM.deleteTag(pendingId)
+            }
+            tagsPageRoot.refresh()
+        }
+    }
+
+    // Helper that callers use instead of opening deleteTagConfirm directly,
+    // so the affected-deck lookup runs at the right moment (before the
+    // tag is deleted — once it's gone the cascade has already wiped the
+    // join-table rows we need to identify the affected decks).
+    function _openTagDeleteConfirm(tagId, tagName) {
+        deleteTagConfirm.pendingId    = tagId
+        deleteTagConfirm.pendingName  = tagName
+        deleteTagConfirm.affectedDecks = appVM.smartDecksUsingTag(tagId)
+        deleteTagConfirm.open()
     }
 }
 

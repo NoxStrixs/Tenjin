@@ -116,4 +116,13 @@ const Review_t* DeckService::CurrentCard(const ReviewSession_t& session) const
     return &session.queue[session.currentIndex];
 }
 
+Result_t<int> DeckService::DeleteAllDecks()
+{
+    return m_db->DeleteAllDecks();
+}
+Result_t<std::vector<Deck_t>> DeckService::GetSmartDecksUsingTag(ID_t tagId)
+{
+    return m_db->GetSmartDecksUsingTag(tagId);
+}
+
 } // namespace Service

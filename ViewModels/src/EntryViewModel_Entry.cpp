@@ -10,7 +10,14 @@ qint64 EntryViewModel::addWord(const QString& word)
         return -1;
     }
     const qint64 newId = static_cast<qint64>(result.value().id);
-    emit         entryListChanged();
+    // If a language filter is active, the user is conceptually working
+    // "in" that language right now — auto-tag the new entry so it stays
+    // visible after creation and doesn't immediately get filtered out.
+    if (!m_languageFilter.isEmpty()) {
+        m_entryService->SetEntryLanguage(static_cast<Service::ID_t>(newId),
+                                         m_languageFilter.toStdString());
+    }
+    emit entryListChanged();
     return newId;
 }
 
@@ -23,7 +30,15 @@ bool EntryViewModel::deleteEntry(qint64 wordId)
     }
     if (m_selectedWordId == wordId)
         clearSelection();
+    // Refresh ALL caches that could reference this entry. Without these
+    // the sidebar's wordListView (which re-queries via getAllEntries on
+    // entryListChanged) updates, but the universal search-result list
+    // and per-entry tag/relation caches keep stale rows.
+    rebuildSearchResults();
+    reloadTags();
     emit entryListChanged();
+    emit wordTagsChanged();
+    emit selectedEntryRelationsChanged();
     return true;
 }
 
@@ -69,6 +84,16 @@ QVariantList EntryViewModel::getAllEntries()
 
     QVariantList out;
     for (const auto& w : words) {
+        // kV2 multi-language: skip entries that explicitly belong to a
+        // different language. Entries with NO language assigned (e.g.
+        // every entry right after the kV1 -> kV2 migration) always show
+        // regardless of the filter -- otherwise a stale filter persisted
+        // from QSettings would silently hide every existing entry until
+        // the user dug into Settings to clear it. Empty filter shows
+        // everything.
+        if (!m_languageFilter.isEmpty() && !w.language.empty() &&
+            QString::fromStdString(w.language) != m_languageFilter)
+            continue;
         QVariantMap m;
         m["wordId"] = QVariant::fromValue(w.id);
         m["word"]   = QString::fromStdString(w.word);

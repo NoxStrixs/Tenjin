@@ -107,7 +107,7 @@ public:
 
     // Returns the current clipboard contents as plain text. QClipboard::text()
     // ignores HTML/RTF entirely, so calling this and inserting the result
-    // strips foreign formatting from pastes — the right behaviour for our
+    // strips foreign formatting from pastes -- the right behaviour for our
     // rich-text content blocks, which keep bold/italic/underline as an
     // intentional in-app feature but should never inherit web-page fonts,
     // colors, or sizes.
@@ -129,9 +129,81 @@ public:
     Q_INVOKABLE bool exportData(const QString& fileUrl);
     Q_INVOKABLE bool importData(const QString& fileUrl);
 
+    // FileDialog-free import/export surface. QtQuick.Dialogs.FileDialog
+    // doesn't work on iOS (no native picker available, the Quick fallback
+    // doesn't render -- emits the no-native-option error at runtime). Rather than
+    // ship two divergent code paths, every platform now uses these:
+    //
+    //   exportToDocuments() -- writes the export to the OS's user-visible
+    //   Documents folder with a timestamped filename and returns the path.
+    //   On iOS users find it via the Files app (we set
+    //   UIFileSharingEnabled and LSSupportsOpeningDocumentsInPlace in
+    //   Info.plist); on desktop it sits in ~/Documents.
+    //
+    //   availableExports() -- lists *.json files currently in that folder
+    //   so the import flow can present a QML picker instead of a
+    //   FileDialog. Each entry carries display name, full path, size
+    //   string, and modified-date string for the UI to render.
+    //
+    //   importFromPath(path) -- imports a file by absolute path; used
+    //   when the user taps a row in the picker.
+    Q_INVOKABLE QString      exportToDocuments();
+    Q_INVOKABLE QVariantList availableExports() const;
+    Q_INVOKABLE bool         importFromPath(const QString& absolutePath);
+
+    // FileDialog-free media picker companion to availableExports(). Lists
+    // image / video / audio files currently in appVM.documentsFolder so
+    // the QML media picker can let the user pick one without the broken
+    // QtQuick.Dialogs.FileDialog. On iOS the user drops files into the
+    // app's Documents folder via the Files app (or via AirDrop /
+    // Save to Files from another app); they then show up here.
+    Q_INVOKABLE QVariantList availableMediaFiles() const;
+
+    // -- Tag-delete companion + danger zone --------------------------
+    //
+    // smartDecksUsingTag(tagId) returns [{ id, name }] for smart decks
+    // whose filter set includes the given tag. The QML delete-tag
+    // flow calls this first; if any decks come back, it lists them in
+    // the confirmation popup and calls deleteTagAndAffectedDecks on
+    // confirm. If none come back, plain `entryVM.deleteTag(id)` is
+    // enough -- the schema's ON DELETE CASCADE handles the join tables.
+    //
+    // The bulk wipes drop everything in the named table. FK cascades
+    // clean up dependent rows (entry_tag, entry_relation, content,
+    // deck_entry, deck_tag_filter). deleteEverything() runs the three
+    // table wipes in order.
+    Q_INVOKABLE QVariantList smartDecksUsingTag(qint64 tagId) const;
+    Q_INVOKABLE bool         deleteTagAndAffectedDecks(qint64 tagId);
+    Q_INVOKABLE int          deleteAllWords();
+    Q_INVOKABLE int          deleteAllTags();
+    Q_INVOKABLE int          deleteAllDecks();
+    Q_INVOKABLE bool         deleteEverything();
+
+    // kV2 multi-language -- distinct list of language codes currently used
+    // by any entry. The Settings page picker reads this to populate its
+    // dropdown. Auto-refreshes via the same entryListChanged path the
+    // sidebar reload uses.
+    Q_PROPERTY(
+        QStringList availableLanguages READ availableLanguages NOTIFY availableLanguagesChanged)
+    QStringList availableLanguages() const;
+
+    // Built-in language catalogue used by the picker UIs. Returns a list
+    // of QVariantMap { code, name } entries, e.g.
+    //   [{ code: "en", name: "English" }, { code: "ja", name: "Japanese" }]
+    // The list covers common ISO 639-1 codes -- not exhaustive, but the
+    // long tail can still be entered as a custom code via the "+ Add"
+    // affordance in the picker. CONSTANT because the list doesn't change
+    // at runtime.
+    Q_PROPERTY(QVariantList builtinLanguages READ builtinLanguages CONSTANT)
+    QVariantList builtinLanguages() const;
+
+    Q_PROPERTY(QString documentsFolder READ documentsFolder CONSTANT)
+    QString documentsFolder() const;
+
 signals:
     void currentPageChanged();
     void statusMessageChanged();
+    void availableLanguagesChanged();
     void themeChanged();
     void welcomeAcknowledgedChanged();
     void newsDismissedChanged();

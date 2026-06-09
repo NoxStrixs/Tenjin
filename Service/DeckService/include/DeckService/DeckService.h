@@ -25,6 +25,12 @@ public:
     Result_t<std::vector<Deck_t>> GetAllDecks() const;
     Result_t<bool>                DeleteDeck(ID_t deckId);
 
+    // Bulk wipe + tag-impact query. Used by the Settings danger zone and
+    // by the tag-delete confirmation popup (which warns the user when
+    // deleting a tag would invalidate one or more smart-deck filters).
+    Result_t<int>                 DeleteAllDecks();
+    Result_t<std::vector<Deck_t>> GetSmartDecksUsingTag(ID_t tagId);
+
     // Manual
     Result_t<bool> AddEntryToDeck(ID_t deckId, ID_t wordId);
     Result_t<bool> RemoveEntryFromDeck(ID_t deckId, ID_t wordId);

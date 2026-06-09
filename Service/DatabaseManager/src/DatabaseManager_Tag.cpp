@@ -143,7 +143,7 @@ Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForEntry(ID_t wordId)
 Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForTag(ID_t tagId)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT w.id, w.title, w.created_at FROM entry w "
+    q.prepare("SELECT w.id, w.title, w.created_at, w.language FROM entry w "
               "JOIN entry_tag wt ON wt.entry_id = w.id "
               "WHERE wt.tag_id = :tagId "
               "ORDER BY w.title ASC;");
@@ -156,7 +156,8 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForTag(ID_t tagId)
     while (q.next()) {
         words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
                                 .word      = q.value(1).toString().toStdString(),
-                                .createdAt = q.value(2).toString().toStdString()});
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }

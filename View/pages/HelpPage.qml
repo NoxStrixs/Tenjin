@@ -10,6 +10,9 @@ import QtQuick.Layouts
 Item {
     id: helpRoot
 
+    // Asks Main.qml to return to Words. Wired in Main.qml's StackLayout host.
+    signal backRequested()
+
     readonly property var sections: [
         { h: "Getting started",
           b: "Tenjin organizes the things you want to remember into Words, gathered into Decks, and labelled with Tags. Everything lives locally on this device unless you export it." },
@@ -34,17 +37,48 @@ Item {
             width: helpRoot.width
             spacing: Platform.spacingMd
 
-            // Desktop title — mobile shows it in the window header.
-            Text {
+            // Desktop title row with back arrow — mobile shows the title
+            // in the window header.
+            RowLayout {
                 visible: !Platform.isMobile
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.pagePadding
                 Layout.topMargin: Platform.pagePadding
+                Layout.rightMargin: Platform.pagePadding
                 Layout.bottomMargin: Platform.spacingSm
-                text: "Help"
-                color: Platform.textPrimary
-                font.pixelSize: Platform.fontTitle
-                font.bold: true
+                spacing: 8
+
+                Rectangle {
+                    Layout.preferredWidth: Platform.touchTarget
+                    Layout.preferredHeight: Platform.touchTarget
+                    radius: Platform.radius
+                    color: helpBackArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                    border.color: Platform.border
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\u2039"
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontTitle
+                        font.bold: true
+                    }
+                    MouseArea {
+                        id: helpBackArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: helpRoot.backRequested()
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Help"
+                    color: Platform.textPrimary
+                    font.pixelSize: Platform.fontTitle
+                    font.bold: true
+                }
             }
 
             Repeater {

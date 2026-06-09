@@ -21,8 +21,16 @@ target_link_libraries(Tenjin
 
 target_include_directories(Tenjin PRIVATE src)
 
-# On a STATIC Qt build (iOS) the QSQLITE driver is a plugin that must be compiled into the binary.
-if(TARGET Qt6::QSQLiteDriverPlugin)
+# On a STATIC Qt build (iOS / Android) the QSQLITE driver is a plugin that
+# must be compiled into the binary, otherwise QtSql can't open the .db at
+# runtime. On SHARED-Qt platforms (macOS / Linux / Windows) the same plugin
+# ships as a runtime-loaded Mach-O bundle / .so / .dll — passing it to the
+# linker as a positional argument is what was producing
+#   ld: unsupported mach-o filetype (only MH_OBJECT and MH_DYLIB can be linked)
+# on the macOS CI build. Restrict the static import to platforms that
+# actually want it; everywhere else, QtSql + macdeployqt / windeployqt /
+# linuxdeployqt handle plugin discovery at runtime.
+if((IOS OR ANDROID) AND TARGET Qt6::QSQLiteDriverPlugin)
     target_link_libraries(Tenjin PRIVATE Qt6::QSQLiteDriverPlugin)
 endif()
 
@@ -115,9 +123,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     )
 
     # Info.plist is generated from a template so the .env can drive the
-    # bundle identity.
+    # bundle identity. NOTE: matches the on-disk filename `Info_plist.in`
+    # (with underscore). If you rename the file to `Info.plist.in` (with
+    # dot), update the path below to match — the two have to stay in sync.
     configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in"
+        "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info_plist.in"
         "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
         @ONLY
     )
@@ -151,7 +161,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     endif()
 
     # QtMultimedia on iOS uses FFmpeg as its media backend, but the
-    # Qt installer does NOT auto-link the FFmpeg frameworks.
+    # Qt installer does NOT auto-link the FFmpeg frameworks. The previous
+    # version of this block checked that qt_add_ios_ffmpeg_libraries
+    # exists but never *called* it — that's why iOS media playback was
+    # silently broken even with MEDIA_SUPPORT=ON. Now invoked explicitly.
     # See: https://doc.qt.io/qt-6/qt-add-ios-ffmpeg-libraries.html
     if(MEDIA_SUPPORT)
         if(CMAKE_VERSION VERSION_LESS "3.28")
@@ -160,6 +173,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
                 "Either upgrade CMake, or configure with -DMEDIA_SUPPORT=OFF for iOS.")
         endif()
         if(COMMAND qt_add_ios_ffmpeg_libraries)
+            qt_add_ios_ffmpeg_libraries(Tenjin)
         else()
             message(FATAL_ERROR
                 "qt_add_ios_ffmpeg_libraries is not available — Qt 6.8+ is required "
@@ -182,4 +196,3 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     )
     install(SCRIPT ${deploy_script})
 endif()
-

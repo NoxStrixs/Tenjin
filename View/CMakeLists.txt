@@ -1,7 +1,6 @@
 set_source_files_properties(Platform.qml PROPERTIES
     QT_QML_SINGLETON_TYPE TRUE
 )
-
 set(_TENJIN_MEDIA_QML "")
 if(MEDIA_SUPPORT)
     list(APPEND _TENJIN_MEDIA_QML media/MediaPlayerView.qml)
@@ -9,9 +8,7 @@ endif()
 if(WEBVIEW_SUPPORT)
     list(APPEND _TENJIN_MEDIA_QML media/WebEmbed.qml)
 endif()
-
 # Declaring every module our .qml files import is REQUIRED for static builds
-
 set(_TENJIN_QML_IMPORTS
     QtQuick
     QtQuick.Controls
@@ -27,22 +24,18 @@ endif()
 if(WEBVIEW_SUPPORT)
     list(APPEND _TENJIN_QML_IMPORTS QtWebView)
 endif()
-
 qt_add_qml_module(TenjinView
     URI            TenjinView
     VERSION        1.0
     STATIC
     OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/qml/TenjinView
     IMPORT_PATH       ${CMAKE_BINARY_DIR}/qml
-
     IMPORTS
         ${_TENJIN_QML_IMPORTS}
-
     QML_FILES
         # ── root ──
         Main.qml
         Platform.qml
-
         # ── components ──
         components/ActionButton.qml
         components/ChartCard.qml
@@ -53,16 +46,16 @@ qt_add_qml_module(TenjinView
         components/SearchBox.qml
         components/TagChip.qml
         components/TagFilterPopup.qml
-
         # ── dialogs ──
         dialogs/AddDeckDialog.qml
         dialogs/AddEntryDialog.qml
-        dialogs/AddTagDialog.qml
         dialogs/AddRelationDialog.qml
+        dialogs/AddTagDialog.qml
         dialogs/ConfirmDialog.qml
+        dialogs/ImportPickerDialog.qml
+        dialogs/MediaPickerDialog.qml
         dialogs/RenameTagDialog.qml
         dialogs/ThemedDialog.qml
-
         # ── pages ──
         pages/DeckListPage.qml
         pages/EntryPage.qml
@@ -71,7 +64,6 @@ qt_add_qml_module(TenjinView
         pages/HelpPage.qml
         pages/NewsPage.qml
         pages/SettingsPage.qml
-
         # ── panels ──
         panels/AnalyticsPanel.qml
         panels/DeckDetailPanel.qml
@@ -80,11 +72,9 @@ qt_add_qml_module(TenjinView
         panels/EntryListPanel.qml
         panels/MobileDrawer.qml
         panels/Sidebar.qml
-
         # ── media (conditionally compiled — see top of this file) ──
         ${_TENJIN_MEDIA_QML}
 )
-
 target_link_libraries(TenjinView
     PRIVATE  TenjinViewModels
              Qt6::Quick
@@ -93,7 +83,6 @@ target_link_libraries(TenjinView
              tenjin_warnings
              tenjin_sanitizers
 )
-
 # Feature macros:
 # PUBLIC so the App target inherits them transitively.
 target_compile_definitions(TenjinView

@@ -18,7 +18,13 @@ bool EntryViewModel::addContentBlock(int type, const QString& content)
                                   .pos     = ""};
 
     if (m_editMode) {
-        m_contentModel->appendBlock(block);
+        const auto newId = m_contentModel->appendBlock(block);
+        // Surface the newly-added block id so QML delegates can pulse-
+        // highlight themselves on a match. EntryDetailView resets this
+        // to -1 after consuming, but a stale value is harmless — only
+        // a delegate whose own id equals lastAddedBlockId reacts.
+        m_lastAddedBlockId = static_cast<qint64>(newId);
+        emit lastAddedBlockIdChanged();
         return true;
     }
 
@@ -29,6 +35,8 @@ bool EntryViewModel::addContentBlock(int type, const QString& content)
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
     }
+    m_lastAddedBlockId = static_cast<qint64>(result.value().id);
+    emit lastAddedBlockIdChanged();
     reloadContent();
     return true;
 }

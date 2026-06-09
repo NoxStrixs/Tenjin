@@ -30,6 +30,28 @@ public:
     Result_t<std::vector<Entry_t>> GetAllEntries();
     Result_t<bool>                 DeleteEntry(ID_t id);
 
+    // UPDATE entry SET title = :title WHERE id = :id; — surfaces the
+    // unique-constraint violation when another entry already has that
+    // title so the UI can show a friendly error.
+    Result_t<bool> RenameEntry(ID_t id, const std::string& newName);
+
+    // Bulk wipes — power the Settings "Danger zone". FK cascades clean up
+    // dependent rows (entry_tag / entry_relation / content / deck_entry).
+    // Returns count of rows deleted from the primary table.
+    Result_t<int> DeleteAllEntries();
+    Result_t<int> DeleteAllTags();
+    Result_t<int> DeleteAllDecks();
+
+    // Lists smart decks that filter on the given tag — used when deleting
+    // a tag so the UI can warn the user that the affected decks will lose
+    // a filter and may end up empty.
+    Result_t<std::vector<Deck_t>> GetSmartDecksUsingTag(ID_t tagId);
+
+    // kV2 multi-language. Per-entry language codes (ISO 639-1) drive a
+    // simple "show only this language" filter at the EntryViewModel layer.
+    Result_t<bool>                     SetEntryLanguage(ID_t id, const std::string& code);
+    Result_t<std::vector<std::string>> GetAllLanguages();
+
     // Tag
     Result_t<Tag_t>              AddTag(const std::string& name);
     Result_t<Tag_t>              GetTag(std::string_view name);
