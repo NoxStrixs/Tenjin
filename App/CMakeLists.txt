@@ -123,11 +123,33 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     )
 
     # Info.plist is generated from a template so the .env can drive the
-    # bundle identity. NOTE: matches the on-disk filename `Info_plist.in`
-    # (with underscore). If you rename the file to `Info.plist.in` (with
-    # dot), update the path below to match — the two have to stay in sync.
-    configure_file(
+    # bundle identity. Accept any of three on-disk locations -- the file
+    # has bounced between layouts across batches, and CI sometimes flattens
+    # the tree differently than a local checkout. Detect at configure
+    # time so we don't have to guess.
+    set(_TENJIN_IOS_PLIST_TEMPLATE "")
+    foreach(_candidate
         "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info_plist.in"
+        "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in"
+        "${CMAKE_SOURCE_DIR}/Info_plist.in"
+        "${CMAKE_SOURCE_DIR}/App/ios/Info_plist.in"
+    )
+        if(EXISTS "${_candidate}")
+            set(_TENJIN_IOS_PLIST_TEMPLATE "${_candidate}")
+            break()
+        endif()
+    endforeach()
+    if(NOT _TENJIN_IOS_PLIST_TEMPLATE)
+        message(FATAL_ERROR
+            "iOS Info.plist template not found. Tried:\n"
+            "  ${CMAKE_CURRENT_SOURCE_DIR}/ios/Info_plist.in\n"
+            "  ${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in\n"
+            "  ${CMAKE_SOURCE_DIR}/Info_plist.in\n"
+            "  ${CMAKE_SOURCE_DIR}/App/ios/Info_plist.in")
+    endif()
+    message(STATUS "Tenjin iOS: plist template = ${_TENJIN_IOS_PLIST_TEMPLATE}")
+    configure_file(
+        "${_TENJIN_IOS_PLIST_TEMPLATE}"
         "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
         @ONLY
     )

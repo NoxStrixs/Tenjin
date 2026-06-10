@@ -28,12 +28,12 @@ Rectangle {
     readonly property var palette: [
         { label: "x²",  snippet: "^{$1}" },
         { label: "x₂",  snippet: "_{$1}" },
-        { label: "a/b", snippet: "\\frac{$1}{}" },
+        { label: qsTr("a/b"), snippet: "\\frac{$1}{}" },
         { label: "√",   snippet: "\\sqrt{$1}" },
         { label: "∫",   snippet: "\\int_{$1}^{} \\, dx" },
         { label: "∑",   snippet: "\\sum_{$1}^{}" },
         { label: "∏",   snippet: "\\prod_{$1}^{}" },
-        { label: "lim", snippet: "\\lim_{$1 \\to }" },
+        { label: qsTr("lim"), snippet: "\\lim_{$1 \\to }" },
         { label: "π",   snippet: "\\pi" },
         { label: "θ",   snippet: "\\theta" },
         { label: "α",   snippet: "\\alpha" },
@@ -93,9 +93,9 @@ Rectangle {
                 Text {
                     id: kindLabel
                     anchors.centerIn: parent
-                    text: "formula"
+                    text: qsTr("formula")
                     color: Platform.textMuted
-                    font.pixelSize: 11
+                    font.pixelSize: Platform.fontSmall
                 }
             }
 
@@ -114,7 +114,7 @@ Rectangle {
             visible: root.editMode
             Layout.fillWidth: true
             text: root.blockContent
-            placeholderText: "LaTeX, e.g.  \\frac{a}{b}"
+            placeholderText: qsTr("LaTeX, e.g.  \\frac{a}{b}")
             wrapMode: TextEdit.WrapAnywhere
             font.family: "monospace"
             color: Platform.textPrimary
@@ -184,10 +184,11 @@ Rectangle {
         // Empty hint.
         Text {
             visible: !root.editMode && root.blockContent.length === 0
-            text: "(empty formula)"
+            text: qsTr("(empty formula)")
             color: Platform.textMuted
             font.italic: true
         }
     }
 }
+
 

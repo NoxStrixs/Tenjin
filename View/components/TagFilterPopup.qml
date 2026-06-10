@@ -44,7 +44,7 @@ Item {
             spacing: Platform.spacingSm
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Tags"
+                text: qsTr("Tags")
                 color: trigger._hasFilters ? Platform.textOnDark : Platform.textPrimary
                 font.pixelSize: Platform.fontSmall
                 font.bold: true
@@ -136,7 +136,7 @@ Item {
                         leftMargin: Platform.spacingMd
                         rightMargin: Platform.spacingMd
                     }
-                    placeholderText: "Search tags\u2026"
+                    placeholderText: qsTr("Search tags\u2026")
                     placeholderTextColor: Platform.textMuted
                     background: Item {}
                     color: Platform.textPrimary
@@ -153,8 +153,8 @@ Item {
                 spacing: Platform.spacingSm
 
                 Repeater {
-                    model: [ { label: "Any", mode: 0 },
-                             { label: "All", mode: 1 } ]
+                    model: [ { label: qsTr("Any"), mode: 0 },
+                             { label: qsTr("All"), mode: 1 } ]
                     delegate: TagChip {
                         required property var modelData
                         Layout.fillWidth: true
@@ -175,12 +175,12 @@ Item {
                 spacing: Platform.spacingSm
                 Text {
                     Layout.fillWidth: true
-                    text: root._activeCount + (root._activeCount === 1 ? " tag selected" : " tags selected")
+                    text: root._activeCount + (root._activeCount === 1 ? qsTr(" tag selected") : qsTr(" tags selected"))
                     color: Platform.textMuted
                     font.pixelSize: Platform.fontSmall
                 }
                 Text {
-                    text: "Clear all"
+                    text: qsTr("Clear all")
                     color: clearArea.containsMouse ? Platform.danger : Platform.accentDark
                     font.pixelSize: Platform.fontSmall
                     font.bold: true
@@ -309,4 +309,5 @@ Item {
         }
     }
 }
+
 

@@ -23,9 +23,17 @@ Rectangle {
     property bool    held: false   // set by the drag wrapper
     property int     visualIndex: -1
 
+    // Grid span -- set by GridContentView from the model. Drives the +/-
+    // controls in the header so the user can grow/shrink a block without
+    // having to grab the drag edge. Defaults are 1/1 so blocks placed
+    // outside a grid (e.g. the legacy linear renderer) still behave.
+    property int     blockColSpan: 1
+    property int     blockRowSpan: 1
+
     signal deleteRequested(int bid)
     signal contentEdited(int bid, string newContent)
     signal posEdited(int bid, string newPos)
+    signal spanChanged(int bid, int rowSpan, int colSpan)
 
     readonly property bool isDefinition: blockType === 0
     readonly property var posOptions: ["", "noun", "verb", "adjective", "adverb", "pronoun", "preposition", "conjunction", "interjection", "other"]
@@ -168,7 +176,7 @@ Rectangle {
                     anchors.leftMargin: 8
                     anchors.rightMargin: 8
                     text: root.blockPos
-                    placeholderText: "Label (e.g. Etymology)"
+                    placeholderText: qsTr("Label (e.g. Etymology)")
                     placeholderTextColor: Platform.textMuted
                     color: Platform.accentDark
                     font.pixelSize: Platform.fontBase - 2
@@ -198,7 +206,7 @@ Rectangle {
                 contentItem: Text {
                     leftPadding: 8
                     rightPadding: posCombo.indicator.width + 4
-                    text: posCombo.currentText.length === 0 ? "part of speech…" : posCombo.currentText
+                    text: posCombo.currentText.length === 0 ? qsTr("part of speech…") : posCombo.currentText
                     color: posCombo.currentText.length === 0 ? Platform.textMuted : Platform.accentDark
                     font: posCombo.font
                     verticalAlignment: Text.AlignVCenter
@@ -280,6 +288,88 @@ Rectangle {
 
             Item { Layout.fillWidth: true }
 
+            // Span -/+ chips. Shrink/grow the block's colSpan in the grid
+            // by 1, clamped to [1, 12]. 12 is a soft cap matching
+            // GridContentView's column budget per band (see totalSpan
+            // calc there). The drag-the-right-edge gesture still works
+            // for fine control; this is the discoverable, mobile-
+            // friendly counterpart.
+            RowLayout {
+                visible: root.editMode
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 4
+
+                Rectangle {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth:  Platform.isMobile ? Platform.touchTarget : 26
+                    implicitHeight: Platform.isMobile ? Platform.touchTarget : 26
+                    radius: Platform.radius
+                    color: spanMinusArea.containsMouse ? Platform.accent : "transparent"
+                    border.color: Platform.border
+                    border.width: 1
+                    opacity: root.blockColSpan > 1 ? 1.0 : 0.4
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\u2212"   // minus
+                        color: spanMinusArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
+                        font.pixelSize: Platform.fontBase
+                        font.bold: true
+                    }
+                    MouseArea {
+                        id: spanMinusArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: root.blockColSpan > 1
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            const ns = Math.max(1, root.blockColSpan - 1)
+                            root.spanChanged(root.blockId, root.blockRowSpan, ns)
+                        }
+                    }
+                }
+
+                Text {
+                    Layout.alignment: Qt.AlignVCenter
+                    text: root.blockColSpan
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontBase - 2
+                    font.bold: true
+                    Layout.minimumWidth: 14
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                Rectangle {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth:  Platform.isMobile ? Platform.touchTarget : 26
+                    implicitHeight: Platform.isMobile ? Platform.touchTarget : 26
+                    radius: Platform.radius
+                    color: spanPlusArea.containsMouse ? Platform.accent : "transparent"
+                    border.color: Platform.border
+                    border.width: 1
+                    opacity: root.blockColSpan < 12 ? 1.0 : 0.4
+                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Text {
+                        anchors.centerIn: parent
+                        text: "+"
+                        color: spanPlusArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
+                        font.pixelSize: Platform.fontBase
+                        font.bold: true
+                    }
+                    MouseArea {
+                        id: spanPlusArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: root.blockColSpan < 12
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            const ns = Math.min(12, root.blockColSpan + 1)
+                            root.spanChanged(root.blockId, root.blockRowSpan, ns)
+                        }
+                    }
+                }
+            }
+
             Rectangle {
                 visible: root.editMode
                 Layout.alignment: Qt.AlignVCenter
@@ -293,7 +383,7 @@ Rectangle {
                 Text {
                     id: removeLabel
                     anchors.centerIn: parent
-                    text: "Remove"
+                    text: qsTr("Remove")
                     color: removeArea.containsMouse ? Platform.textOnDark : Platform.danger
                     font.pixelSize: Platform.fontBase - 2
                     font.bold: true
@@ -364,7 +454,7 @@ Rectangle {
             id: headerInput
             width: contentLoader.width
             text: root.blockContent
-            placeholderText: "Section heading"
+            placeholderText: qsTr("Section heading")
             placeholderTextColor: Platform.textMuted
             color: Platform.textPrimary
             font.pixelSize: Platform.fontTitle + 4
@@ -454,7 +544,7 @@ Rectangle {
                         id: tenseEdit
                         TextField {
                             text: tenseRow.formValue
-                            placeholderText: "form"
+                            placeholderText: qsTr("form")
                             placeholderTextColor: Platform.textMuted
                             color: Platform.textPrimary
                             font.pixelSize: Platform.fontBase
@@ -503,7 +593,7 @@ Rectangle {
             TextField {
                 Layout.fillWidth: true
                 text: root.blockContent
-                placeholderText: "\\frac{a}{b}, \\sqrt{x}, \\sum_{i=0}^n …"
+                placeholderText: qsTr("\\frac{a}{b}, \\sqrt{x}, \\sum_{i=0}^n …")
                 placeholderTextColor: Platform.textMuted
                 color: Platform.textPrimary
                 font.pixelSize: Platform.fontBase
@@ -518,7 +608,7 @@ Rectangle {
             }
             Text {
                 Layout.fillWidth: true
-                text: "Preview:"
+                text: qsTr("Preview:")
                 color: Platform.textMuted
                 font.pixelSize: Platform.fontSmall
             }
@@ -642,7 +732,7 @@ Rectangle {
                         textFormat: TextEdit.RichText
                         text: root.blockContent
                         color: Platform.textPrimary
-                        placeholderText: "Type here\u2026"
+                        placeholderText: qsTr("Type here\u2026")
                         placeholderTextColor: Platform.textMuted
                         font.pixelSize: Platform.fontBase
                         wrapMode: TextEdit.WordWrap
@@ -746,9 +836,68 @@ Rectangle {
     // Media: pick-only, renders per kind; no visible label/path
     Component {
         id: mediaArea
-        ColumnLayout {
-            width: contentLoader.width
-            spacing: 8
+        // Outer Item lets us overlay a DropArea (anchors.fill) on top of
+        // the ColumnLayout without QML complaining that the layout's
+        // child is anchor-managed. The ColumnLayout fills the Item; the
+        // DropArea is a sibling that fills the same space.
+        Item {
+            id: mediaRoot
+            implicitWidth: contentLoader.width
+            implicitHeight: mediaCol.implicitHeight + (dropHint.visible ? dropHint.height + 8 : 0)
+
+            // Desktop drag-drop. Drops the first file URL and imports
+            // it via the same path as the picker. No `keys:` filter --
+            // OS drags carry different MIME types per platform
+            // (text/uri-list on Linux/macOS, application/x-qt-windows-
+            // mime;... on Windows). We accept any drag that brings URLs
+            // and check inside onDropped. Mobile has no OS DnD; the
+            // DropArea is inert there -- no harm.
+            DropArea {
+                id: mediaDropArea
+                anchors.fill: parent
+                enabled: root.editMode && !Platform.isMobile
+                onEntered: (drag) => {
+                    // Only accept if the drag has URLs to offer.
+                    if (!drag.hasUrls) drag.accepted = false
+                }
+                onDropped: (drop) => {
+                    if (!drop.hasUrls || drop.urls.length === 0) return
+                    // drop.urls[0] is already a QUrl -- hand it straight
+                    // to importMedia, which knows how to extract the
+                    // local file path. Stringifying here would re-encode
+                    // and trip the file://C: vs file:///C: Windows quirk.
+                    var stored = appVM.entryVM.importMedia(drop.urls[0])
+                    if (stored && stored.length > 0) {
+                        root.contentEdited(root.blockId, stored)
+                        drop.acceptProposedAction()
+                    }
+                }
+            }
+
+            ColumnLayout {
+                id: mediaCol
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                spacing: 8
+
+                // Visual hint shown only while a drop is hovering.
+                Rectangle {
+                    id: dropHint
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: visible ? 36 : 0
+                    visible: mediaDropArea.containsDrag
+                    radius: Platform.radius - 2
+                    color: Platform.accent
+                    opacity: 0.18
+                    Text {
+                        anchors.centerIn: parent
+                        text: qsTr("Drop to import")
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontSmall
+                        font.bold: true
+                    }
+                }
 
             // Control row (edit mode only): Browse + URL field.
             // On mobile these stack vertically so the URL field isn't squeezed.
@@ -767,7 +916,7 @@ Rectangle {
                     Text {
                         id: browseLabel
                         anchors.centerIn: parent
-                        text: root.blockContent.length > 0 ? "Replace\u2026" : "Choose file\u2026"
+                        text: root.blockContent.length > 0 ? qsTr("Replace\u2026") : qsTr("Choose file\u2026")
                         color: browseArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
                         font.pixelSize: Platform.fontBase
                         font.bold: true
@@ -793,7 +942,7 @@ Rectangle {
                         id: urlField
                         anchors.fill: parent
                         anchors.margins: 6
-                        placeholderText: "\u2026or paste a video/web URL"
+                        placeholderText: qsTr("\u2026or paste a video/web URL")
                         placeholderTextColor: Platform.textMuted
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontBase
@@ -843,7 +992,7 @@ Rectangle {
                     Text {
                         anchors.centerIn: parent
                         visible: preview.status === Image.Error
-                        text: "Could not load image"
+                        text: qsTr("Could not load image")
                         color: Platform.danger
                         font.pixelSize: Platform.fontBase
                     }
@@ -887,7 +1036,7 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 visible: root.mediaKind === "none"
-                text: root.editMode ? "No media yet \u2014 choose a file or paste a URL above."
+                text: root.editMode ? qsTr("No media yet \u2014 choose a file or paste a URL above.")
                                     : "No media."
                 color: Platform.textMuted
                 font.pixelSize: Platform.fontBase
@@ -895,19 +1044,27 @@ Rectangle {
                 wrapMode: Text.WordWrap
             }
 
+            }
+            // end of ColumnLayout (mediaCol)
+
             MediaPickerDialog {
                 id: mediaFileDialog
                 // ImportPickerDialog-style picker lists media in
                 // appVM.documentsFolder. Replaces the old FileDialog,
                 // which emitted "no native option" on iOS. Item #17.
+                // `path` is a plain absolute path -- importMedia handles
+                // both raw paths and file:// URLs. We deliberately do
+                // NOT prepend "file://" here because that produces
+                // "file://C:/..." on Windows (missing third slash) and
+                // QUrl::toLocalFile() returns empty for malformed URLs.
                 onPicked: (path) => {
-                    const stored = appVM.entryVM.importMedia(
-                        "file://" + path)
+                    const stored = appVM.entryVM.importMedia(path)
                     if (stored.length > 0)
                         root.contentEdited(root.blockId, stored)
                 }
             }
         }
+        // end of outer Item (mediaRoot)
     }
 
     Component {
@@ -970,7 +1127,7 @@ Rectangle {
             }
             Text {
                 visible: !root.webEngineAvailable
-                text: "(Inline web embeds need the WebView build option.)"
+                text: qsTr("(Inline web embeds need the WebView build option.)")
                 color: Platform.textMuted
                 font.pixelSize: Platform.fontBase - 3
                 font.italic: true
@@ -999,7 +1156,7 @@ Rectangle {
                     font.pixelSize: Platform.fontBase
                     elide: Text.ElideMiddle
                 }
-                Text { text: "Open"; color: Platform.accentDark; font.pixelSize: Platform.fontBase; font.bold: true }
+                Text { text: qsTr("Open"); color: Platform.accentDark; font.pixelSize: Platform.fontBase; font.bold: true }
             }
             HoverHandler { id: fileHover }
             ToolTip.visible: fileHover.hovered
@@ -1060,7 +1217,7 @@ Rectangle {
                     anchors.centerIn: parent
                     text: "\u2715"
                     color: Platform.textPrimary
-                    font.pixelSize: 20
+                    font.pixelSize: Platform.fontTitle
                     font.bold: true
                 }
                 MouseArea { anchors.fill: parent; onClicked: mediaViewer.close() }
@@ -1068,6 +1225,7 @@ Rectangle {
         }
     }
 }
+
 
 
 

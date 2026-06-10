@@ -45,7 +45,7 @@ ColumnLayout {
         Text {
             anchors.centerIn: parent
             visible: !mpRoot.isVideo
-            text: "\u266A  Audio"
+            text: qsTr("\u266A  Audio")
             color: Platform.textOnDark
             font.pixelSize: Platform.fontBase
         }
@@ -238,7 +238,7 @@ ColumnLayout {
                 anchors { top: parent.top; right: parent.right; margins: 16 }
                 width: Platform.touchTarget + 30; height: Platform.touchTarget
                 radius: Platform.radius; color: Qt.rgba(0, 0, 0, 0.6)
-                Text { anchors.centerIn: parent; text: "\u2715  Close"; color: "#ffffff"; font.pixelSize: Platform.fontBase }
+                Text { anchors.centerIn: parent; text: qsTr("\u2715  Close"); color: "#ffffff"; font.pixelSize: Platform.fontBase }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     onClicked: mpRoot.fullscreen = false }
             }
@@ -249,4 +249,5 @@ ColumnLayout {
         Keys.onEscapePressed: mpRoot.fullscreen = false
     }
 }
+
 

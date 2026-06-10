@@ -129,24 +129,24 @@ Item {
 
                 Repeater {
                     model: [
-                        { label: "Total reviews",
+                        { label: qsTr("Total reviews"),
                           value: root.analytics.totalReviews + "",
                           trend: root._trendStr(root._reviewsTrend) },
-                        { label: "Retention",
+                        { label: qsTr("Retention"),
                           value: Math.round(root.analytics.retention * 100) + "%",
                           trend: "" },
-                        { label: "Active days",
+                        { label: qsTr("Active days"),
                           value: root.analytics.daily.length + "",
                           trend: "" },
-                        { label: "Avg / day",
+                        { label: qsTr("Avg / day"),
                           value: root.analytics.daily.length > 0
                                  ? (root.analytics.totalReviews / root.analytics.daily.length).toFixed(1)
                                  : "0",
                           trend: root._trendStr(root._qualityTrend) },
-                        { label: "Current streak",
+                        { label: qsTr("Current streak"),
                           value: root._currentStreak + (root._currentStreak === 1 ? " day" : " days"),
                           trend: "" },
-                        { label: "Best day",
+                        { label: qsTr("Best day"),
                           value: root._bestDayCount + (root._bestDayCount === 1 ? " card" : " cards"),
                           trend: "" }
                     ]
@@ -220,7 +220,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.pagePadding
                 Layout.rightMargin: Platform.pagePadding
-                title: "Reviews per day"
+                title: qsTr("Reviews per day")
                 subtitle: root.analytics.daily.length > 0
                           ? root.analytics.daily.length + " days of data" : ""
                 trend: root._trendStr(root._reviewsTrend)
@@ -262,7 +262,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.pagePadding
                 Layout.rightMargin: Platform.pagePadding
-                title: "Average grade per day (0–3)"
+                title: qsTr("Average grade per day (0–3)")
                 subtitle: root.analytics.daily.length > 0
                           ? "Higher is better recall on first attempt" : ""
                 trend: root._trendStr(root._qualityTrend)
@@ -317,7 +317,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.leftMargin: Platform.pagePadding
                 Layout.rightMargin: Platform.pagePadding
-                title: "Activity (last 13 weeks)"
+                title: qsTr("Activity (last 13 weeks)")
                 subtitle: "Color intensity = reviews that day"
                 emptyText: root.analytics.daily.length === 0 ? "No reviews yet." : ""
 
@@ -387,7 +387,7 @@ Item {
                                 Behavior on opacity { NumberAnimation { duration: Platform.durationFast } }
 
                                 ToolTip.visible: cellHover.hovered
-                                ToolTip.text: modelData.key + "  •  " + _count + (_count === 1 ? " review" : " reviews")
+                                ToolTip.text: modelData.key + "  •  " + _count + (_count === 1 ? qsTr(" review") : qsTr(" reviews"))
                                 ToolTip.delay: 250
                                 HoverHandler { id: cellHover }
                             }
@@ -402,7 +402,7 @@ Item {
                 Layout.leftMargin: Platform.pagePadding
                 Layout.rightMargin: Platform.pagePadding
                 Layout.bottomMargin: Platform.pagePadding
-                title: "Retention curve"
+                title: qsTr("Retention curve")
                 subtitle: "Running average of daily grade; trending up = improving recall"
                 emptyText: root.analytics.daily.length < 2 ? "Not enough data yet." : ""
 
@@ -458,4 +458,5 @@ Item {
         }
     }
 }
+
 

@@ -63,7 +63,7 @@ Item {
                         Button {
                             Layout.fillWidth: true
                             implicitHeight: Platform.touchTarget
-                            text: "‹ Decks"
+                            text: qsTr("‹ Decks")
                             font.pixelSize: Platform.fontBase
                             onClicked: mobileNav.pop()
                             background: Rectangle { color: Platform.surface }
@@ -83,7 +83,7 @@ Item {
     Component {
         id: noDeckComp
         Item {
-            Text { anchors.centerIn: parent; text: "Select or create a deck."; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+            Text { anchors.centerIn: parent; text: qsTr("Select or create a deck."); color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
         }
     }
 
@@ -99,3 +99,4 @@ Item {
         sourceComponent: ReviewPage { onSessionEnded: reviewLoader.active = false }
     }
 }
+

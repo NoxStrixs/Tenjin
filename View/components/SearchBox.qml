@@ -123,7 +123,7 @@ Item {
                 id: searchField
                 Layout.fillWidth: true
                 text: root.queryText
-                placeholderText: "Search words, tags, decks\u2026"
+                placeholderText: qsTr("Search words, tags, decks\u2026")
                 font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
                 background: Rectangle { color: "transparent" }
@@ -186,7 +186,7 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: appVM.entryVM.searchInContent = !appVM.entryVM.searchInContent
                     ToolTip.visible: pressed
-                    ToolTip.text: "Also search content blocks"
+                    ToolTip.text: qsTr("Also search content blocks")
                 }
             }
         }
@@ -298,7 +298,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     visible: parent.count === 0
-                    text: "No matches"
+                    text: qsTr("No matches")
                     color: Platform.textMuted
                     font.pixelSize: Platform.fontBase
                 }
@@ -306,4 +306,5 @@ Item {
         }
     }
 }
+
 

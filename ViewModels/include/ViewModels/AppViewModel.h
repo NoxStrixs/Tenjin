@@ -7,8 +7,10 @@
 #include <ViewModels/SidebarViewModel.h>
 
 #include <QObject>
+#include <QQmlEngine>
 #include <QSet>
 #include <QString>
+#include <QTranslator>
 #include <QVariantList>
 
 #include <memory>
@@ -200,10 +202,44 @@ public:
     Q_PROPERTY(QString documentsFolder READ documentsFolder CONSTANT)
     QString documentsFolder() const;
 
+    // -- UI language (separate from content-language filter) ----------
+    //
+    // `uiLanguage` is the locale code (e.g. "en", "ja", "es") for the
+    // app chrome. Persisted via QSettings. Setting it installs the
+    // matching QTranslator and calls QQmlEngine::retranslate() so all
+    // qsTr() bindings in QML re-evaluate live -- no restart required.
+    //
+    // Translations are .qm files compiled from .ts files at build time
+    // (translations/tenjin_<code>.ts). The .ts files are populated by
+    // `tools/translate.py` which uses Argos Translate (FOSS, MIT) to
+    // machine-translate strings from English. Run that script on a
+    // developer machine; CI ships the resulting .qm files baked into
+    // the qrc.
+    //
+    // `supportedUiLanguages` is the list of codes for which a .qm
+    // file is present in the qrc -- this drives the picker so we
+    // only offer locales that actually have translations.
+    Q_PROPERTY(QString uiLanguage READ uiLanguage WRITE setUiLanguage NOTIFY uiLanguageChanged)
+    Q_PROPERTY(QStringList supportedUiLanguages READ supportedUiLanguages CONSTANT)
+    QString uiLanguage() const
+    {
+        return m_uiLanguage;
+    }
+    void        setUiLanguage(const QString& code);
+    QStringList supportedUiLanguages() const;
+
+    // Wired from main.cpp after engine construction so the VM can call
+    // retranslate() on language switch.
+    void setQmlEngine(QQmlEngine* engine)
+    {
+        m_qmlEngine = engine;
+    }
+
 signals:
     void currentPageChanged();
     void statusMessageChanged();
     void availableLanguagesChanged();
+    void uiLanguageChanged();
     void themeChanged();
     void welcomeAcknowledgedChanged();
     void newsDismissedChanged();
@@ -228,4 +264,9 @@ private:
     std::unique_ptr<DeckViewModel>    m_deckVM;
     std::unique_ptr<SidebarViewModel> m_sidebarVM;
     std::unique_ptr<ReviewViewModel>  m_reviewVM;
+
+    // UI translation infra. Installed/swapped on setUiLanguage().
+    QString                      m_uiLanguage = QStringLiteral("en");
+    std::unique_ptr<QTranslator> m_uiTranslator;
+    QQmlEngine*                  m_qmlEngine = nullptr;
 };

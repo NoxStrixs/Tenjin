@@ -5,7 +5,7 @@ import TenjinView
 
 ThemedDialog {
     id: root
-    title: "Create Deck"
+    title: qsTr("Create Deck")
     width: Platform.isMobile ? Math.min(parent.width - 32, 340) : 320
     padding: 20
 
@@ -32,7 +32,7 @@ ThemedDialog {
         spacing: 12
         width: parent.width
 
-        Text { text: "Name:"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+        Text { text: qsTr("Name:"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
 
         Rectangle {
             Layout.fillWidth: true
@@ -45,7 +45,7 @@ ThemedDialog {
             TextField {
                 id: deckNameInput
                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                placeholderText: "e.g. JLPT N3"
+                placeholderText: qsTr("e.g. JLPT N3")
                 font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
                 background: Rectangle { color: "transparent" }
@@ -54,7 +54,7 @@ ThemedDialog {
 
         RowLayout {
             Layout.fillWidth: true
-            Text { Layout.fillWidth: true; text: "Smart deck (tag-based):"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
+            Text { Layout.fillWidth: true; text: qsTr("Smart deck (tag-based):"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
             Switch {
                 id: smartToggle
                 indicator: Rectangle {
@@ -80,7 +80,7 @@ ThemedDialog {
         RowLayout {
             Layout.fillWidth: true
             visible: smartToggle.checked
-            Text { Layout.fillWidth: true; text: "Match ANY tag (default: ALL):"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
+            Text { Layout.fillWidth: true; text: qsTr("Match ANY tag (default: ALL):"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
             Switch {
                 id: orToggle
                 indicator: Rectangle {
@@ -106,7 +106,7 @@ ThemedDialog {
         // Tag picker for smart decks — choose the tags to filter by at creation.
         Text {
             visible: smartToggle.checked
-            text: "Filter by tags:"
+            text: qsTr("Filter by tags:")
             color: Platform.textPrimary
             font.pixelSize: Platform.fontBase
             font.bold: true
@@ -169,11 +169,12 @@ ThemedDialog {
         }
         Text {
             visible: smartToggle.checked && root.allTags.length === 0
-            text: "No tags yet — create some first."
+            text: qsTr("No tags yet — create some first.")
             color: Platform.textMuted
             font.pixelSize: Platform.fontBase - 1
             font.italic: true
         }
     }
 }
+
 

@@ -11,7 +11,7 @@ Rectangle {
         anchors { fill: parent; margins: 10 }
         spacing: 8
 
-        Text { text: "Decks"; color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
+        Text { text: qsTr("Decks"); color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
 
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -59,4 +59,5 @@ Rectangle {
         }
     }
 }
+
 

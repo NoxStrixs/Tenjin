@@ -32,7 +32,7 @@ Item {
                     elide: Text.ElideRight
                 }
                 Text {
-                    text: appVM.deckVM.selectedDeckIsSmart ? "(Smart)" : "(Manual)"
+                    text: appVM.deckVM.selectedDeckIsSmart ? qsTr("(Smart)") : qsTr("(Manual)")
                     color: Platform.textMuted; font.pixelSize: Platform.fontBase
                 }
 
@@ -41,18 +41,18 @@ Item {
                     visible: !Platform.isMobile
                     spacing: 8
                     ActionButton {
-                        text: "▶ Review"; variant: "success"
+                        text: qsTr("▶ Review"); variant: "success"
                         onClicked: {
                             appVM.reviewVM.startSession(appVM.deckVM.selectedDeckId)
                             if (panelRoot.reviewLoaderRef) panelRoot.reviewLoaderRef.active = true
                         }
                     }
                     ActionButton {
-                        text: panelRoot.showAnalytics ? "Hide analytics" : "Analytics"
+                        text: panelRoot.showAnalytics ? qsTr("Hide analytics") : qsTr("Analytics")
                         onClicked: panelRoot.showAnalytics = !panelRoot.showAnalytics
                     }
                     ActionButton {
-                        text: "Delete"; variant: "danger"
+                        text: qsTr("Delete"); variant: "danger"
                         onClicked: deleteDeckConfirm.open()
                     }
                 }
@@ -65,7 +65,7 @@ Item {
                 spacing: 8
                 ActionButton {
                     Layout.fillWidth: true
-                    text: "▶ Review"; variant: "success"
+                    text: qsTr("▶ Review"); variant: "success"
                     onClicked: {
                         appVM.reviewVM.startSession(appVM.deckVM.selectedDeckId)
                         if (panelRoot.reviewLoaderRef) panelRoot.reviewLoaderRef.active = true
@@ -73,12 +73,12 @@ Item {
                 }
                 ActionButton {
                     Layout.fillWidth: true
-                    text: panelRoot.showAnalytics ? "Hide" : "Analytics"
+                    text: panelRoot.showAnalytics ? qsTr("Hide") : qsTr("Analytics")
                     onClicked: panelRoot.showAnalytics = !panelRoot.showAnalytics
                 }
                 ActionButton {
                     Layout.fillWidth: true
-                    text: "Delete"; variant: "danger"
+                    text: qsTr("Delete"); variant: "danger"
                     onClicked: deleteDeckConfirm.open()
                 }
             }
@@ -98,7 +98,7 @@ Item {
             visible: appVM.deckVM.selectedDeckIsSmart
             spacing: 6
 
-            Text { text: "Tag filters"; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1 }
+            Text { text: qsTr("Tag filters"); color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1 }
 
             Flow {
                 Layout.fillWidth: true
@@ -121,7 +121,7 @@ Item {
                     radius: height / 2
                     color: addFilterArea.containsMouse ? Platform.surfaceAlt : Platform.surface
                     border.color: Platform.border; border.width: 1
-                    Text { id: addFilterText; anchors.centerIn: parent; text: "+ filter"; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 2 }
+                    Text { id: addFilterText; anchors.centerIn: parent; text: qsTr("+ filter"); color: Platform.textMuted; font.pixelSize: Platform.fontBase - 2 }
                     MouseArea {
                         id: addFilterArea
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -142,7 +142,7 @@ Item {
                                 contentItem: Text { text: modelData.name ?? ""; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
                                 onClicked: { appVM.deckVM.addTagFilter(appVM.deckVM.selectedDeckId, modelData.id); tagFilterPopup.close() }
                             }
-                            Text { anchors.centerIn: parent; visible: parent.count === 0; text: "No tags yet"; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1 }
+                            Text { anchors.centerIn: parent; visible: parent.count === 0; text: qsTr("No tags yet"); color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1 }
                         }
                     }
                 }
@@ -156,7 +156,7 @@ Item {
             visible: !appVM.deckVM.selectedDeckIsSmart
             spacing: 8
             Text {
-                text: appVM.deckVM.selectedDeckIsSmart ? "Matched words" : "Words"
+                text: appVM.deckVM.selectedDeckIsSmart ? qsTr("Matched words") : qsTr("Words")
                 color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1
                 Layout.fillWidth: true
             }
@@ -166,7 +166,7 @@ Item {
                 implicitHeight: Platform.touchTarget * 0.85
                 radius: Platform.radius
                 color: addWordArea.containsMouse ? Platform.accentDark : Platform.accent
-                Text { id: addWordText; anchors.centerIn: parent; text: "+ Add word"; color: Platform.bg; font.pixelSize: Platform.fontBase - 1; font.bold: true }
+                Text { id: addWordText; anchors.centerIn: parent; text: qsTr("+ Add word"); color: Platform.bg; font.pixelSize: Platform.fontBase - 1; font.bold: true }
                 MouseArea {
                     id: addWordArea
                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -189,7 +189,7 @@ Item {
                             TextField {
                                 id: wordFilter
                                 anchors.fill: parent; anchors.margins: 6
-                                placeholderText: "Filter words…"; placeholderTextColor: Platform.textMuted
+                                placeholderText: qsTr("Filter words…"); placeholderTextColor: Platform.textMuted
                                 color: Platform.textPrimary; font.pixelSize: Platform.fontBase; background: null
                             }
                         }
@@ -207,7 +207,7 @@ Item {
                                 contentItem: Text { text: modelData.word ?? ""; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
                                 onClicked: { appVM.deckVM.addWordToDeck(appVM.deckVM.selectedDeckId, modelData.id); wordPicker.close() }
                             }
-                            Text { anchors.centerIn: parent; visible: parent.count === 0; text: "No words"; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1 }
+                            Text { anchors.centerIn: parent; visible: parent.count === 0; text: qsTr("No words"); color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1 }
                         }
                     }
                 }
@@ -235,12 +235,12 @@ Item {
                     spacing: 8
                     Text {
                         Layout.fillWidth: true
-                        text: deckWordList.count + (deckWordList.count === 1 ? " word" : " words")
+                        text: deckWordList.count + (deckWordList.count === 1 ? qsTr(" word") : qsTr(" words"))
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontSmall
                     }
                     Text {
-                        text: "Tap a word to open it"
+                        text: qsTr("Tap a word to open it")
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontSmall
                         font.italic: true
@@ -388,7 +388,7 @@ Item {
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: !appVM.deckVM.selectedDeckIsSmart
-                    text: "Use + Add word to populate this deck."
+                    text: qsTr("Use + Add word to populate this deck.")
                     color: Platform.textMuted
                     font.pixelSize: Platform.fontBase
                     horizontalAlignment: Text.AlignHCenter
@@ -403,5 +403,6 @@ Item {
         onConfirmed: appVM.deckVM.deleteDeck(appVM.deckVM.selectedDeckId)
     }
 }
+
 
 

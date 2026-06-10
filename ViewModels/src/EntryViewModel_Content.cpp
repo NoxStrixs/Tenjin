@@ -2,6 +2,10 @@
 
 #include <EntryService/EntryService.h>
 
+#include <QSet>
+#include <QString>
+#include <QStringList>
+
 bool EntryViewModel::addContentBlock(int type, const QString& content)
 {
     if (m_selectedWordId < 0)
@@ -131,8 +135,23 @@ int EntryViewModel::rowCountForLayout() const
 
 bool EntryViewModel::deleteContentBlock(qint64 id)
 {
+    // Capture the media path BEFORE the row is removed -- after delete
+    // we can't query the content column. Only media blocks have
+    // cleanup-relevant content; for everything else mediaPath stays
+    // empty and cleanupOrphanedMedia is a no-op.
+    QString mediaPath;
+    for (const auto& b : m_contentModel->blocks()) {
+        if (b.id == id && b.type == Service::ContentType_t::Media) {
+            mediaPath = QString::fromStdString(b.content);
+            break;
+        }
+    }
+
     if (m_editMode) {
         m_contentModel->removeBlockById(id);
+        // Edit-mode deletes are staged in memory until saveLayout(),
+        // so we don't actually have a row to refcount against yet.
+        // Cleanup happens when saveLayout persists the removal.
         return true;
     }
 
@@ -142,15 +161,41 @@ bool EntryViewModel::deleteContentBlock(qint64 id)
         return false;
     }
     reloadContent();
+    cleanupOrphanedMedia(mediaPath);
     return true;
 }
 
 bool EntryViewModel::saveLayout()
 {
+    // Snapshot the DB's view of this entry's media paths BEFORE we
+    // overwrite it. Anything in this set that's missing from the
+    // post-save model is an orphan candidate.
+    QStringList beforeMedia;
+    if (m_selectedWordId >= 0) {
+        auto pre = m_entryService->GetContentForEntry(m_selectedWordId);
+        if (pre) {
+            for (const auto& b : *pre)
+                if (b.type == Service::ContentType_t::Media)
+                    beforeMedia.append(QString::fromStdString(b.content));
+        }
+    }
+
     auto result = m_entryService->SaveContentLayout(m_contentModel->blocks());
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
+    }
+
+    // Build the post-save set of media paths from the model we just
+    // persisted (cheaper than re-querying).
+    QSet<QString> afterMedia;
+    for (const auto& b : m_contentModel->blocks())
+        if (b.type == Service::ContentType_t::Media)
+            afterMedia.insert(QString::fromStdString(b.content));
+
+    for (const QString& p : beforeMedia) {
+        if (!afterMedia.contains(p))
+            cleanupOrphanedMedia(p);
     }
     return true;
 }

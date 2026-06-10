@@ -54,7 +54,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: "News"
+                text: qsTr("News")
                 color: Platform.textPrimary
                 font.pixelSize: Platform.fontTitle
                 font.bold: true
@@ -72,7 +72,7 @@ Item {
                 Text {
                     id: refreshLabel
                     anchors.centerIn: parent
-                    text: "Refresh"
+                    text: qsTr("Refresh")
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontBase
                 }
@@ -106,7 +106,7 @@ Item {
                     Text {
                         id: mRefreshLabel
                         anchors.centerIn: parent
-                        text: "Refresh"
+                        text: qsTr("Refresh")
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontBase
                     }
@@ -185,11 +185,12 @@ Item {
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "No news yet."
+                    text: qsTr("No news yet.")
                     color: Platform.textMuted; font.pixelSize: Platform.fontLarge
                 }
             }
         }
     }
 }
+
 

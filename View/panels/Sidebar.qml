@@ -92,7 +92,7 @@ Rectangle {
                 Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
                 Text {
                     anchors.centerIn: parent
-                    text: sidebarMode === 0 ? "+ Word" : "+ Deck"
+                    text: sidebarMode === 0 ? qsTr("+ Word") : qsTr("+ Deck")
                     color: Platform.bg
                     font.pixelSize: 12
                     font.bold: true
@@ -197,7 +197,7 @@ Rectangle {
                             leftMargin: 14
                         }
                         text: modelData.word
-                        font.pixelSize: 13
+                        font.pixelSize: Platform.fontBase
                         color: Platform.textPrimary
                         elide: Text.ElideRight
                     }
@@ -221,7 +221,7 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     visible: wordListView.count === 0
-                    text: "No words yet.\nClick + Word to add one."
+                    text: qsTr("No words yet.\nClick + Word to add one.")
                     color: Platform.textMuted
                     font.pixelSize: 12
                     horizontalAlignment: Text.AlignHCenter
@@ -270,7 +270,7 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             text: model.deckName
-                            font.pixelSize: 13
+                            font.pixelSize: Platform.fontBase
                             color: Platform.textPrimary
                             elide: Text.ElideRight
                         }
@@ -298,7 +298,7 @@ Rectangle {
                                       ? dueBadge.stats.due + " due"
                                       : (dueBadge.stats.nextDue.length > 0 ? "✓" : "✓")
                                 color: dueBadge.stats.due > 0 ? Platform.bg : Platform.textMuted
-                                font.pixelSize: 10
+                                font.pixelSize: Platform.fontTiny
                                 font.bold: dueBadge.stats.due > 0
                             }
                         }
@@ -320,7 +320,7 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     visible: deckListView.count === 0
-                    text: "No decks yet.\nClick + Deck to add one."
+                    text: qsTr("No decks yet.\nClick + Deck to add one.")
                     color: Platform.textMuted
                     font.pixelSize: 12
                     horizontalAlignment: Text.AlignHCenter
@@ -361,7 +361,7 @@ Rectangle {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "Manage tags"
+                    text: qsTr("Manage tags")
                     color: parent.parent._active ? Platform.accent : Platform.textPrimary
                     font.pixelSize: 12
                     font.bold: parent.parent._active
@@ -395,7 +395,7 @@ Rectangle {
                 anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
                 spacing: 8
                 Repeater {
-                    model: [{ label: "Import", act: 0 }, { label: "Export", act: 1 }]
+                    model: [{ label: qsTr("Import"), act: 0 }, { label: qsTr("Export"), act: 1 }]
                     delegate: Rectangle {
                         required property var modelData
                         Layout.fillWidth: true
@@ -451,6 +451,7 @@ Rectangle {
     // Mode state
     property int sidebarMode: 0
 }
+
 
 
 

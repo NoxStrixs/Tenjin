@@ -16,7 +16,7 @@ import TenjinView
 // last positioned itself.
 ThemedDialog {
     id: root
-    title: "Add tag"
+    title: qsTr("Add tag")
     width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 340, 380) : 360
     padding: 20
 
@@ -81,7 +81,7 @@ ThemedDialog {
         width: parent.width
 
         Text {
-            text: "Name"
+            text: qsTr("Name")
             color: Platform.textPrimary
             font.pixelSize: Platform.fontBase
             font.bold: true
@@ -100,7 +100,7 @@ ThemedDialog {
             TextField {
                 id: tagNameInput
                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                placeholderText: "e.g. verb, JLPT N3, chapter 1"
+                placeholderText: qsTr("e.g. verb, JLPT N3, chapter 1")
                 placeholderTextColor: Platform.textMuted
                 font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
@@ -174,7 +174,7 @@ ThemedDialog {
                             elide: Text.ElideRight
                         }
                         Text {
-                            text: "Use"
+                            text: qsTr("Use")
                             color: Platform.accentDark
                             font.pixelSize: Platform.fontSmall
                             font.bold: true
@@ -196,4 +196,5 @@ ThemedDialog {
         }
     }
 }
+
 

@@ -239,7 +239,7 @@ Item {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
-                text: "Couldn't load this page in the embed."
+                text: qsTr("Couldn't load this page in the embed.")
                 color: Platform.textPrimary
                 font.pixelSize: Platform.fontBase
                 font.bold: true
@@ -249,7 +249,7 @@ Item {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
-                text: "Tap to open in your browser instead."
+                text: qsTr("Tap to open in your browser instead.")
                 color: Platform.textMuted
                 font.pixelSize: Platform.fontSmall
             }
@@ -310,3 +310,4 @@ Item {
         }
     }
 }
+

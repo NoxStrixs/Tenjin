@@ -9,7 +9,7 @@ import QtQuick.Layouts
 // improvement plan).
 ThemedDialog {
     id: root
-    title: "Add Word"
+    title: qsTr("Add Word")
     width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 400, 400) : 400
     padding: 24
 
@@ -42,7 +42,7 @@ ThemedDialog {
         spacing: 14
 
         Text {
-            text: "Word"
+            text: qsTr("Word")
             font.pixelSize: Platform.fontBase
             font.bold: true
             color: Platform.textPrimary
@@ -61,7 +61,7 @@ ThemedDialog {
             TextField {
                 id: wordInput
                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
-                placeholderText: "e.g. ephemeral"
+                placeholderText: qsTr("e.g. ephemeral")
                 placeholderTextColor: Platform.textMuted
                 font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
@@ -71,12 +71,13 @@ ThemedDialog {
         }
 
         Text {
-            text: "We'll open the new word so you can add definitions, notes, and media right away."
-            font.pixelSize: 11
+            text: qsTr("We'll open the new word so you can add definitions, notes, and media right away.")
+            font.pixelSize: Platform.fontSmall
             color: Platform.textMuted
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
     }
 }
+
 

@@ -170,7 +170,7 @@ Item {
 
                 ActionButton {
                     visible: !appVM.entryVM.editMode
-                    text: "Edit"
+                    text: qsTr("Edit")
                     variant: "neutral"
                     onClicked: appVM.entryVM.beginEdit()
                 }
@@ -179,9 +179,9 @@ Item {
                 Row {
                     visible: appVM.entryVM.editMode && !Platform.isMobile
                     spacing: 8
-                    ActionButton { text: "Save";        variant: "success"; onClicked: appVM.entryVM.saveEdit() }
-                    ActionButton { text: "Cancel";      variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
-                    ActionButton { text: "Delete Word"; variant: "danger";  onClicked: deleteEntryConfirm.open() }
+                    ActionButton { text: qsTr("Save");        variant: "success"; onClicked: appVM.entryVM.saveEdit() }
+                    ActionButton { text: qsTr("Cancel");      variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
+                    ActionButton { text: qsTr("Delete Word"); variant: "danger";  onClicked: deleteEntryConfirm.open() }
                 }
             }
 
@@ -190,9 +190,9 @@ Item {
                 visible: appVM.entryVM.editMode && Platform.isMobile
                 Layout.fillWidth: true
                 spacing: 8
-                ActionButton { Layout.fillWidth: true; text: "Save";   variant: "success"; onClicked: appVM.entryVM.saveEdit() }
-                ActionButton { Layout.fillWidth: true; text: "Cancel"; variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
-                ActionButton { Layout.fillWidth: true; text: "Delete"; variant: "danger";  onClicked: deleteEntryConfirm.open() }
+                ActionButton { Layout.fillWidth: true; text: qsTr("Save");   variant: "success"; onClicked: appVM.entryVM.saveEdit() }
+                ActionButton { Layout.fillWidth: true; text: qsTr("Cancel"); variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
+                ActionButton { Layout.fillWidth: true; text: qsTr("Delete"); variant: "danger";  onClicked: deleteEntryConfirm.open() }
             }
         }
 
@@ -201,7 +201,7 @@ Item {
             Layout.fillWidth: true
             spacing: 8
 
-            Text { text: "Tags:"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+            Text { text: qsTr("Tags:"); color: Platform.textMuted; font.pixelSize: Platform.fontBase }
 
             Flow {
                 Layout.fillWidth: true
@@ -232,7 +232,7 @@ Item {
                     Text {
                         id: addTagText
                         anchors.centerIn: parent
-                        text: "+ tag"
+                        text: qsTr("+ tag")
                         font.pixelSize: Platform.fontBase - 2
                         color: Platform.textMuted
                     }
@@ -278,7 +278,7 @@ Item {
                                     id: newTagField
                                     anchors.fill: parent
                                     anchors.margins: 6
-                                    placeholderText: "New tag name\u2026 (Enter)"
+                                    placeholderText: qsTr("New tag name\u2026 (Enter)")
                                     placeholderTextColor: Platform.textMuted
                                     color: Platform.textPrimary
                                     font.pixelSize: Platform.fontBase
@@ -297,7 +297,7 @@ Item {
 
                             Text {
                                 visible: tagPopup.allTags.length > 0
-                                text: "Existing tags"
+                                text: qsTr("Existing tags")
                                 color: Platform.textMuted
                                 font.pixelSize: Platform.fontBase - 3
                             }
@@ -332,7 +332,7 @@ Item {
                                 Text {
                                     anchors.centerIn: parent
                                     visible: parent.count === 0
-                                    text: "No tags yet \u2014 type above to create one"
+                                    text: qsTr("No tags yet \u2014 type above to create one")
                                     color: Platform.textMuted
                                     font.pixelSize: Platform.fontBase - 2
                                     width: parent.width - 12
@@ -368,7 +368,7 @@ Item {
             readonly property bool   hasLang: langRow.currentCode.length > 0
 
             function buildOptions() {
-                const opts = [{ code: "", label: "(none)" }]
+                const opts = [{ code: "", label: qsTr("(none)") }]
                 const builtin = appVM.builtinLanguages
                 const seen = {}
                 for (let i = 0; i < builtin.length; i++) {
@@ -390,7 +390,7 @@ Item {
             }
 
             Text {
-                text: "Language:"
+                text: qsTr("Language:")
                 color: Platform.textMuted
                 font.pixelSize: Platform.fontBase
             }
@@ -416,7 +416,7 @@ Item {
             }
             Text {
                 visible: !appVM.entryVM.editMode && !langRow.hasLang
-                text: "(none)"
+                text: qsTr("(none)")
                 color: Platform.textMuted
                 font.pixelSize: Platform.fontSmall
                 font.italic: true
@@ -536,7 +536,7 @@ Item {
                 Text {
                     id: entryAddLangLbl
                     anchors.centerIn: parent
-                    text: "+ Custom"
+                    text: qsTr("+ Custom")
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontSmall
                     font.bold: true
@@ -556,7 +556,7 @@ Item {
         // Custom-code dialog for languages outside the builtin catalogue.
         ThemedDialog {
             id: entryCustomLangDialog
-            title: "Add custom language code"
+            title: qsTr("Add custom language code")
             width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 400, 420) : 420
             padding: 20
             x: parent ? Math.round((parent.width  - width)  / 2) : 0
@@ -575,7 +575,7 @@ Item {
                 width: parent.width
                 Text {
                     Layout.fillWidth: true
-                    text: "Assign a language code not in the built-in list (rare ISO codes, conlangs, etc.)."
+                    text: qsTr("Assign a language code not in the built-in list (rare ISO codes, conlangs, etc.).")
                     color: Platform.textMuted
                     font.pixelSize: Platform.fontSmall
                     wrapMode: Text.WordWrap
@@ -591,7 +591,7 @@ Item {
                     TextField {
                         id: entryCustomLangInput
                         anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
-                        placeholderText: "e.g. yue, tlh, nv"
+                        placeholderText: qsTr("e.g. yue, tlh, nv")
                         placeholderTextColor: Platform.textMuted
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontBase
@@ -621,13 +621,13 @@ Item {
 
             Repeater {
                 model: [
-                    { type: 0, label: "Definition" },
-                    { type: 1, label: "Media Path" },
-                    { type: 2, label: "Note" },
-                    { type: 5, label: "Header"  },
-                    { type: 6, label: "Tense"   },
-                    { type: 4, label: "Formula" },
-                    { type: 3, label: "Divider" }
+                    { type: 0, label: qsTr("Definition") },
+                    { type: 1, label: qsTr("Media Path") },
+                    { type: 2, label: qsTr("Note") },
+                    { type: 5, label: qsTr("Header")  },
+                    { type: 6, label: qsTr("Tense")   },
+                    { type: 4, label: qsTr("Formula") },
+                    { type: 3, label: qsTr("Divider") }
                 ]
                 delegate: Rectangle {
                     required property var modelData
@@ -758,11 +758,11 @@ Item {
             // page is stable across sessions.
             readonly property var relations: appVM.entryVM.selectedEntryRelations
             readonly property var kindOrder: [
-                { id: "synonym",     label: "Synonyms"     },
-                { id: "antonym",     label: "Antonyms"     },
-                { id: "related",     label: "Related"      },
-                { id: "translation", label: "Translations" },
-                { id: "inflection",  label: "Inflections"  }
+                { id: "synonym",     label: qsTr("Synonyms")     },
+                { id: "antonym",     label: qsTr("Antonyms")     },
+                { id: "related",     label: qsTr("Related")      },
+                { id: "translation", label: qsTr("Translations") },
+                { id: "inflection",  label: qsTr("Inflections")  }
             ]
             // Group _relations by kind. Recomputed by callers; we don't
             // cache it as a property to avoid re-evaluating on every
@@ -781,7 +781,7 @@ Item {
                 Layout.fillWidth: true
                 Text {
                     Layout.fillWidth: true
-                    text: "Related words"
+                    text: qsTr("Related words")
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontLarge
                     font.bold: true
@@ -798,7 +798,7 @@ Item {
                     Text {
                         id: addRelLbl
                         anchors.centerIn: parent
-                        text: "+ Add relation"
+                        text: qsTr("+ Add relation")
                         color: addRelArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
                         font.pixelSize: Platform.fontSmall
                         font.bold: true
@@ -947,6 +947,7 @@ Item {
         }
     }
 }
+
 
 
 

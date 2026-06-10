@@ -113,6 +113,24 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::GetContentForEntry(ID_t w
     return blocks;
 }
 
+Result_t<int> DatabaseManager::CountMediaReferences(const std::string& storedPath) const
+{
+    // Count rows in entry_content whose `content` exactly matches the
+    // stored media path. Filter by media block type so we don't count
+    // accidental matches in note text. The type constant for media is
+    // ContentType_t::Media (== 1); we use the integer literal to avoid
+    // pulling Types.h here.
+    QSqlQuery q(m_db);
+    q.prepare("SELECT COUNT(*) FROM entry_content "
+              "WHERE type = 1 AND content = :path;");
+    q.bindValue(":path", QString::fromStdString(storedPath));
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+    if (!q.next())
+        return 0;
+    return q.value(0).toInt();
+}
+
 Result_t<bool> DatabaseManager::SaveContentLayout(const std::vector<ContentBlock_t>& blocks)
 {
     if (blocks.empty())

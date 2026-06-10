@@ -74,7 +74,7 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Help"
+                    text: qsTr("Help")
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontTitle
                     font.bold: true
@@ -121,4 +121,5 @@ Item {
         }
     }
 }
+
 

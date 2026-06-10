@@ -56,6 +56,11 @@ Result_t<bool> EntryService::SaveContentLayout(const std::vector<ContentBlock_t>
     return m_db->SaveContentLayout(blocks);
 }
 
+Result_t<int> EntryService::CountMediaReferences(const std::string& storedPath) const
+{
+    return m_db->CountMediaReferences(storedPath);
+}
+
 Result_t<bool> EntryService::ExportToJson(const QString& path)
 {
     return m_db->ExportToJson(path);

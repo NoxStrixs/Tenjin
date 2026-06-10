@@ -11,7 +11,7 @@ import TenjinView
 // The dialog is one-shot per opening; reopen to add another relation.
 ThemedDialog {
     id: root
-    title: "Add related word"
+    title: qsTr("Add related word")
     width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 420, 460) : 420
     padding: 20
 
@@ -62,11 +62,11 @@ ThemedDialog {
     // Five canonical kinds. Keep names lowercase so the DB has a single
     // canonical form even if QML labels are capitalised.
     readonly property var _kinds: [
-        { id: "synonym",     label: "Synonym",     hint: "Means roughly the same thing"   },
-        { id: "antonym",     label: "Antonym",     hint: "Means the opposite"             },
-        { id: "related",     label: "Related",     hint: "Topically connected"            },
-        { id: "translation", label: "Translation", hint: "Same meaning, other language"   },
-        { id: "inflection",  label: "Inflection",  hint: "Conjugation or form variant"    }
+        { id: "synonym",     label: qsTr("Synonym"),     hint: "Means roughly the same thing"   },
+        { id: "antonym",     label: qsTr("Antonym"),     hint: "Means the opposite"             },
+        { id: "related",     label: qsTr("Related"),     hint: "Topically connected"            },
+        { id: "translation", label: qsTr("Translation"), hint: "Same meaning, other language"   },
+        { id: "inflection",  label: qsTr("Inflection"),  hint: "Conjugation or form variant"    }
     ]
 
     ColumnLayout {
@@ -100,7 +100,7 @@ ThemedDialog {
                 TextField {
                     id: wordSearch
                     Layout.fillWidth: true
-                    placeholderText: "Search words\u2026"
+                    placeholderText: qsTr("Search words\u2026")
                     placeholderTextColor: Platform.textMuted
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontBase
@@ -172,7 +172,7 @@ ThemedDialog {
         // Step 2 — kind chips. Visible only once a word is picked.
         Text {
             visible: root.pickedId >= 0
-            text: "Relation kind"
+            text: qsTr("Relation kind")
             color: Platform.textPrimary
             font.pixelSize: Platform.fontBase
             font.bold: true
@@ -236,4 +236,5 @@ ThemedDialog {
     // buttons; we just hint state through whatever it exposes.)
     standardButtons: root.pickedId >= 0 ? (Dialog.Ok | Dialog.Cancel) : Dialog.Cancel
 }
+
 

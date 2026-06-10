@@ -131,7 +131,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: "Tags"
+                text: qsTr("Tags")
                 color: Platform.textPrimary
                 font.pixelSize: Platform.fontTitle
                 font.bold: true
@@ -144,7 +144,7 @@ Item {
                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 scale: addTagArea.pressed ? 0.97 : 1.0
                 Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
-                Text { id: addTagLabel; anchors.centerIn: parent; text: "+ Tag"; color: Platform.bg; font.pixelSize: Platform.fontBase; font.bold: true }
+                Text { id: addTagLabel; anchors.centerIn: parent; text: qsTr("+ Tag"); color: Platform.bg; font.pixelSize: Platform.fontBase; font.bold: true }
                 MouseArea {
                     id: addTagArea
                     anchors.fill: parent
@@ -171,7 +171,7 @@ Item {
                 TextField {
                     id: filterInput
                     Layout.fillWidth: true
-                    placeholderText: "Filter tags\u2026"
+                    placeholderText: qsTr("Filter tags\u2026")
                     placeholderTextColor: Platform.textMuted
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontBase
@@ -290,7 +290,7 @@ Item {
                         border.color: Platform.border
                         border.width: 1
                         Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                        Text { id: viewLabel; anchors.centerIn: parent; text: "View"; color: Platform.accentDark; font.pixelSize: Platform.fontBase - 1; font.bold: true }
+                        Text { id: viewLabel; anchors.centerIn: parent; text: qsTr("View"); color: Platform.accentDark; font.pixelSize: Platform.fontBase - 1; font.bold: true }
                         MouseArea {
                             id: viewArea
                             anchors.fill: parent
@@ -313,7 +313,7 @@ Item {
                         border.color: Platform.border
                         border.width: 1
                         Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                        Text { id: renameLabel; anchors.centerIn: parent; text: "Rename"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase - 1 }
+                        Text { id: renameLabel; anchors.centerIn: parent; text: qsTr("Rename"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase - 1 }
                         MouseArea {
                             id: renameArea
                             anchors.fill: parent
@@ -336,7 +336,7 @@ Item {
                         Text {
                             id: delLabel
                             anchors.centerIn: parent
-                            text: "Delete"
+                            text: qsTr("Delete")
                             color: delArea.containsMouse ? Platform.textOnDark : Platform.danger
                             Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                             font.pixelSize: Platform.fontBase - 1
@@ -407,4 +407,5 @@ Item {
         deleteTagConfirm.open()
     }
 }
+
 

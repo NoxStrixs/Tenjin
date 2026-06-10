@@ -183,7 +183,7 @@ Flickable {
                                         color: divEditArea.containsMouse ? Platform.surfaceAlt : "transparent"
                                         border.color: Platform.border
                                         border.width: 1
-                                        Text { id: divEditLabel; anchors.centerIn: parent; text: "Edit"; color: Platform.accentDark; font.pixelSize: Platform.fontBase - 1; font.bold: true }
+                                        Text { id: divEditLabel; anchors.centerIn: parent; text: qsTr("Edit"); color: Platform.accentDark; font.pixelSize: Platform.fontBase - 1; font.bold: true }
                                         MouseArea { id: divEditArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: divNameDialog.open() }
                                     }
                                     Rectangle {
@@ -195,14 +195,14 @@ Flickable {
                                         color: divDelArea.containsMouse ? Platform.danger : "transparent"
                                         border.color: Platform.danger
                                         border.width: 1
-                                        Text { id: divDelLabel; anchors.centerIn: parent; text: "Delete"; color: divDelArea.containsMouse ? Platform.textOnDark : Platform.danger; font.pixelSize: Platform.fontBase - 1; font.bold: true }
+                                        Text { id: divDelLabel; anchors.centerIn: parent; text: qsTr("Delete"); color: divDelArea.containsMouse ? Platform.textOnDark : Platform.danger; font.pixelSize: Platform.fontBase - 1; font.bold: true }
                                         MouseArea { id: divDelArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: appVM.entryVM.deleteContentBlock(cell.modelData.id) }
                                     }
                                 }
                                 ThemedDialog {
                                     id: divNameDialog
                                     parent: Overlay.overlay
-                                    title: "Divider label"
+                                    title: qsTr("Divider label")
                                     padding: 20
                                     width: 300
 
@@ -210,7 +210,7 @@ Flickable {
                                         id: divNameField
                                         width: 240
                                         text: cell.modelData.content
-                                        placeholderText: "Optional label"
+                                        placeholderText: qsTr("Optional label")
                                         color: Platform.textPrimary
                                         background: Rectangle {
                                             radius: Platform.radius
@@ -234,6 +234,8 @@ Flickable {
                                 blockType:    cell.modelData.type
                                 blockContent: cell.modelData.content
                                 blockPos:     cell.modelData.pos
+                                blockColSpan: cell.modelData.colSpan ?? 1
+                                blockRowSpan: cell.modelData.rowSpan ?? 1
                                 editMode:     root.editMode
 
                                 property int blockRow: cell.modelData.row
@@ -246,6 +248,7 @@ Flickable {
                                 onDeleteRequested: (bid) => appVM.entryVM.deleteContentBlock(bid)
                                 onContentEdited:   (bid, t) => appVM.entryVM.updateContentBlockText(bid, t)
                                 onPosEdited:       (bid, p) => appVM.entryVM.setBlockPartOfSpeech(bid, p)
+                                onSpanChanged:     (bid, rs, cs) => appVM.entryVM.setBlockSpan(bid, rs, cs)
                             }
 
                             // Same edit/content contract as ContentBlock.
@@ -430,7 +433,7 @@ Flickable {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "+ Drop here for new row"
+                    text: qsTr("+ Drop here for new row")
                     color: Platform.textMuted
                 }
             }
@@ -449,13 +452,14 @@ Flickable {
     Text {
         anchors.centerIn: parent
         visible: root.bandData.length === 0
-        text: root.editMode ? "No content yet. Use the buttons below to add some."
+        text: root.editMode ? qsTr("No content yet. Use the buttons below to add some.")
                             : "No content yet. Click Edit to start."
         color: Platform.textMuted
         font.pixelSize: Platform.fontBase
         horizontalAlignment: Text.AlignHCenter
     }
 }
+
 
 
 

@@ -9,13 +9,17 @@
 #include <ViewModels/SidebarViewModel.h>
 
 #include <QClipboard>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QLocale>
+#include <QQmlEngine>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStringList>
+#include <QTranslator>
 #include <QUrl>
 #include <QVariantMap>
 
@@ -62,7 +66,86 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
     for (const QString& id : ids)
         m_newsDismissedIds.insert(id);
 
+    // UI language: persisted code, fall back to the system locale's
+    // language only if we actually ship a .qm for it; otherwise English.
+    {
+        QString stored = settings.value("ui/language").toString();
+        if (stored.isEmpty()) {
+            const QString sysCode = QLocale::system().name().section('_', 0, 0);
+            if (supportedUiLanguages().contains(sysCode))
+                stored = sysCode;
+            else
+                stored = QStringLiteral("en");
+        }
+        // Install without emitting -- m_qmlEngine isn't wired yet anyway.
+        m_uiLanguage = stored;
+        if (m_uiLanguage != QStringLiteral("en")) {
+            auto t = std::make_unique<QTranslator>();
+            if (t->load(QStringLiteral(":/i18n/tenjin_") + m_uiLanguage + QStringLiteral(".qm"))) {
+                QCoreApplication::installTranslator(t.get());
+                m_uiTranslator = std::move(t);
+            }
+        }
+    }
+
     loadBundledNews();
+}
+
+void AppViewModel::setUiLanguage(const QString& code)
+{
+    if (code == m_uiLanguage)
+        return;
+
+    // Remove previous translator if any.
+    if (m_uiTranslator) {
+        QCoreApplication::removeTranslator(m_uiTranslator.get());
+        m_uiTranslator.reset();
+    }
+
+    // Install the new one (English == no translator, base strings).
+    if (code != QStringLiteral("en")) {
+        auto t = std::make_unique<QTranslator>();
+        if (!t->load(QStringLiteral(":/i18n/tenjin_") + code + QStringLiteral(".qm"))) {
+            // .qm missing -- fall back silently to English so the picker
+            // never leaves the UI in a broken half-translated state.
+            m_uiLanguage = QStringLiteral("en");
+        } else {
+            QCoreApplication::installTranslator(t.get());
+            m_uiTranslator = std::move(t);
+            m_uiLanguage   = code;
+        }
+    } else {
+        m_uiLanguage = QStringLiteral("en");
+    }
+
+    QSettings().setValue("ui/language", m_uiLanguage);
+
+    // Live-swap: tell the QML engine to re-evaluate every qsTr() binding.
+    // Without this the change only shows after restart.
+    if (m_qmlEngine)
+        m_qmlEngine->retranslate();
+
+    emit uiLanguageChanged();
+}
+
+QStringList AppViewModel::supportedUiLanguages() const
+{
+    // Languages for which a .qm file ships in the qrc. The qrc prefix is
+    // "/i18n" (see translations/CMakeLists.txt -- the qt_add_translations
+    // call uses RESOURCE_PREFIX "/i18n"). QDir scans the qrc; this
+    // implicitly tracks whatever the build actually shipped.
+    QStringList out{QStringLiteral("en")};
+    QDir        d(QStringLiteral(":/i18n"));
+    const auto  qms = d.entryList({QStringLiteral("tenjin_*.qm")}, QDir::Files);
+    for (const QString& f : qms) {
+        // tenjin_<code>.qm -> <code>
+        QString code = f;
+        code.remove(QStringLiteral("tenjin_"));
+        code.chop(3);
+        if (!code.isEmpty() && code != QStringLiteral("en"))
+            out.append(code);
+    }
+    return out;
 }
 
 void AppViewModel::loadBundledNews()
@@ -270,31 +353,12 @@ QVariantList AppViewModel::availableMediaFiles() const
     QVariantList  out;
     const QString dir = documentsFolder();
     QDir          d(dir);
-    // Image / video / audio extensions matching what ContentBlock.qml's
-    // mediaKind classifier knows how to render. Sorted newest-first so
-    // the file the user just dropped via Files.app is on top.
-    static const QStringList kFilters = {// Images
-                                         "*.png",
-                                         "*.jpg",
-                                         "*.jpeg",
-                                         "*.gif",
-                                         "*.bmp",
-                                         "*.webp",
-                                         "*.svg",
-                                         "*.heic",
-                                         // Video
-                                         "*.mp4",
-                                         "*.webm",
-                                         "*.mkv",
-                                         "*.mov",
-                                         "*.m4v",
-                                         // Audio
-                                         "*.mp3",
-                                         "*.wav",
-                                         "*.ogg",
-                                         "*.flac",
-                                         "*.m4a"};
-    const auto entries = d.entryInfoList(kFilters, QDir::Files | QDir::Readable, QDir::Time);
+    // Any file the user dropped into Documents is fair game -- the
+    // block renderer falls back to a generic "open externally" link
+    // for unknown extensions (ContentBlock.qml mediaKind === "file").
+    // No filter = no surprises when the user expects a .pdf or .zip
+    // to be selectable.
+    const auto entries = d.entryInfoList(QDir::Files | QDir::Readable, QDir::Time);
     for (const QFileInfo& fi : entries) {
         QVariantMap m;
         m["name"]   = fi.fileName();
@@ -392,6 +456,18 @@ int AppViewModel::deleteAllWords()
     m_entryVM->reloadAfterDataChange();
     m_sidebarVM->reload();
     m_deckVM->reloadDecks();
+
+    // All entries gone -> nothing can reference any media file. Wipe
+    // the managed media dir entirely. External-link imports (paths
+    // outside this dir) were never copied, so there's nothing to do
+    // for them.
+    {
+        const QString mediaDirPath =
+            QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+            QStringLiteral("/media");
+        QDir(mediaDirPath).removeRecursively();
+    }
+
     setStatusMessage(QStringLiteral("Deleted %1 word(s).").arg(r.value()));
     return r.value();
 }
@@ -435,6 +511,16 @@ bool AppViewModel::deleteEverything()
     m_sidebarVM->reload();
     m_deckVM->reloadDecks();
     emit availableLanguagesChanged();
+
+    // No entries left -> no media references -> remove the managed
+    // media dir wholesale.
+    {
+        const QString mediaDirPath =
+            QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+            QStringLiteral("/media");
+        QDir(mediaDirPath).removeRecursively();
+    }
+
     setStatusMessage(ok ? "All data deleted." : "Some deletes failed — see logs.");
     return ok;
 }

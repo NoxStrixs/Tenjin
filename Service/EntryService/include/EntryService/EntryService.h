@@ -50,6 +50,11 @@ public:
     Result_t<std::vector<ContentBlock_t>> GetContentForEntry(ID_t wordId) const;
     Result_t<bool> SaveContentLayout(const std::vector<ContentBlock_t>& blocks);
 
+    // Used by EntryViewModel::cleanupOrphanedMedia to decide whether
+    // a media file can be safely deleted from disk after the block
+    // that referenced it was removed.
+    Result_t<int> CountMediaReferences(const std::string& storedPath) const;
+
     // Import / Export
     Result_t<bool> ExportToJson(const QString& path);
     Result_t<bool> ImportFromJson(const QString& path);

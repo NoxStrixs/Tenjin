@@ -14,7 +14,7 @@ ApplicationWindow {
     height: Platform.isMobile ? 1920 : 820
     minimumWidth:  Platform.isMobile ? 0 : Platform.minWindowWidth
     minimumHeight: Platform.isMobile ? 0 : Platform.minWindowHeight
-    title: "Tenjin"
+    title: qsTr("Tenjin")
     color: Platform.bg
     // 1 = AutomaticVisibility, 5 = FullScreen (Window visibility enum ints).
     visibility: Platform.isMobile ? 5 : 1
@@ -128,7 +128,7 @@ ApplicationWindow {
                 }
                 HoverHandler { id: badgeHover }
                 ToolTip.visible: badgeHover.hovered
-                ToolTip.text: "Tenjin"
+                ToolTip.text: qsTr("Tenjin")
                 ToolTip.delay: 500
                 MouseArea {
                     anchors.fill: parent
@@ -235,7 +235,7 @@ ApplicationWindow {
                 Text {
                     id: mAddLabel
                     anchors.centerIn: parent
-                    text: appVM.currentPage === root._pageWords ? "+ Word"
+                    text: appVM.currentPage === root._pageWords ? qsTr("+ Word")
                         : appVM.currentPage === root._pageDecks ? "+ Deck"
                                                                  : "+ Tag"
                     color: Platform.bg
@@ -274,11 +274,11 @@ ApplicationWindow {
         }
         contentItem: ColumnLayout {
             spacing: Platform.spacingSm
-            Text { text: "Tenjin"; color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
-            Text { text: "Vocabulary & spaced-repetition study"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Text { text: qsTr("Tenjin"); color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
+            Text { text: qsTr("Vocabulary & spaced-repetition study"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             Rectangle { Layout.fillWidth: true; height: Platform.borderWidth; color: Platform.border; opacity: 0.5 }
-            Text { text: "Version 1.0"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
-            Text { text: "Qt 6.8"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+            Text { text: qsTr("Version 1.0"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+            Text { text: qsTr("Qt 6.8"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
             Text { text: Qt.platform.os; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
         }
         enter: Transition {
@@ -410,7 +410,7 @@ ApplicationWindow {
                     color: skipArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                     visible: welcomePopup.step < welcomePopup.stepCount - 1
-                    Text { id: skipLabel; anchors.centerIn: parent; text: "Skip"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+                    Text { id: skipLabel; anchors.centerIn: parent; text: qsTr("Skip"); color: Platform.textMuted; font.pixelSize: Platform.fontBase }
                     MouseArea { id: skipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: welcomePopup.finish() }
                 }
                 Item { Layout.fillWidth: true }
@@ -422,7 +422,7 @@ ApplicationWindow {
                     border.color: Platform.border; border.width: Platform.borderWidth
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                     visible: welcomePopup.step > 0
-                    Text { id: backLabel; anchors.centerIn: parent; text: "Back"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
+                    Text { id: backLabel; anchors.centerIn: parent; text: qsTr("Back"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
                     MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (welcomePopup.step > 0) welcomePopup.step-- }
                 }
                 Rectangle {
@@ -494,7 +494,7 @@ ApplicationWindow {
                     anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: 1
                     Item { Layout.fillHeight: true }
-                    Text { text: "What's new"; color: Platform.textPrimary; font.pixelSize: Platform.fontTitle; font.bold: true }
+                    Text { text: qsTr("What's new"); color: Platform.textPrimary; font.pixelSize: Platform.fontTitle; font.bold: true }
                     Text { text: newsLaunchPopup.currentItem ? newsLaunchPopup.currentItem.date : ""; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     Item { Layout.fillHeight: true }
                 }
@@ -542,7 +542,7 @@ ApplicationWindow {
                     radius: Platform.radius
                     color: seeAllArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                    Text { id: seeAllLabel; anchors.centerIn: parent; text: "See all news"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+                    Text { id: seeAllLabel; anchors.centerIn: parent; text: qsTr("See all news"); color: Platform.textMuted; font.pixelSize: Platform.fontBase }
                     MouseArea {
                         id: seeAllArea
                         anchors.fill: parent
@@ -560,7 +560,7 @@ ApplicationWindow {
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                     scale: gotItArea.pressed ? 0.97 : 1.0
                     Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
-                    Text { id: gotItLabel; anchors.centerIn: parent; text: "Got it"; color: Platform.bg; font.pixelSize: Platform.fontBase; font.bold: true }
+                    Text { id: gotItLabel; anchors.centerIn: parent; text: qsTr("Got it"); color: Platform.bg; font.pixelSize: Platform.fontBase; font.bold: true }
                     MouseArea {
                         id: gotItArea
                         anchors.fill: parent
@@ -646,14 +646,14 @@ ApplicationWindow {
     // File pickers
     FileDialog {
         id: importDialog
-        title: "Import collection"
+        title: qsTr("Import collection")
         fileMode: FileDialog.OpenFile
         nameFilters: ["Tenjin export (*.json)", "All files (*)"]
         onAccepted: appVM.importData(selectedFile)
     }
     FileDialog {
         id: exportDialog
-        title: "Export collection"
+        title: qsTr("Export collection")
         fileMode: FileDialog.SaveFile
         nameFilters: ["Tenjin export (*.json)"]
         defaultSuffix: "json"
@@ -719,7 +719,7 @@ ApplicationWindow {
 
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "Debug console"; color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
+                Text { text: qsTr("Debug console"); color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
                 Item { Layout.fillWidth: true }
                 Repeater {
                     model: ["Log", "Eval"]
@@ -769,12 +769,12 @@ ApplicationWindow {
                             width: parent.width - 8
                             x: 4
                             spacing: 6
-                            Text { text: time; color: Platform.textMuted; font.pixelSize: 11; font.family: "monospace" }
+                            Text { text: time; color: Platform.textMuted; font.pixelSize: Platform.fontSmall; font.family: "monospace" }
                             Text {
                                 width: parent.width - 70
                                 text: message
                                 wrapMode: Text.Wrap
-                                font.pixelSize: 11
+                                font.pixelSize: Platform.fontSmall
                                 font.family: "monospace"
                                 color: level === "critical" ? Platform.danger
                                      : level === "warning"  ? Platform.accentDark
@@ -786,13 +786,13 @@ ApplicationWindow {
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    Text { Layout.fillWidth: true; text: logModel.count + " entries"; color: Platform.textMuted; font.pixelSize: 11 }
+                    Text { Layout.fillWidth: true; text: logModel.count + " entries"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     Rectangle {
                         implicitWidth: clearText.implicitWidth + 16; implicitHeight: 24; radius: Platform.radius
                         color: clearArea.containsMouse ? Platform.surfaceAlt : Platform.bg
                         border.color: Platform.border; border.width: 1
                         Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                        Text { id: clearText; anchors.centerIn: parent; text: "Clear"; color: Platform.textPrimary; font.pixelSize: 11 }
+                        Text { id: clearText; anchors.centerIn: parent; text: qsTr("Clear"); color: Platform.textPrimary; font.pixelSize: Platform.fontSmall }
                         MouseArea { id: clearArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: logModel.clear() }
                     }
                 }
@@ -805,9 +805,9 @@ ApplicationWindow {
                 spacing: 6
                 Text {
                     Layout.fillWidth: true
-                    text: "Evaluate a JS expression in the window scope. Result and errors print to the Log tab."
+                    text: qsTr("Evaluate a JS expression in the window scope. Result and errors print to the Log tab.")
                     color: Platform.textMuted
-                    font.pixelSize: 11
+                    font.pixelSize: Platform.fontSmall
                     wrapMode: Text.WordWrap
                 }
                 Rectangle {
@@ -821,7 +821,7 @@ ApplicationWindow {
                         anchors.margins: 6
                         TextArea {
                             id: evalInput
-                            placeholderText: "e.g. appVM.theme  /  Platform.toggleTheme()"
+                            placeholderText: qsTr("e.g. appVM.theme  /  Platform.toggleTheme()")
                             color: Platform.textPrimary
                             font.pixelSize: 12
                             font.family: "monospace"
@@ -836,7 +836,7 @@ ApplicationWindow {
                     radius: Platform.radius
                     color: runArea.containsMouse ? Platform.accentDark : Platform.accent
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                    Text { anchors.centerIn: parent; text: "Run"; color: Platform.bg; font.pixelSize: 12; font.bold: true }
+                    Text { anchors.centerIn: parent; text: qsTr("Run"); color: Platform.bg; font.pixelSize: 12; font.bold: true }
                     MouseArea {
                         id: runArea
                         anchors.fill: parent
@@ -873,4 +873,5 @@ ApplicationWindow {
         }
     }
 }
+
 

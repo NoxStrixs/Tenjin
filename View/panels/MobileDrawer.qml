@@ -59,7 +59,7 @@ Rectangle {
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: "Tenjin"
+                        text: qsTr("Tenjin")
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontTitle
                         font.bold: true
@@ -71,9 +71,9 @@ Rectangle {
             // Content nav — Words / Decks / Tags
             Repeater {
                 model: [
-                    { label: "Words", page: 0, glyph: "\uD83D\uDCD6" },
-                    { label: "Decks", page: 1, glyph: "\uD83D\uDCDA" },
-                    { label: "Tags",  page: 2, glyph: "\uD83C\uDFF7\uFE0F" }
+                    { label: qsTr("Words"), page: 0, glyph: "\uD83D\uDCD6" },
+                    { label: qsTr("Decks"), page: 1, glyph: "\uD83D\uDCDA" },
+                    { label: qsTr("Tags"),  page: 2, glyph: "\uD83C\uDFF7\uFE0F" }
                 ]
                 delegate: Rectangle {
                     id: navItem
@@ -119,9 +119,9 @@ Rectangle {
             // the content rows; routing in Main.qml just sets appVM.currentPage.
             Repeater {
                 model: [
-                    { label: "Help",     glyph: "?",      page: 3 },
-                    { label: "News",     glyph: "\u2709", page: 4 },
-                    { label: "Settings", glyph: "\u2699", page: 5 }
+                    { label: qsTr("Help"),     glyph: "?",      page: 3 },
+                    { label: qsTr("News"),     glyph: "\u2709", page: 4 },
+                    { label: qsTr("Settings"), glyph: "\u2699", page: 5 }
                 ]
                 delegate: Rectangle {
                     id: utilItem
@@ -180,7 +180,7 @@ Rectangle {
                     Text { text: Platform.isDark ? "\u2600" : "\u263E"; font.pixelSize: Platform.fontLarge; color: Platform.textMuted }
                     Text {
                         Layout.fillWidth: true
-                        text: Platform.isDark ? "Light theme" : "Dark theme"
+                        text: Platform.isDark ? qsTr("Light theme") : qsTr("Dark theme")
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontLarge
                     }
@@ -200,7 +200,7 @@ Rectangle {
                 Layout.margins: 12
                 spacing: 8
                 Repeater {
-                    model: [{ label: "Import", act: 0 }, { label: "Export", act: 1 }]
+                    model: [{ label: qsTr("Import"), act: 0 }, { label: qsTr("Export"), act: 1 }]
                     delegate: Rectangle {
                         id: ieItem
                         required property var modelData
@@ -236,9 +236,9 @@ Rectangle {
                     id: aboutCol
                     anchors { left: parent.left; right: parent.right; top: parent.top; margins: 16 }
                     spacing: 3
-                    Text { text: "Tenjin"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                    Text { text: "Vocabulary & spaced-repetition study"; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 2; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                    Text { text: "Version 1.0"; color: Platform.textMuted; font.pixelSize: Platform.fontBase - 2 }
+                    Text { text: qsTr("Tenjin"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                    Text { text: qsTr("Vocabulary & spaced-repetition study"); color: Platform.textMuted; font.pixelSize: Platform.fontBase - 2; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                    Text { text: qsTr("Version 1.0"); color: Platform.textMuted; font.pixelSize: Platform.fontBase - 2 }
                 }
             }
             Rectangle {
@@ -249,7 +249,7 @@ Rectangle {
                 Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: Platform.border }
                 RowLayout {
                     anchors { fill: parent; leftMargin: 20; rightMargin: 16; bottomMargin: Platform.safeAreaBottom }
-                    Text { text: "\u24D8  About"; color: Platform.textMuted; font.pixelSize: Platform.fontBase; Layout.fillWidth: true }
+                    Text { text: qsTr("\u24D8  About"); color: Platform.textMuted; font.pixelSize: Platform.fontBase; Layout.fillWidth: true }
                     Text { text: drawerRoot.aboutExpanded ? "\u25B4" : "\u25BE"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
                 }
                 MouseArea {
@@ -263,4 +263,5 @@ Rectangle {
         }
     }
 }
+
 

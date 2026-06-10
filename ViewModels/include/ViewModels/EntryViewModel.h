@@ -195,6 +195,14 @@ public slots:
     Q_INVOKABLE QString importMedia(const QString& sourceUrl);
     Q_INVOKABLE QString resolveMediaUrl(const QString& storedPath) const;
 
+    // Refcount-aware media cleanup. Call AFTER a block referencing
+    // media is removed from the DB. Deletes the file from
+    // <AppData>/media only if (a) it's a Tenjin-managed copy, and
+    // (b) no other content block still references the same stored
+    // string. Never touches files that live outside our media dir
+    // (i.e. desktop link-in-place imports).
+    void cleanupOrphanedMedia(const QString& storedPath);
+
     // -- Typed relations ---------------------------------------------
     // The relation `kind` is a free-form string at the DB layer, but the
     // UI treats the following five values as the canonical set:

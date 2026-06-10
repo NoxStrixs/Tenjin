@@ -8,7 +8,7 @@ Dialog {
     property string message: "Are you sure?"
     signal confirmed
 
-    title: "Confirm"
+    title: qsTr("Confirm")
     modal: true
     anchors.centerIn: parent
     padding: 20
@@ -81,3 +81,4 @@ Dialog {
         }
     }
 }
+

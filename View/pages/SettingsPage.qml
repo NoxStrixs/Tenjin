@@ -85,7 +85,7 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    text: "Settings"
+                    text: qsTr("Settings")
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontTitle
                     font.bold: true
@@ -93,7 +93,7 @@ Item {
             }
 
             // ── Appearance ──────────────────────────────────────────────────
-            SectionHeader { text: "Appearance" }
+            SectionHeader { text: qsTr("Appearance") }
 
             Rectangle {
                 Layout.fillWidth: true
@@ -107,7 +107,7 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
-                        Text { text: "Theme"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                        Text { text: qsTr("Theme"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
                         Text { text: Platform.isDark ? "Dark" : "Light"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
                     Rectangle {
@@ -136,28 +136,103 @@ Item {
             SectionDivider {}
 
             // ── Language ────────────────────────────────────────────────────
-            SectionHeader { text: "Language" }
+            SectionHeader { text: qsTr("Language") }
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Platform.touchTarget + 16
+                Layout.preferredHeight: uiLangCol.implicitHeight + Platform.spacingMd * 2
                 color: "transparent"
-                opacity: 0.55
                 RowLayout {
-                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    anchors {
+                        fill: parent
+                        leftMargin: Platform.spacingLg
+                        rightMargin: Platform.spacingLg
+                        topMargin: Platform.spacingMd
+                        bottomMargin: Platform.spacingMd
+                    }
                     spacing: Platform.spacingMd
-                    Text { text: "\uD83C\uDF10"; font.pixelSize: Platform.fontLarge }
+                    Text {
+                        text: "\uD83C\uDF10"
+                        font.pixelSize: Platform.fontLarge
+                        Layout.alignment: Qt.AlignTop
+                    }
                     ColumnLayout {
+                        id: uiLangCol
                         Layout.fillWidth: true
-                        spacing: 1
-                        Text { text: "Interface language"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                        Text { text: "English (more languages coming soon)"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                        spacing: 4
+                        Text {
+                            text: qsTr("Interface language")
+                            color: Platform.textPrimary
+                            font.pixelSize: Platform.fontBase
+                            font.bold: true
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTr("Language of buttons, menus, and labels. Changes apply instantly.")
+                            color: Platform.textMuted
+                            font.pixelSize: Platform.fontSmall
+                            wrapMode: Text.WordWrap
+                        }
+                        ComboBox {
+                            id: uiLangCombo
+                            Layout.fillWidth: true
+                            Layout.topMargin: 4
+                            Layout.preferredHeight: Platform.touchTarget
+                            font.pixelSize: Platform.fontBase
+                            // Build {code, label} pairs so the picker shows
+                            // a friendly name, not "ja" / "zh_CN" alone.
+                            function buildOptions() {
+                                const names = {
+                                    en: "English",   ja: "\u65E5\u672C\u8A9E",
+                                    es: "Espa\u00F1ol", fr: "Fran\u00E7ais",
+                                    de: "Deutsch",   it: "Italiano",
+                                    pt: "Portugu\u00EAs", ru: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439",
+                                    ko: "\uD55C\uAD6D\uC5B4",
+                                    zh_CN: "\u4E2D\u6587 (\u7B80\u4F53)",
+                                    zh_TW: "\u4E2D\u6587 (\u7E41\u9AD4)",
+                                    ar: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629"
+                                }
+                                const codes = appVM.supportedUiLanguages
+                                const opts = []
+                                for (let i = 0; i < codes.length; i++) {
+                                    const c = codes[i]
+                                    opts.push({ code: c, label: (names[c] || c) + "  --  " + c })
+                                }
+                                return opts
+                            }
+                            property var options: buildOptions()
+                            model: options
+                            textRole: "label"
+                            valueRole: "code"
+                            function _sync() {
+                                const code = appVM.uiLanguage
+                                for (let i = 0; i < options.length; i++)
+                                    if (options[i].code === code) { currentIndex = i; return }
+                                currentIndex = 0
+                            }
+                            Component.onCompleted: _sync()
+                            onModelChanged: _sync()
+                            Connections {
+                                target: appVM
+                                function onUiLanguageChanged() { uiLangCombo._sync() }
+                            }
+                            onActivated: (idx) => {
+                                const sel = uiLangCombo.options[idx]
+                                if (sel) appVM.uiLanguage = sel.code
+                            }
+                            background: Rectangle {
+                                radius: Platform.radius
+                                color: Platform.surface
+                                border.color: uiLangCombo.activeFocus ? Platform.accent : Platform.border
+                                border.width: uiLangCombo.activeFocus ? 2 : 1
+                            }
+                        }
                     }
                 }
             }
             SectionDivider {}
 
             // ── Onboarding ──────────────────────────────────────────────────
-            SectionHeader { text: "Onboarding" }
+            SectionHeader { text: qsTr("Onboarding") }
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 16
@@ -170,8 +245,8 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
-                        Text { text: "Show welcome again"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                        Text { text: "Re-open the first-launch carousel now"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                        Text { text: qsTr("Show welcome again"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                        Text { text: qsTr("Re-open the first-launch carousel now"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
                     Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
@@ -195,8 +270,8 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
-                        Text { text: "Reset news popups"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                        Text { text: "Show every news item again on next launch"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                        Text { text: qsTr("Reset news popups"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                        Text { text: qsTr("Show every news item again on next launch"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
                     Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
@@ -211,7 +286,7 @@ Item {
             SectionDivider {}
 
             // ── Data ────────────────────────────────────────────────────────
-            SectionHeader { text: "Data" }
+            SectionHeader { text: qsTr("Data") }
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 16
@@ -224,8 +299,8 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
-                        Text { text: "Import collection"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                        Text { text: "Restore from a Tenjin export (.json)"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                        Text { text: qsTr("Import collection"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                        Text { text: qsTr("Restore from a Tenjin export (.json)"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
                     Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
@@ -243,8 +318,8 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
-                        Text { text: "Export collection"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                        Text { text: "Save all words, decks and tags to a .json file"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                        Text { text: qsTr("Export collection"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                        Text { text: qsTr("Save all words, decks and tags to a .json file"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
                     Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
@@ -258,7 +333,7 @@ Item {
                     id: dataPathRow
                     anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: Platform.spacingLg + Platform.fontLarge + Platform.spacingMd; rightMargin: Platform.spacingLg }
                     spacing: 1
-                    Text { text: "App data location"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                    Text { text: qsTr("App data location"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
                     Text {
                         Layout.fillWidth: true
                         text: appVM.appDataLocation
@@ -284,7 +359,7 @@ Item {
                 Text {
                     id: langHeader
                     anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: Platform.spacingLg }
-                    text: "Language"
+                    text: qsTr("Language")
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontLarge
                     font.bold: true
@@ -303,14 +378,14 @@ Item {
                     spacing: 6
 
                     Text {
-                        text: "Current language filter"
+                        text: qsTr("Current language filter")
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontBase
                         font.bold: true
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: "Show only entries in one language. New entries you add while a filter is active will inherit that language. Entries with no language assigned always show, no matter the filter."
+                        text: qsTr("Show only entries in one language. New entries you add while a filter is active will inherit that language. Entries with no language assigned always show, no matter the filter.")
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontSmall
                         wrapMode: Text.WordWrap
@@ -328,7 +403,7 @@ Item {
                         spacing: 8
 
                         function buildOptions() {
-                            const opts = [{ code: "", label: "(All languages)" }]
+                            const opts = [{ code: "", label: qsTr("(All languages)") }]
                             const builtin = appVM.builtinLanguages
                             const seen = {}
                             for (let i = 0; i < builtin.length; i++) {
@@ -470,7 +545,7 @@ Item {
                             Text {
                                 id: addLangLbl
                                 anchors.centerIn: parent
-                                text: "+ Add"
+                                text: qsTr("+ Add")
                                 color: Platform.bg
                                 font.pixelSize: Platform.fontBase
                                 font.bold: true
@@ -492,7 +567,7 @@ Item {
             // filter on accept so the user sees the effect immediately.
             ThemedDialog {
                 id: customLangDialog
-                title: "Add custom language code"
+                title: qsTr("Add custom language code")
                 width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 400, 420) : 420
                 padding: 20
                 x: parent ? Math.round((parent.width  - width)  / 2) : 0
@@ -510,7 +585,7 @@ Item {
                     width: parent.width
                     Text {
                         Layout.fillWidth: true
-                        text: "Use this for languages that aren't in the built-in list (rare ISO codes, conlangs, or your own internal categories)."
+                        text: qsTr("Use this for languages that aren't in the built-in list (rare ISO codes, conlangs, or your own internal categories).")
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontSmall
                         wrapMode: Text.WordWrap
@@ -526,7 +601,7 @@ Item {
                         TextField {
                             id: customLangInput
                             anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
-                            placeholderText: "e.g. yue, tlh, nv"
+                            placeholderText: qsTr("e.g. yue, tlh, nv")
                             placeholderTextColor: Platform.textMuted
                             color: Platform.textPrimary
                             font.pixelSize: Platform.fontBase
@@ -551,7 +626,7 @@ Item {
                 Text {
                     id: dangerHeader
                     anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: Platform.spacingLg }
-                    text: "Danger zone"
+                    text: qsTr("Danger zone")
                     color: Platform.danger
                     font.pixelSize: Platform.fontLarge
                     font.bold: true
@@ -560,10 +635,10 @@ Item {
 
             Repeater {
                 model: [
-                    { key: "words",   label: "Delete all words",  hint: "Removes every entry, its content blocks, tags, and relations." },
-                    { key: "tags",    label: "Delete all tags",   hint: "Removes every tag; words and decks stay, but lose tag associations." },
-                    { key: "decks",   label: "Delete all decks",  hint: "Removes every deck (manual and smart). Words and tags stay." },
-                    { key: "all",     label: "Delete everything", hint: "Wipes every word, tag, and deck. Cannot be undone." }
+                    { key: "words",   label: qsTr("Delete all words"),  hint: "Removes every entry, its content blocks, tags, and relations." },
+                    { key: "tags",    label: qsTr("Delete all tags"),   hint: "Removes every tag; words and decks stay, but lose tag associations." },
+                    { key: "decks",   label: qsTr("Delete all decks"),  hint: "Removes every deck (manual and smart). Words and tags stay." },
+                    { key: "all",     label: qsTr("Delete everything"), hint: "Wipes every word, tag, and deck. Cannot be undone." }
                 ]
                 delegate: Rectangle {
                     id: dz
@@ -617,7 +692,7 @@ Item {
     // before the destructive button enables; an Esc / Cancel aborts.
     ThemedDialog {
         id: dangerConfirm
-        title: "Confirm destructive action"
+        title: qsTr("Confirm destructive action")
         width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 420, 440) : 440
         padding: 20
         x: parent ? Math.round((parent.width  - width)  / 2) : 0
@@ -652,7 +727,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: "You're about to: " + dangerConfirm.actionLabel
+                text: qsTr("You're about to: ") + dangerConfirm.actionLabel
                 color: Platform.danger
                 font.pixelSize: Platform.fontBase
                 font.bold: true
@@ -660,7 +735,7 @@ Item {
             }
             Text {
                 Layout.fillWidth: true
-                text: "This cannot be undone. Type DELETE (in capitals) to confirm."
+                text: qsTr("This cannot be undone. Type DELETE (in capitals) to confirm.")
                 color: Platform.textMuted
                 font.pixelSize: Platform.fontSmall
                 wrapMode: Text.WordWrap
@@ -678,7 +753,7 @@ Item {
                 TextField {
                     id: confirmInput
                     anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
-                    placeholderText: "Type DELETE to confirm"
+                    placeholderText: qsTr("Type DELETE to confirm")
                     placeholderTextColor: Platform.textMuted
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontBase
@@ -689,4 +764,5 @@ Item {
         }
     }
 }
+
 

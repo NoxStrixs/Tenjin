@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Qt.labs.platform as LabsPlatform
 import TenjinView
 
 // Cross-platform media picker. ContentBlock's previous mediaFileDialog
@@ -21,7 +22,7 @@ import TenjinView
 // path in the content block).
 ThemedDialog {
     id: root
-    title: "Pick media"
+    title: qsTr("Pick media")
     width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 480, 480) : 480
     padding: 20
 
@@ -55,7 +56,7 @@ ThemedDialog {
 
         Text {
             Layout.fillWidth: true
-            text: "Pick a media file from your Documents folder."
+            text: qsTr("Pick a media file from your Documents folder.")
             color: Platform.textMuted
             font.pixelSize: Platform.fontSmall
             wrapMode: Text.WordWrap
@@ -69,6 +70,43 @@ ThemedDialog {
             font.family: "monospace"
             elide: Text.ElideMiddle
             wrapMode: Text.NoWrap
+        }
+
+        // Desktop only: native file picker. iOS has no usable native
+        // QML FileDialog (the old QtQuick.Dialogs.FileDialog logged
+        // "no native option"), so we keep the Documents-folder list
+        // as the iOS path. On macOS/Windows/Linux this is the way
+        // users actually expect to pick a file -- not "drop into
+        // Documents then come back here".
+        Button {
+            Layout.fillWidth: true
+            visible: !Platform.isMobile
+            text: qsTr("Browse filesystem\u2026")
+            onClicked: nativePicker.open()
+        }
+
+        LabsPlatform.FileDialog {
+            id: nativePicker
+            title: qsTr("Choose a media file")
+            fileMode: LabsPlatform.FileDialog.OpenFile
+            // No nameFilters -- accept any file. The block renderer
+            // falls back to the generic "open externally" link for
+            // unknown extensions.
+            onAccepted: {
+                // The existing list rows hand out plain absolute paths
+                // (see availableMediaFiles "path" field). Normalise to
+                // that so callers don't need a branch.
+                var u = nativePicker.file
+                var s = (u && u.toString) ? u.toString() : String(u)
+                if (s.indexOf("file://") === 0) s = s.substring(7)
+                // Windows file URLs are "file:///C:/..." -- strip the
+                // leading slash before the drive letter.
+                if (s.length > 2 && s.charAt(0) === '/' && s.charAt(2) === ':')
+                    s = s.substring(1)
+                root._selectedPath = s
+                root.picked(s)
+                root.accept()
+            }
         }
 
         Rectangle {
@@ -156,7 +194,7 @@ ThemedDialog {
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         horizontalAlignment: Text.AlignHCenter
-                        text: "No media files found.\nDrop one into your Documents folder, then reopen this picker."
+                        text: qsTr("No media files found.\nDrop one into your Documents folder, then reopen this picker.")
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontSmall
                         wrapMode: Text.WordWrap
@@ -168,4 +206,5 @@ ThemedDialog {
 
     standardButtons: root._selectedPath.length > 0 ? (Dialog.Ok | Dialog.Cancel) : Dialog.Cancel
 }
+
 

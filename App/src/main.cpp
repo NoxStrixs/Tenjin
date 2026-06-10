@@ -155,6 +155,7 @@ int main(int argc, char* argv[])
     g_previousHandler = qInstallMessageHandler(tenjinMessageHandler);
 
     QQmlApplicationEngine engine;
+    appVM.setQmlEngine(&engine);
     engine.rootContext()->setContextProperty("appVM", &appVM);
     engine.rootContext()->setContextProperty("reviewVm", appVM.reviewVM());
     engine.rootContext()->setContextProperty("logModel", &logModel);

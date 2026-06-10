@@ -5,7 +5,7 @@ import TenjinView
 
 Dialog {
     id: root
-    title: "Rename Tag"
+    title: qsTr("Rename Tag")
     modal: true
     anchors.centerIn: parent
     width: Platform.isMobile ? Math.min(parent.width - 32, 340) : 320
@@ -55,7 +55,7 @@ Dialog {
         spacing: 12
         width: parent.width
 
-        Text { text: "Name:"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+        Text { text: qsTr("Name:"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
 
         Rectangle {
             Layout.fillWidth: true
@@ -68,7 +68,7 @@ Dialog {
             TextField {
                 id: renameField
                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                placeholderText: "Tag name"
+                placeholderText: qsTr("Tag name")
                 font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
                 background: Rectangle { color: "transparent" }
@@ -77,4 +77,3 @@ Dialog {
         }
     }
 }
-

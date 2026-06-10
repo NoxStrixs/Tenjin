@@ -71,6 +71,12 @@ public:
     Result_t<std::vector<ContentBlock_t>> GetContentForEntry(ID_t wordId);
     Result_t<bool> SaveContentLayout(const std::vector<ContentBlock_t>& blocks);
 
+    // Count how many content blocks (across all entries, all types)
+    // store the given string in their content column. Used by the
+    // media cleanup path to decide whether removing a block leaves
+    // the underlying media file orphaned.
+    Result_t<int> CountMediaReferences(const std::string& storedPath) const;
+
     // Search (FTS5 + substring)
     Result_t<std::vector<Entry_t>>        SearchEntries(const std::string& query);
     Result_t<std::vector<ContentBlock_t>> SearchContent(const std::string& query);

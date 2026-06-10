@@ -41,12 +41,12 @@ Item {
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Select a word from the sidebar"
+                    text: qsTr("Select a word from the sidebar")
                     color: Platform.textMuted; font.pixelSize: Platform.fontLarge
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "or click + Word to add a new one"
+                    text: qsTr("or click + Word to add a new one")
                     color: Platform.textMuted; font.pixelSize: Platform.fontBase
                 }
             }
@@ -97,5 +97,6 @@ Item {
         }
     }
 }
+
 
 

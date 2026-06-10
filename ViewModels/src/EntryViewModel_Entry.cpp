@@ -2,6 +2,8 @@
 
 #include <EntryService/EntryService.h>
 
+#include <QStringList>
+
 qint64 EntryViewModel::addWord(const QString& word)
 {
     auto result = m_entryService->CreateWord(word.toStdString());
@@ -23,6 +25,19 @@ qint64 EntryViewModel::addWord(const QString& word)
 
 bool EntryViewModel::deleteEntry(qint64 wordId)
 {
+    // Gather media paths owned by this entry BEFORE the cascade
+    // delete wipes them. We re-query via GetContentForEntry so this
+    // works regardless of whether `wordId` is the currently selected
+    // entry (m_contentModel only mirrors the selected one).
+    QStringList mediaPaths;
+    auto        blocksRes = m_entryService->GetContentForEntry(wordId);
+    if (blocksRes) {
+        for (const auto& b : *blocksRes) {
+            if (b.type == Service::ContentType_t::Media)
+                mediaPaths.append(QString::fromStdString(b.content));
+        }
+    }
+
     auto result = m_entryService->DeleteEntry(wordId);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
@@ -39,6 +54,12 @@ bool EntryViewModel::deleteEntry(qint64 wordId)
     emit entryListChanged();
     emit wordTagsChanged();
     emit selectedEntryRelationsChanged();
+
+    // Now that the cascade delete has run, refcount-check each media
+    // path. Files referenced by other entries' blocks stay; truly
+    // orphaned managed copies are removed.
+    for (const QString& p : mediaPaths)
+        cleanupOrphanedMedia(p);
     return true;
 }
 

@@ -14,7 +14,7 @@ Rectangle {
         currentIndex: !appVM.reviewVM.active ? 0 : appVM.reviewVM.complete ? 2 : 1
 
         Item {
-            Text { anchors.centerIn: parent; text: "No active session."; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+            Text { anchors.centerIn: parent; text: qsTr("No active session."); color: Platform.textMuted; font.pixelSize: Platform.fontBase }
         }
 
         Item {
@@ -25,13 +25,13 @@ Rectangle {
             RowLayout {
                 Layout.fillWidth: true
                 Text {
-                    text: "Card " + (appVM.reviewVM.currentIndex + 1) + " / " + appVM.reviewVM.totalCards
+                    text: qsTr("Card ") + (appVM.reviewVM.currentIndex + 1) + " / " + appVM.reviewVM.totalCards
                     color: Platform.textMuted; font.pixelSize: Platform.fontBase
                 }
                 Item { Layout.fillWidth: true }
                 Button {
                     id: stopBtn
-                    text: "✕ Stop"; implicitHeight: Platform.touchTarget
+                    text: qsTr("✕ Stop"); implicitHeight: Platform.touchTarget
                     onClicked: { appVM.reviewVM.stopSession(); sessionEnded() }
                     background: Rectangle { color: Platform.surface; radius: Platform.radius; border.color: Platform.border; border.width: 1 }
                     contentItem: Text { text: stopBtn.text; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
@@ -69,7 +69,7 @@ Rectangle {
                         id: showBtn
                         Layout.alignment: Qt.AlignHCenter
                         visible: !appVM.reviewVM.showingAnswer
-                        text: "Show Answer"
+                        text: qsTr("Show Answer")
                         implicitHeight: Platform.touchTarget; implicitWidth: 140
                         onClicked: appVM.reviewVM.revealAnswer()
                         background: Rectangle { color: Platform.accent; radius: Platform.radius }
@@ -114,13 +114,13 @@ Rectangle {
         Item {
         ColumnLayout {
             anchors.centerIn: parent; spacing: 20
-            Text { Layout.alignment: Qt.AlignHCenter; text: "🎉 Session complete!"; color: Platform.success; font.pixelSize: Platform.fontTitle; font.bold: true }
-            Text { Layout.alignment: Qt.AlignHCenter; text: "All " + appVM.reviewVM.totalCards + " cards reviewed."; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+            Text { Layout.alignment: Qt.AlignHCenter; text: qsTr("🎉 Session complete!"); color: Platform.success; font.pixelSize: Platform.fontTitle; font.bold: true }
+            Text { Layout.alignment: Qt.AlignHCenter; text: qsTr("All ") + appVM.reviewVM.totalCards + " cards reviewed."; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
             Button {
                 id: backBtn
                 Layout.alignment: Qt.AlignHCenter
                 implicitHeight: Platform.touchTarget; implicitWidth: 160
-                text: "Back to Deck"
+                text: qsTr("Back to Deck")
                 onClicked: { appVM.reviewVM.stopSession(); sessionEnded() }
                 background: Rectangle { color: Platform.accent; radius: Platform.radius }
                 contentItem: Text { text: backBtn.text; color: Platform.textOnDark; font.pixelSize: Platform.fontBase; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
@@ -129,3 +129,4 @@ Rectangle {
         }
     }
 }
+

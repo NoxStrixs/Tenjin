@@ -14,7 +14,7 @@ import TenjinView
 // calls appVM.importFromPath(picked.path).
 ThemedDialog {
     id: root
-    title: "Import collection"
+    title: qsTr("Import collection")
     width: Platform.isMobile ? Math.min(parent ? parent.width - 32 : 480, 480) : 480
     padding: 20
 
@@ -39,7 +39,7 @@ ThemedDialog {
 
         Text {
             Layout.fillWidth: true
-            text: "Pick an export file from your Documents folder."
+            text: qsTr("Pick an export file from your Documents folder.")
             color: Platform.textMuted
             font.pixelSize: Platform.fontSmall
             wrapMode: Text.WordWrap
@@ -136,7 +136,7 @@ ThemedDialog {
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         horizontalAlignment: Text.AlignHCenter
-                        text: "No tenjin-export-*.json files found.\n" +
+                        text: qsTr("No tenjin-export-*.json files found.\n") +
                               "Drop one in your Documents folder, then reopen this dialog."
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontSmall
@@ -149,4 +149,5 @@ ThemedDialog {
 
     standardButtons: root._selectedPath.length > 0 ? (Dialog.Ok | Dialog.Cancel) : Dialog.Cancel
 }
+
 
