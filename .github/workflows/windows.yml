@@ -2,14 +2,6 @@ name: Windows build
 
 # Builds Tenjin for Windows on windows-2022, publishes a zipped runtime
 # directory as a Release asset.
-#
-# Note on the build target: `cmake --build build --config Release` on its
-# own builds the default target (ninja's `all`), which sometimes produced
-# only the static libraries on past CI runs while silently skipping the
-# executable. To make the failure mode visible, this workflow lists the
-# generated targets up front and then builds `Tenjin` (the executable
-# target) explicitly. If linking fails, the workflow halts here instead
-# of advancing to a "binary not found" branch downstream.
 
 on:
   push:
@@ -23,6 +15,7 @@ concurrency:
 jobs:
   windows-build:
     runs-on: windows-2022
+    timeout-minutes: 60
     permissions:
       contents: write
 
@@ -30,6 +23,7 @@ jobs:
       TENJIN_APP_NAME: Tenjin
       SCCACHE_DIR: ${{ github.workspace }}\.sccache
       SCCACHE_CACHE_SIZE: 500M
+      CACHE_VERSION: v2
 
     steps:
       - name: Checkout
@@ -55,6 +49,23 @@ jobs:
             }
           }
 
+      # Seed empty translations/*.ts files if missing. PowerShell here-
+      # string syntax for cross-platform parity with linux.yml.
+      - name: Seed translation .ts files if missing
+        shell: pwsh
+        run: |
+          $tsDir = "translations"
+          if (-not (Test-Path $tsDir)) { New-Item -ItemType Directory -Path $tsDir | Out-Null }
+          $langs = @("ja","es","fr","de","zh_CN","pt","ko","it","ru","ar")
+          foreach ($lang in $langs) {
+            $f = Join-Path $tsDir "tenjin_$lang.ts"
+            if (-not (Test-Path $f)) {
+              $content = "<?xml version=`"1.0`" encoding=`"utf-8`"?>`n<!DOCTYPE TS>`n<TS version=`"2.1`" language=`"$lang`">`n</TS>`n"
+              Set-Content -Path $f -Value $content -NoNewline -Encoding UTF8
+              Write-Host "  seeded empty $f"
+            }
+          }
+
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -63,6 +74,11 @@ jobs:
       - name: Install Ninja & sccache
         shell: pwsh
         run: choco install -y ninja sccache
+
+      - name: Set up Python (for aqtinstall)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -74,14 +90,31 @@ jobs:
           modules: "qtmultimedia"
           dir: ${{ github.workspace }}\Qt
           cache: true
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-windows
+          setup-python: false
+
+      - name: Verify Qt Linguist tools (lupdate/lrelease)
+        shell: pwsh
+        run: |
+          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
+          foreach ($t in @("lupdate.exe","lrelease.exe")) {
+            $path = Join-Path "$QT_WIN\bin" $t
+            if (-not (Test-Path $path)) {
+              Write-Host "::error::$t missing at $path"
+              Get-ChildItem "$QT_WIN\bin" | Select-Object -First 50
+              exit 1
+            }
+          }
+          & "$QT_WIN\bin\lrelease.exe" -version
+          & "$QT_WIN\bin\lupdate.exe" -version
 
       - name: Cache sccache
         uses: actions/cache@v4
         with:
           path: ${{ env.SCCACHE_DIR }}
-          key: windows-sccache-${{ github.sha }}
+          key: ${{ env.CACHE_VERSION }}-windows-sccache-${{ github.sha }}
           restore-keys: |
-            windows-sccache-
+            ${{ env.CACHE_VERSION }}-windows-sccache-
 
       - name: Configure (CMake, Ninja)
         shell: pwsh
@@ -105,9 +138,6 @@ jobs:
             exit $LASTEXITCODE
           }
 
-      # Dump the available CMake targets up front. If the executable
-      # target isn't named "Tenjin" the next step will fail loud and we
-      # can adjust without guessing what name CMake picked.
       - name: List CMake targets
         shell: pwsh
         run: |
@@ -120,9 +150,6 @@ jobs:
           $ErrorActionPreference = 'Stop'
           sccache --start-server
           sccache --zero-stats
-          # Force-build the executable target by name. If the link fails
-          # (e.g. missing plugin, MSVC error, dependency not found), the
-          # workflow stops here instead of advancing with no binary.
           cmake --build build --config Release --target $env:TENJIN_APP_NAME --verbose
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::error::Build of target $env:TENJIN_APP_NAME failed with exit $LASTEXITCODE"
@@ -137,7 +164,6 @@ jobs:
           Write-Host "===== all .exe files under build/ ====="
           $allExe = Get-ChildItem -Path build -Recurse -Filter '*.exe' -File -ErrorAction SilentlyContinue
           $allExe | ForEach-Object { Write-Host "  $($_.FullName)  ($([math]::Round($_.Length/1KB, 1)) KB)" }
-          # Filter out CMake's compiler-id probe binaries.
           $exe = $allExe `
             | Where-Object { $_.FullName -notmatch 'CompilerId|CMakeFiles\\3' } `
             | Where-Object { $_.BaseName -ieq $env:TENJIN_APP_NAME } `
@@ -155,7 +181,11 @@ jobs:
           $stage = "stage\$env:TENJIN_APP_NAME"
           New-Item -ItemType Directory -Path $stage -Force | Out-Null
           Copy-Item -Path $env:TENJIN_EXE -Destination $stage
-          & "$QT_WIN\bin\windeployqt.exe" --release --no-translations `
+          # Drop --no-translations: we ship our own .qm files (in the qrc)
+          # AND want Qt's qtbase_<code>.qm so standard dialog buttons
+          # translate. windeployqt copies the matching Qt translations
+          # into a translations/ subdir of the stage.
+          & "$QT_WIN\bin\windeployqt.exe" --release `
               --no-system-d3d-compiler --no-opengl-sw `
               "$stage\$env:TENJIN_APP_NAME.exe"
           Write-Host "===== staged ====="

@@ -14,56 +14,48 @@ name: iOS build
 #     ./tools/ios-configure.sh && open build-ios/$TENJIN_APP_NAME.xcodeproj
 #     Set your Apple ID team in Signing & Capabilities, plug in the phone, Run.
 #
-# Free Apple ID: app runs 7 days then must be re-signed. Paid ($99/yr): 1 year.
-#
-# App identity comes from `.env` at the repo root (Batch 6.1). The workflow
-# loads it into $GITHUB_ENV in the first step so every subsequent step uses
-# the same names CMake uses — rename in one place and the .app, .ipa, and
-# .xcodeproj all follow.
+# Translations: CI assumes translations/*.ts are committed. lrelease
+# compiles them at build time via qt_add_translations. Empty stubs are
+# seeded if absent so the build never fails on a fresh clone.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ios-build:
     runs-on: macos-14
-    # Needed so the workflow's GITHUB_TOKEN can create a Release and upload the
-    # .ipa asset. The default token is read-only since 2023.
+    timeout-minutes: 90
     permissions:
       contents: write
+
+    env:
+      CACHE_VERSION: v2
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Parse .env into $GITHUB_ENV. Lines like `KEY=value` and `KEY="value"`
-      # both work; comments and blanks are ignored. Defaults are baked in so
-      # a missing .env still produces a working build using "Tenjin"-named
-      # artifacts.
       - name: Load .env into environment
         run: |
-          # Apply defaults first so an absent .env still works.
-          echo "TENJIN_APP_NAME=Tenjin"                                   >> "$GITHUB_ENV"
-          echo "TENJIN_APP_DISPLAY_NAME=Tenjin"                           >> "$GITHUB_ENV"
-          echo "TENJIN_BUNDLE_ID=app.tenjin.Tenjin"                       >> "$GITHUB_ENV"
-          echo "TENJIN_IOS_DEPLOYMENT_TARGET=16.0"                        >> "$GITHUB_ENV"
-
+          echo "TENJIN_APP_NAME=Tenjin"                             >> "$GITHUB_ENV"
+          echo "TENJIN_APP_DISPLAY_NAME=Tenjin"                     >> "$GITHUB_ENV"
+          echo "TENJIN_BUNDLE_ID=app.tenjin.Tenjin"                 >> "$GITHUB_ENV"
+          echo "TENJIN_IOS_DEPLOYMENT_TARGET=16.0"                  >> "$GITHUB_ENV"
           if [ -f .env ]; then
-            # Strip comments and blanks. Strip surrounding quotes on values.
-            # Anything that doesn't look like KEY=… is dropped.
             awk -F= '
               /^[[:space:]]*#/  { next }
               /^[[:space:]]*$/  { next }
               NF < 2            { next }
               {
-                key=$1
-                $1=""
-                val=substr($0, 2)
+                key=$1; $1=""; val=substr($0, 2)
                 sub(/^[[:space:]]+/, "", key); sub(/[[:space:]]+$/, "", key)
                 sub(/^[[:space:]]+/, "", val); sub(/[[:space:]]+$/, "", val)
-                # Strip carriage returns if file came from Windows editing
                 gsub(/\r/, "", val)
                 if (val ~ /^".*"$/ || val ~ /^'\''.*'\''$/) {
                   val = substr(val, 2, length(val) - 2)
@@ -72,10 +64,76 @@ jobs:
               }
             ' .env >> "$GITHUB_ENV"
           fi
-          echo "Loaded app identity from .env successfully into GITHUB_ENV."
+
+      - name: Seed translation .ts files if missing
+        run: |
+          mkdir -p translations
+          for lang in ja es fr de zh_CN pt ko it ru ar; do
+            f="translations/tenjin_${lang}.ts"
+            if [ ! -f "$f" ]; then
+              cat > "$f" <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <!DOCTYPE TS>
+          <TS version="2.1" language="${lang}">
+          </TS>
+          EOF
+              echo "  seeded empty $f"
+            fi
+          done
+
+      # Patch 1: comment out QSQLiteDriverPlugin static imports in
+      # App/CMakeLists.txt. On iOS Qt is static so this is harmless to
+      # leave — but if the persistent fix (wrapping in if(IOS OR ANDROID))
+      # hasn't landed yet this keeps iOS CI green in the meantime.
+      - name: Patch App/CMakeLists.txt — QSQLiteDriverPlugin (iOS guard)
+        run: |
+          if [ -f App/CMakeLists.txt ]; then
+            if grep -qE 'QSQLiteDriverPlugin' App/CMakeLists.txt; then
+              # Only comment out lines that aren't already guarded by an
+              # if(IOS ...) block. Simple heuristic: if the file already has
+              # `if(IOS` near that line, skip patching.
+              if ! grep -qE 'if\s*\(\s*IOS' App/CMakeLists.txt; then
+                cp App/CMakeLists.txt App/CMakeLists.txt.bak
+                sed -i '' 's|.*Qt6::QSQLiteDriverPlugin.*|# &  # patched by ios.yml — guarded pending persistent fix|' App/CMakeLists.txt
+                echo "Patched QSQLiteDriverPlugin lines:"
+                grep -n 'QSQLiteDriverPlugin' App/CMakeLists.txt
+              else
+                echo "QSQLiteDriverPlugin already guarded — no patch needed."
+              fi
+            else
+              echo "No QSQLiteDriverPlugin reference — nothing to patch."
+            fi
+          fi
+
+      # Patch 2: Info_plist.in path detection.
+      # configure_file() in App/CMakeLists.txt may have a hardcoded relative
+      # path that doesn't resolve from the build directory. Patch it to use
+      # CMAKE_CURRENT_SOURCE_DIR so it always resolves correctly.
+      - name: Patch App/CMakeLists.txt — Info_plist.in path
+        run: |
+          if [ -f App/CMakeLists.txt ]; then
+            # If the file references Info_plist.in without CMAKE_CURRENT_SOURCE_DIR, fix it.
+            if grep -qE 'configure_file\s*\(\s*[^$].*Info_plist\.in' App/CMakeLists.txt; then
+              cp App/CMakeLists.txt App/CMakeLists.txt.bak2 2>/dev/null || true
+              # Replace bare path references to Info_plist.in with absolute path.
+              # Pattern: configure_file( "some/path/Info_plist.in" -> configure_file( "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info_plist.in"
+              sed -i '' \
+                's|configure_file(\s*"\([^"]*Info_plist\.in\)"|configure_file("${CMAKE_CURRENT_SOURCE_DIR}/ios/Info_plist.in"|g' \
+                App/CMakeLists.txt
+              echo "After Info_plist.in patch:"
+              grep -n 'Info_plist' App/CMakeLists.txt
+            else
+              echo "Info_plist.in reference already uses a variable or was not found — no patch needed."
+            fi
+          fi
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Set up Python (for aqtinstall)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: Install Qt (macOS host)
         uses: jurplel/install-qt-action@v4
@@ -87,6 +145,8 @@ jobs:
           modules: "qtmultimedia"
           dir: ${{ github.workspace }}/Qt
           cache: true
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-ios-host
+          setup-python: false
 
       - name: Install Qt (iOS target)
         uses: jurplel/install-qt-action@v4
@@ -97,6 +157,20 @@ jobs:
           modules: "qtmultimedia"
           dir: ${{ github.workspace }}/Qt
           cache: true
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-ios-target
+          setup-python: false
+
+      - name: Verify Qt Linguist tools on host (lupdate/lrelease)
+        run: |
+          QT_HOST="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
+          for t in lupdate lrelease; do
+            if [ ! -x "$QT_HOST/bin/$t" ]; then
+              echo "::error::Qt $t missing at $QT_HOST/bin/$t"
+              ls "$QT_HOST/bin" | head -50
+              exit 1
+            fi
+          done
+          "$QT_HOST/bin/lrelease" -version
 
       - name: Configure (qt-cmake, Xcode generator)
         run: |
@@ -112,7 +186,6 @@ jobs:
             -DSANITIZERS="" \
             -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
 
-      # Build for the device SDK, unsigned. AltStore/Sideloadly will sign it.
       - name: Build (device, unsigned)
         run: |
           cmake --build build-ios --config Release -- \
@@ -122,8 +195,6 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES
 
-      # Sanity-check the bundle before packaging: executable, plist keys, and a
-      # compiled app icon must all be present, or the sideload will look broken.
       - name: Verify bundle
         run: |
           APP=$(find build-ios -name "${TENJIN_APP_NAME}.app" -type d | head -n1)
@@ -144,31 +215,15 @@ jobs:
           file "$APP/$EXE"
           echo "===== plist validity ====="
           plutil -lint "$PLIST"
-          # Bundle identifier must match .env.
           PLIST_BUNDLE_ID=$(plutil -extract CFBundleIdentifier raw "$PLIST")
           if [ "$PLIST_BUNDLE_ID" != "$TENJIN_BUNDLE_ID" ]; then
             echo "::error::Bundle id mismatch: plist='$PLIST_BUNDLE_ID' env='$TENJIN_BUNDLE_ID'"
             exit 1
           fi
-          # AppIcon should have compiled into the bundle.
           ls "$APP"/AppIcon*.png 2>/dev/null && echo "icon present" \
             || echo "::warning::No AppIcon*.png in bundle."
           echo "Bundle verified."
 
-      # Re-sign every Mach-O in the bundle with an ad-hoc signature using Apple's
-      # `codesign` tool. Why: Qt ships the FFmpeg .framework binaries with The Qt
-      # Company's Team ID. When AltStore re-signs the IPA on install it replaces
-      # the MAIN binary's signature with your free Apple ID team's Team ID — but
-      # AltStore's framework re-signing (via ldid on Windows) is unreliable for
-      # nested .framework bundles. The mismatch makes dyld's Library Validation
-      # reject the FFmpeg frameworks at launch and the kernel SIGKILLs the
-      # process before main() runs (no .ips crash report is produced — exactly
-      # the "black flash, instant exit" symptom on iOS 26).
-      #
-      # Ad-hoc signing every Mach-O here gives AltStore a known-clean starting
-      # state: all signatures are the same (none — ad-hoc), AltStore replaces
-      # them uniformly with the user's team identity, and dyld accepts the
-      # bundle.
       - name: Ad-hoc sign all Mach-O binaries in the bundle
         run: |
           APP=$(find build-ios -name "${TENJIN_APP_NAME}.app" -type d | head -n1)
@@ -194,43 +249,22 @@ jobs:
             done
           fi
 
-      # Package the .app into an unsigned .ipa (Payload/<App>.app structure).
-      #
-      # Use `ditto`, Apple's archiver, NOT `zip`. The bundle now contains a
-      # Frameworks/ folder (embedded FFmpeg) whose .framework dirs use SYMLINKS.
-      # Plain `zip -qry` compresses and mishandles those symlinks, producing an
-      # archive that AltStore's strict zip parser rejects the instant you select
-      # it ("couldn't be read because it isn't in the right format"). `ditto`
-      # preserves symlinks and bundle structure correctly. `cp -RP` likewise
-      # preserves symlinks instead of dereferencing them.
       - name: Package unsigned .ipa
         run: |
           APP=$(find build-ios -name "${TENJIN_APP_NAME}.app" -type d | head -n1)
           IPA="${TENJIN_APP_NAME}-unsigned.ipa"
           rm -rf payload && mkdir -p payload/Payload
           cp -RP "$APP" payload/Payload/
-          # ditto -c -k = create a PKZip archive; --keepParent keeps the Payload
-          # dir as the top-level entry, exactly what the IPA format expects.
           ( cd payload && ditto -c -k --keepParent --sequesterRsrc Payload "../$IPA" )
           echo "Built $(du -h "$IPA" | cut -f1) unsigned ipa"
-          echo "===== verify archive is readable and well-formed ====="
-          # unzip -t tests integrity; the listing must start with Payload/.
           unzip -t "$IPA" >/dev/null && echo "archive integrity OK"
           echo "top-level entries:"
           unzip -Z1 "$IPA" | sed -n '1,5p'
           unzip -Z1 "$IPA" | grep -q '^Payload/' \
             && echo "Payload/ at top level — OK" \
             || { echo "::error::archive does not start with Payload/"; exit 1; }
-          # Re-export for downstream steps that need the filename.
           echo "TENJIN_IPA_PATH=$IPA" >> "$GITHUB_ENV"
 
-      # Publish the .ipa as a GitHub Release asset rather than an Actions
-      # artifact. Three reasons:
-      #   1. Release assets are the RAW file — AltStore gets a real .ipa, not the
-      #      zip-wrapped-in-a-zip that actions/upload-artifact produces (that
-      #      wrapper is why AltStore reports "not in the right format").
-      #   2. Releases do NOT count against the Actions artifact storage quota.
-      #   3. Each build gets a stable, direct download URL.
       - name: Publish .ipa to a GitHub Release
         uses: softprops/action-gh-release@v2
         with:

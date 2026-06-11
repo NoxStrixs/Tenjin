@@ -11,6 +11,9 @@ name: macOS build
 # Qt). The pre-configure sed step below comments out those imports for
 # the macOS CI build; the user-facing PATCH_App_CMakeLists_macOS.md has
 # the persistent fix (wrap the imports in `if(IOS OR ANDROID)`).
+#
+# Translations: CI assumes translations/*.ts are committed. lrelease
+# compiles them into .qm at build time. Empty stubs are seeded if absent.
 
 on:
   push:
@@ -24,6 +27,7 @@ concurrency:
 jobs:
   macos-build:
     runs-on: macos-14
+    timeout-minutes: 60
     permissions:
       contents: write
 
@@ -31,6 +35,7 @@ jobs:
       TENJIN_APP_NAME: Tenjin
       CCACHE_MAXSIZE: 500M
       CCACHE_COMPRESS: "true"
+      CACHE_VERSION: v2
 
     steps:
       - name: Checkout
@@ -51,11 +56,24 @@ jobs:
             ' .env >> "$GITHUB_ENV"
           fi
 
-      # Pre-configure patch. Walks App/CMakeLists.txt and disables explicit
-      # references to QSQLiteDriverPlugin which on macOS shared Qt produce
-      # `ld: unsupported mach-o filetype` on the bundle plugin. QtSql
-      # itself stays linked, and the SQLite driver is loaded at runtime
-      # from the deployed Frameworks/plugins/ directory after macdeployqt.
+      - name: Seed translation .ts files if missing
+        run: |
+          mkdir -p translations
+          for lang in ja es fr de zh_CN pt ko it ru ar; do
+            f="translations/tenjin_${lang}.ts"
+            if [ ! -f "$f" ]; then
+              cat > "$f" <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <!DOCTYPE TS>
+          <TS version="2.1" language="${lang}">
+          </TS>
+          EOF
+              echo "  seeded empty $f"
+            fi
+          done
+
+      # Patch App/CMakeLists.txt to comment out QSQLiteDriverPlugin static
+      # imports, which ld rejects on macOS shared-Qt builds.
       - name: Patch App/CMakeLists.txt for macOS shared Qt
         run: |
           if [ -f App/CMakeLists.txt ]; then
@@ -75,6 +93,11 @@ jobs:
       - name: Install Homebrew tools
         run: brew install ninja ccache create-dmg
 
+      - name: Set up Python (for aqtinstall)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -85,14 +108,28 @@ jobs:
           modules: "qtmultimedia"
           dir: ${{ github.workspace }}/Qt
           cache: true
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-macos
+          setup-python: false
+
+      - name: Verify Qt Linguist tools (lupdate/lrelease)
+        run: |
+          QT_MAC="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
+          for t in lupdate lrelease; do
+            if [ ! -x "$QT_MAC/bin/$t" ]; then
+              echo "::error::Qt $t missing at $QT_MAC/bin/$t"
+              ls "$QT_MAC/bin" | head -50
+              exit 1
+            fi
+          done
+          "$QT_MAC/bin/lrelease" -version
 
       - name: Cache ccache
         uses: actions/cache@v4
         with:
           path: ~/Library/Caches/ccache
-          key: macos-ccache-${{ github.sha }}
+          key: ${{ env.CACHE_VERSION }}-macos-ccache-${{ github.sha }}
           restore-keys: |
-            macos-ccache-
+            ${{ env.CACHE_VERSION }}-macos-ccache-
 
       - name: Configure (CMake, Ninja)
         run: |
@@ -131,12 +168,6 @@ jobs:
           echo "TENJIN_APP_BUNDLE=$APP" >> "$GITHUB_ENV"
           echo "Bundle: $APP"
 
-      # macdeployqt fixes up runtime plugin loading — it copies the
-      # sqldrivers/libqsqlite.dylib bundle into the .app's Contents/PlugIns
-      # so QtSql can dlopen it at startup. The macOS CI build can't link
-      # against the plugin (Mach-O bundle), but at runtime QtSql discovers
-      # it via QCoreApplication::libraryPaths() once macdeployqt has placed
-      # it inside the bundle.
       - name: macdeployqt
         run: |
           QT_MAC="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
