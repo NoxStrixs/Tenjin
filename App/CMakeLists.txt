@@ -50,7 +50,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         INCLUDE_BY_TYPE iconengines
         INCLUDE_BY_TYPE imageformats
     )
-    qt_finalize_executable(Tenjin)
     # Explicitly link the QML module plugin targets we know the UI imports.
     # Explicit links guarantee the plugins survive dead-stripping.
     foreach(_qmlplug
@@ -203,6 +202,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         endif()
     endif()
 endif()
+
+qt_finalize_executable(Tenjin)
 
 # Windows: install and windeployqt handled entirely in cmake/Packaging.cmake.
 # Linux/macOS use the standard install and Qt deploy script.
