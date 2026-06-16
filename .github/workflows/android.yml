@@ -176,15 +176,6 @@ jobs:
       - name: Build APK
         run: cmake --build build --target apk
 
-      - name: Debug
-        run: |
-          echo "=== APKs ==="
-          find . -iname "*.apk"
-          echo "=== AABs ==="
-          find . -iname "*.aab"
-          echo "=== android-build ==="
-          find build -maxdepth 6 -type f | sort
-
       - name: Locate APK
         run: |
           APK=$(find build -name "*.apk" -type f | grep -i release | head -n1)

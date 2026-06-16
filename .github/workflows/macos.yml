@@ -133,8 +133,8 @@ jobs:
 
       - name: Debug
         run: |
-          echo "=== App/CMakeLists.txt ==="
-          sed -n '1,120p' App/CMakeLists.txt
+          echo "===== FULL FILE WITH LINE NUMBERS ====="
+          awk '{printf("%4d | %s\n", NR, $0)}' App/CMakeLists.txt"
 
       - name: Configure (CMake, Ninja)
         run: |
