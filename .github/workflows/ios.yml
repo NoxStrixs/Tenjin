@@ -172,6 +172,11 @@ jobs:
           done
           "$QT_HOST/bin/lrelease" -version
 
+      - name: Debug
+        run: |
+          echo "=== App/CMakeLists.txt ==="
+          nl -ba App/CMakeLists.txt | set -n '1,120p'
+
       - name: Configure (qt-cmake, Xcode generator)
         run: |
           QT_IOS="${{ github.workspace }}/Qt/Qt/6.8.3/ios"

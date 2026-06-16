@@ -211,7 +211,7 @@ jobs:
             AppDir/usr/share/applications/tenjin.desktop \
             -appimage -qmake="$QT_LINUX/bin/qmake6" \
             -extra-plugins=sqldrivers,imageformats \
-            -bundle-non-qt-libs -unsupported-allow-new-glibc -verbose=1
+            -bundle-non-qt-libs -unsupported-allow-new-glibc -verbose=1 | tee linuxdeployqt.log
 
           IMG=$(ls Tenjin-*.AppImage 2>/dev/null | head -n1)
           if [ -z "$IMG" ]; then
