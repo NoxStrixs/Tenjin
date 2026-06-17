@@ -93,10 +93,5 @@ add_subdirectory(ViewModels)
 add_subdirectory(View)
 add_subdirectory(App)
 
-# Translations: lupdate / Argos auto-translate / lrelease, embedded
-# into the app's qrc under /i18n. Must come AFTER add_subdirectory(App)
-# because qt_add_translations needs the ${TENJIN_APP_NAME} target.
-include(cmake/Translations.cmake)
-
 # Packaging
 include(cmake/Packaging.cmake)

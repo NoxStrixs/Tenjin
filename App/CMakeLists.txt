@@ -219,3 +219,5 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     )
     install(SCRIPT ${deploy_script})
 endif()
+
+include(../cmake/Translations.cmake)

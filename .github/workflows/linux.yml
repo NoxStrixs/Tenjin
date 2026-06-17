@@ -164,6 +164,7 @@ jobs:
           file "$BIN"
           du -h "$BIN"
           echo "TENJIN_BIN=$BIN" >> "$GITHUB_ENV"
+
       - name: Package AppImage
         run: |
           QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
@@ -176,13 +177,10 @@ jobs:
                    AppDir/usr/share/icons/hicolor/scalable/apps \
                    AppDir/usr/share/icons/hicolor/256x256/apps
 
-          cp "$TENJIN_BIN" AppDir/usr/bin/
+          cp "/home/runner/work/Tenjin/Tenjin/build/App/Tenjin" AppDir/usr/bin/Tenjin
 
           # 2. Setup Desktop File
-          if [ -f tenjin.desktop ]; then
-            cp tenjin.desktop AppDir/usr/share/applications/
-          else
-            cat > AppDir/usr/share/applications/tenjin.desktop <<EOF
+          cat > AppDir/usr/share/applications/tenjin.desktop <<EOF
           [Desktop Entry]
           Type=Application
           Name=Tenjin
@@ -190,7 +188,6 @@ jobs:
           Icon=tenjin
           Categories=Education;
           EOF
-          fi
 
           # 3. Setup Assets
           if [ -f tenjin.svg ]; then
@@ -201,9 +198,9 @@ jobs:
             python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAABlBMVEUAAAD///+l2Z/dAAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg=='))" > AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png
           fi
 
-          # 4. Download modern linuxdeploy + Qt plugin
-          wget -q O linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          wget -q O linuxdeploy-plugin-qt https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          # 4. Download modern linuxdeploy + Qt6 plugin
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -O linuxdeploy
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage -O linuxdeploy-plugin-qt
           chmod +x linuxdeploy linuxdeploy-plugin-qt
 
           # 5. Execute deployment using the plugin architecture
@@ -223,7 +220,7 @@ jobs:
             exit 1
           fi
           echo "TENJIN_APPIMAGE=$IMG" >> "$GITHUB_ENV"
-          echo "Built: $IMG ($(du -h $IMG | cut -f1))"
+          echo "Built: $IMG"
 
       - name: Publish AppImage to a GitHub Release
         uses: softprops/action-gh-release@v2
