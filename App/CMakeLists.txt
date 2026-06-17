@@ -4,6 +4,8 @@ qt_add_executable(Tenjin
     src/main.cpp
 )
 
+tenjin_configure_translations(${TENJIN_APP_NAME})
+
 set_target_properties(Tenjin PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     OUTPUT_NAME              "${TENJIN_APP_NAME}"
@@ -219,5 +221,3 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     )
     install(SCRIPT ${deploy_script})
 endif()
-
-include(../cmake/Translations.cmake)

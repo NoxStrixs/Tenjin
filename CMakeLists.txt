@@ -18,6 +18,8 @@ project(Tenjin
     LANGUAGES CXX
 )
 
+include(cmake/Translations.cmake)
+
 # Settings
 set(CMAKE_CXX_STANDARD          23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
