@@ -81,30 +81,6 @@ jobs:
             fi
           done
 
-      # Patch 1: comment out QSQLiteDriverPlugin static imports in
-      # App/CMakeLists.txt. On iOS Qt is static so this is harmless to
-      # leave — but if the persistent fix (wrapping in if(IOS OR ANDROID))
-      # hasn't landed yet this keeps iOS CI green in the meantime.
-      - name: Patch App/CMakeLists.txt — QSQLiteDriverPlugin (iOS guard)
-        run: |
-          if [ -f App/CMakeLists.txt ]; then
-            if grep -qE 'QSQLiteDriverPlugin' App/CMakeLists.txt; then
-              # Only comment out lines that aren't already guarded by an
-              # if(IOS ...) block. Simple heuristic: if the file already has
-              # `if(IOS` near that line, skip patching.
-              if ! grep -qE 'if\s*\(\s*IOS' App/CMakeLists.txt; then
-                cp App/CMakeLists.txt App/CMakeLists.txt.bak
-                sed -i '' 's|.*Qt6::QSQLiteDriverPlugin.*|# &  # patched by ios.yml — guarded pending persistent fix|' App/CMakeLists.txt
-                echo "Patched QSQLiteDriverPlugin lines:"
-                grep -n 'QSQLiteDriverPlugin' App/CMakeLists.txt
-              else
-                echo "QSQLiteDriverPlugin already guarded — no patch needed."
-              fi
-            else
-              echo "No QSQLiteDriverPlugin reference — nothing to patch."
-            fi
-          fi
-
       # Patch 2: Info_plist.in path detection.
       # configure_file() in App/CMakeLists.txt may have a hardcoded relative
       # path that doesn't resolve from the build directory. Patch it to use

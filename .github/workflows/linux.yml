@@ -164,23 +164,23 @@ jobs:
           file "$BIN"
           du -h "$BIN"
           echo "TENJIN_BIN=$BIN" >> "$GITHUB_ENV"
-
       - name: Package AppImage
         run: |
           QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
           export PATH="$QT_LINUX/bin:$PATH"
           export LD_LIBRARY_PATH="$QT_LINUX/lib:$LD_LIBRARY_PATH"
 
+          # 1. Prepare AppDir structural layout
           mkdir -p AppDir/usr/bin \
                    AppDir/usr/share/applications \
                    AppDir/usr/share/icons/hicolor/scalable/apps \
                    AppDir/usr/share/icons/hicolor/256x256/apps
+
           cp "$TENJIN_BIN" AppDir/usr/bin/
 
-          # Desktop file — prefer the repo's if present.
+          # 2. Setup Desktop File
           if [ -f tenjin.desktop ]; then
             cp tenjin.desktop AppDir/usr/share/applications/
-            cp tenjin.desktop AppDir/
           else
             cat > AppDir/usr/share/applications/tenjin.desktop <<EOF
           [Desktop Entry]
@@ -190,39 +190,40 @@ jobs:
           Icon=tenjin
           Categories=Education;
           EOF
-            cp AppDir/usr/share/applications/tenjin.desktop AppDir/
           fi
 
+          # 3. Setup Assets
           if [ -f tenjin.svg ]; then
             cp tenjin.svg AppDir/usr/share/icons/hicolor/scalable/apps/tenjin.svg
-            cp tenjin.svg AppDir/tenjin.svg
             rsvg-convert -w 256 -h 256 tenjin.svg -o AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png
-            cp AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png AppDir/tenjin.png
           else
-            echo "::warning::tenjin.svg not in repo; AppImage will ship a placeholder icon"
-            python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAABlBMVEUAAAD///+l2Z/dAAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg=='))" > AppDir/tenjin.png
-            cp AppDir/tenjin.png AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png
+            echo "::warning::tenjin.svg not found; extracting placeholder"
+            python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAABlBMVEUAAAD///+l2Z/dAAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg=='))" > AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png
           fi
 
-          wget -q https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
-          chmod +x linuxdeployqt-continuous-x86_64.AppImage
+          # 4. Download modern linuxdeploy + Qt plugin
+          wget -q O linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q O linuxdeploy-plugin-qt https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy linuxdeploy-plugin-qt
+
+          # 5. Execute deployment using the plugin architecture
+          export QMAKE="$QT_LINUX/bin/qmake6"
+          export EXTRA_QT_PLUGINS="sqldrivers,imageformats"
           export APPIMAGE_EXTRACT_AND_RUN=1
-          ./linuxdeployqt-continuous-x86_64.AppImage \
-            AppDir/usr/share/applications/tenjin.desktop \
-            -appimage -qmake="$QT_LINUX/bin/qmake6" \
-            -extra-plugins=sqldrivers,imageformats \
-            -bundle-non-qt-libs -unsupported-allow-new-glibc -verbose=1
 
-          ls -la
+          ./linuxdeploy --appdir AppDir \
+            -d AppDir/usr/share/applications/tenjin.desktop \
+            -i AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png \
+            --plugin qt --output appimage
 
-          IMG=$(find . -maxdepth 1 -name "*.AppImage" ! -name "linuxdeployqt*" -type f | head -n1)
+          # 6. Locate final artifact
+          IMG=$(find . -maxdepth 1 -name "*.AppImage" ! -name "linuxdeploy*" -type f | head -n1)
           if [ -z "$IMG" ]; then
             echo "::error::No AppImage produced"
-            ls -la
             exit 1
           fi
           echo "TENJIN_APPIMAGE=$IMG" >> "$GITHUB_ENV"
-          echo "Built: $IMG  ($(du -h $IMG | cut -f1))"
+          echo "Built: $IMG ($(du -h $IMG | cut -f1))"
 
       - name: Publish AppImage to a GitHub Release
         uses: softprops/action-gh-release@v2

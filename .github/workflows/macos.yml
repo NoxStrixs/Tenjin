@@ -72,21 +72,6 @@ jobs:
             fi
           done
 
-      # Patch App/CMakeLists.txt to comment out QSQLiteDriverPlugin static
-      # imports, which ld rejects on macOS shared-Qt builds.
-      - name: Patch App/CMakeLists.txt for macOS shared Qt
-        run: |
-          if [ -f App/CMakeLists.txt ]; then
-            if grep -q 'QSQLiteDriverPlugin' App/CMakeLists.txt; then
-              cp App/CMakeLists.txt App/CMakeLists.txt.bak
-              sed -i '' 's|.*Qt6::QSQLiteDriverPlugin.*|# &  # patched out by macos.yml — Mach-O bundle, can not be statically linked|' App/CMakeLists.txt
-              echo "===== patched lines ====="
-              grep -n 'QSQLiteDriverPlugin' App/CMakeLists.txt
-            else
-              echo "No QSQLiteDriverPlugin reference found — nothing to patch."
-            fi
-          fi
-
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
