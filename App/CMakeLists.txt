@@ -30,7 +30,7 @@ target_include_directories(Tenjin PRIVATE src)
 # on the macOS CI build. Restrict the static import to platforms that
 # actually want it; everywhere else, QtSql + macdeployqt / windeployqt /
 # linuxdeployqt handle plugin discovery at runtime.
-if((IOS OR ANDROID) AND TARGET Qt6::QSQLiteDriverPlugin)
+if(IOS OR ANDROID)
     target_link_libraries(Tenjin PRIVATE Qt6::QSQLiteDriverPlugin)
 endif()
 

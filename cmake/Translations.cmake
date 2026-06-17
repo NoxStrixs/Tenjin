@@ -4,12 +4,6 @@
 #   * lupdate extracts qsTr() strings from QML+C++ into translations/*.ts
 #   * lrelease compiles .ts -> .qm at build time
 #   * qt_add_translations embeds the .qm files in the app's qrc under /i18n
-#
-# Machine translation of empty .ts entries happens via `tool translation`
-# (tools/tool/scripts/translation.py), NOT here. That keeps the regular
-# build fast and offline, and matches the repo's "everything goes through
-# tool" convention. CI compiles whatever .ts files are committed; the
-# developer runs `tool translation` locally and commits the result.
 
 include_guard(GLOBAL)
 
@@ -25,16 +19,14 @@ if(NOT Qt6LinguistTools_FOUND)
     return()
 endif()
 
-set(_ts_dir "${CMAKE_SOURCE_DIR}/translations")
-file(MAKE_DIRECTORY "${_ts_dir}")
-
+# Use paths relative to the source directory so the CMake Xcode generator
+# correctly deduplicates the .qm generation custom commands.
 set(_ts_files)
 foreach(lang IN LISTS TENJIN_UI_LANGUAGES)
-    list(APPEND _ts_files "${_ts_dir}/tenjin_${lang}.ts")
+    list(APPEND _ts_files "translations/tenjin_${lang}.ts")
 endforeach()
 
 # Embeds .qm files in ${TENJIN_APP_NAME}'s qrc under /i18n.
-# AppViewModel::supportedUiLanguages() scans that prefix.
 qt_add_translations(${TENJIN_APP_NAME}
     TS_FILES        ${_ts_files}
     RESOURCE_PREFIX "/i18n"
@@ -42,4 +34,3 @@ qt_add_translations(${TENJIN_APP_NAME}
 )
 
 message(STATUS "Tenjin i18n: ${TENJIN_UI_LANGUAGES}")
-
