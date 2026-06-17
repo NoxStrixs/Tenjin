@@ -177,7 +177,7 @@ jobs:
                    AppDir/usr/share/icons/hicolor/scalable/apps \
                    AppDir/usr/share/icons/hicolor/256x256/apps
 
-          cp "/home/runner/work/Tenjin/Tenjin/build/App/Tenjin" AppDir/usr/bin/Tenjin
+          cp "${{ github.workspace }}/build/bin/Tenjin" AppDir/usr/bin/Tenjin
 
           # 2. Setup Desktop File
           cat > AppDir/usr/share/applications/tenjin.desktop <<EOF

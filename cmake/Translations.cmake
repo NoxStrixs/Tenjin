@@ -30,6 +30,7 @@ endforeach()
 qt_add_translations(${TENJIN_APP_NAME}
     TS_FILES        ${_ts_files}
     RESOURCE_PREFIX "/i18n"
+    OMIT_FROM_ALL
     LUPDATE_OPTIONS -locations none -no-obsolete
 )
 
