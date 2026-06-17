@@ -7,26 +7,24 @@ set(TENJIN_UI_LANGUAGES
 find_package(Qt6 6.8 QUIET COMPONENTS LinguistTools)
 if(NOT Qt6LinguistTools_FOUND)
     message(WARNING
-        "Tenjin i18n: Qt6 LinguistTools not found; UI will be English-only. ")
+        "Tenjin i18n: Qt6 LinguistTools not found; UI will be English-only. "
+        "Install the qttranslations / linguist component of Qt.")
     return()
 endif()
 
+# Define absolute paths so that regardless of where this file is included,
+# the translation source files are accurately targeted.
 set(_ts_files)
 foreach(lang IN LISTS TENJIN_UI_LANGUAGES)
-    list(APPEND _ts_files "translations/tenjin_${lang}.ts")
+    list(APPEND _ts_files "${CMAKE_SOURCE_DIR}/translations/tenjin_${lang}.ts")
 endforeach()
 
-# OMIT_FROM_ALL stops default global rules from conflicting on Xcode
+# qt_add_translations creates its own underlying target to build the .qm files.
+# By feeding it the absolute paths, we don't need any extra manual lifecycle hooks.
 qt_add_translations(${TENJIN_APP_NAME}
     TS_FILES        ${_ts_files}
     RESOURCE_PREFIX "/i18n"
-    OMIT_FROM_ALL
     LUPDATE_OPTIONS -locations none -no-obsolete
 )
 
-# Explicitly wire lrelease to compile relative paths during the executable target's build pass
-qt_add_lrelease(${TENJIN_APP_NAME}
-    TS_FILES ${_ts_files}
-)
-
-message(STATUS "Tenjin i18n safely configured for Xcode target: ${TENJIN_APP_NAME}")
+message(STATUS "Tenjin i18n: Successfully configured translation pipeline for target ${TENJIN_APP_NAME}")
