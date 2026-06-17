@@ -211,13 +211,11 @@ jobs:
             AppDir/usr/share/applications/tenjin.desktop \
             -appimage -qmake="$QT_LINUX/bin/qmake6" \
             -extra-plugins=sqldrivers,imageformats \
-            -bundle-non-qt-libs -unsupported-allow-new-glibc -verbose=1 | tee linuxdeployqt.log
+            -bundle-non-qt-libs -unsupported-allow-new-glibc -verbose=1
 
-          echo "=== APPIMAGE SEARCH DEBUG ==="
-          find . -name "*.AppImage" -type f
           ls -la
 
-          IMG=$(ls Tenjin-*.AppImage 2>/dev/null | head -n1)
+          IMG=$(find . -maxdepth 1 -name "*.AppImage" ! -name "linuxdeployqt*" -type f | head -n1)
           if [ -z "$IMG" ]; then
             echo "::error::No AppImage produced"
             ls -la

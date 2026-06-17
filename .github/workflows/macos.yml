@@ -134,7 +134,7 @@ jobs:
       - name: Debug
         run: |
           echo "===== FULL FILE WITH LINE NUMBERS ====="
-          awk '{printf("%4d | %s\n", NR, $0)}' App/CMakeLists.txt"
+          awk '{printf("%4d | %s\n", NR, $0)}' App/CMakeLists.txt
 
       - name: Configure (CMake, Ninja)
         run: |
