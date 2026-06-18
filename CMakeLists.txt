@@ -49,6 +49,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
     Quick
     QuickControls2
     Sql
+    LabsPlatform
 )
 
 set(TENJIN_MEDIA_COMPONENTS "")
