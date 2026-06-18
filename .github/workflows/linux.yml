@@ -201,6 +201,25 @@ jobs:
           wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage -O linuxdeploy-plugin-qt
           chmod +x linuxdeploy linuxdeploy-plugin-qt
 
+          # 4.5 Strip unused Qt SQL driver plugins before deployment.
+          # linuxdeploy-plugin-qt bundles every .so it finds under
+          # plugins/sqldrivers, not just the one Tenjin actually loads
+          # (QSQLITE). The Qt 6.8 install also ships libqsqlmimer.so and
+          # libqsqlmysql.so, which link against libmimerapi.so /
+          # libmysqlclient.so — third-party client libraries that aren't
+          # installed on this runner (and never will be, since Tenjin only
+          # opens a local SQLite database). Their absence makes
+          # linuxdeploy-plugin-qt abort with
+          # "ERROR: Could not find dependency: libmimerapi.so" before it
+          # ever reaches libqsqlite.so. Removing the drivers we don't ship
+          # is the documented workaround (see linuxdeploy/linuxdeploy-plugin-qt#153).
+          SQLDRIVERS_DIR="$QT_LINUX/plugins/sqldrivers"
+          echo "sqldrivers before pruning:"
+          ls "$SQLDRIVERS_DIR"
+          find "$SQLDRIVERS_DIR" -maxdepth 1 -name '*.so' ! -name 'libqsqlite.so' -print -delete
+          echo "sqldrivers after pruning:"
+          ls "$SQLDRIVERS_DIR"
+
           # 5. Execute deployment using updated variable standards
           export QMAKE="$QT_LINUX/bin/qmake6"
           export EXTRA_QT_MODULES="core qml quick controls sql imageformats"
