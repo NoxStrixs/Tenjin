@@ -100,6 +100,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         endif()
     endforeach()
 
+    target_link_libraries(Tenjin PRIVATE Qt6::LabsPlatformPlugin)
     # Diagnostic: list every QML plugin target Qt actually defines.
     get_property(_all_targets DIRECTORY "${CMAKE_SOURCE_DIR}" PROPERTY IMPORTED_TARGETS)
     message(STATUS "${TENJIN_APP_NAME} iOS: (see Qt plugin import scan results in build log)")
