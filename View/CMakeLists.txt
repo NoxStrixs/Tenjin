@@ -17,7 +17,7 @@ set(_TENJIN_QML_IMPORTS
     QtQuick.Dialogs
     QtQml
     QtQml.Models
-    Qt.labs.Platform
+    Qt.labs.platform
 )
 if(MEDIA_SUPPORT)
     list(APPEND _TENJIN_QML_IMPORTS QtMultimedia)
