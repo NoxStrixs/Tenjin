@@ -1,4 +1,4 @@
-set(Platform.qml PROPERTIES
+set_source_files_properties(Platform.qml PROPERTIES
     QT_QML_SINGLETON_TYPE TRUE
 )
 
@@ -10,7 +10,7 @@ if(WEBVIEW_SUPPORT)
     list(APPEND _TENJIN_MEDIA_QML media/WebEmbed.qml)
 endif()
 
-# Declaring every module our .qml files import is REQUIRED for static builds
+# Declaring modules imported inside our .qml files
 set(_TENJIN_QML_IMPORTS
     QtQuick
     QtQuick.Controls
@@ -29,15 +29,13 @@ if(WEBVIEW_SUPPORT)
 endif()
 
 qt_add_qml_module(TenjinView
-    URI           TenjinView
-    VERSION       1.0
+    URI            TenjinView
+    VERSION        1.0
     STATIC
     OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/qml/TenjinView
     IMPORT_PATH       ${CMAKE_BINARY_DIR}/qml
     IMPORTS
         ${_TENJIN_QML_IMPORTS}
-    DEPENDENCIES
-        Qt.labs.platform # <--- FORCES QT STATIC REGISTRATION FOR IOS
     QML_FILES
         # ── root ──
         Main.qml
@@ -91,8 +89,6 @@ target_link_libraries(TenjinView
              tenjin_sanitizers
 )
 
-# Feature macros:
-# PUBLIC so the App target inherits them transitively.
 target_compile_definitions(TenjinView
     PUBLIC   ${TENJIN_FEATURE_DEFINITIONS}
 )
