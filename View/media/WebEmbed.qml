@@ -109,8 +109,8 @@ Item {
             anchors.fill: parent
             visible: thumb.visible
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#00000000" }
-                GradientStop { position: 1.0; color: "#66000000" }
+                GradientStop { position: 0.0; color: Platform.mediaScrimLight }
+                GradientStop { position: 1.0; color: Platform.mediaScrimHeavy }
             }
         }
 
@@ -122,7 +122,8 @@ Item {
 
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: "\uD83C\uDF10"   // 🌐
+                text: TenjinIcons.globe
+                font.family: TenjinIcons.family
                 color: Platform.textMuted
                 font.pixelSize: Platform.fontTitle + 16
             }
@@ -144,7 +145,7 @@ Item {
             width:  Platform.touchTarget * 1.75
             height: width
             radius: width / 2
-            color: playArea.containsMouse ? Platform.accent : "#cc1e1b16"
+            color: playArea.containsMouse ? Platform.accent : Platform.mediaControlBg
             border.color: Platform.textOnDark
             border.width: Platform.borderWidth
 
@@ -156,7 +157,8 @@ Item {
                     centerIn: parent
                     horizontalCenterOffset: 3
                 }
-                text: "\u25B6"   // ▶
+                text: TenjinIcons.play
+                font.family: TenjinIcons.family
                 color: Platform.textOnDark
                 font.pixelSize: Platform.fontTitle + 6
             }
@@ -230,7 +232,8 @@ Item {
 
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: "\u26A0"   // ⚠
+                text: TenjinIcons.warning
+                font.family: TenjinIcons.family
                 color: Platform.danger
                 font.pixelSize: Platform.fontTitle + 8
             }
@@ -284,7 +287,7 @@ Item {
         width:  Math.round(Platform.touchTarget * 0.7)
         height: width
         radius: width / 2
-        color: closeArea.containsMouse ? Platform.danger : "#aa000000"
+        color: closeArea.containsMouse ? Platform.danger : Platform.mediaCloseBg
         border.color: Platform.textOnDark
         border.width: Platform.borderWidth
         z: 10

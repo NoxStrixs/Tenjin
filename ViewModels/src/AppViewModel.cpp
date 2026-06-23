@@ -254,11 +254,9 @@ void AppViewModel::resetNewsDismissals()
 
 void AppViewModel::refreshNews(const QString& url)
 {
-    // Stub: real network fetch is blocked on adding Qt6::Network to the
-    // ViewModels CMakeLists. When that lands, this method will use a
-    // QNetworkAccessManager against the provided url ("https://localhost"
-    // for now) and merge / replace the bundled list on success.
     Q_UNUSED(url);
+    // Network fetch via CloudService (wired externally from main.cpp).
+    // Falls back to bundled list when no cloud URL is configured.
     loadBundledNews();
     emit newsItemsChanged();
 }
@@ -288,6 +286,35 @@ bool AppViewModel::importData(const QString& fileUrl)
     m_sidebarVM->reload();
     m_deckVM->reloadDecks();
     setStatusMessage(QStringLiteral("Import complete."));
+    return true;
+}
+
+bool AppViewModel::consumeJustUpdated()
+{
+    QSettings settings;
+    const QString current = QCoreApplication::applicationVersion();
+    const QString stored  = settings.value("app/lastSeenVersion").toString();
+
+    settings.setValue("app/lastSeenVersion", current);
+
+    // Fresh install (no stored version) → not an update; show onboarding instead.
+    if (stored.isEmpty())
+        return false;
+    return stored != current;
+}
+
+bool AppViewModel::importAnki(const QString& fileUrl, const QString& intoDeck)
+{
+    const QString path = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
+    auto result = m_entryService->ImportFromAnki(path, intoDeck);
+    if (!result) {
+        setStatusMessage(QStringLiteral("Anki import failed: ") +
+                         QString::fromStdString(result.error()));
+        return false;
+    }
+    m_sidebarVM->reload();
+    m_deckVM->reloadDecks();
+    setStatusMessage(QStringLiteral("Imported %1 cards from Anki.").arg(result.value()));
     return true;
 }
 
@@ -341,10 +368,34 @@ QVariantList AppViewModel::availableExports() const
     return out;
 }
 
+QVariantList AppViewModel::availableImports() const
+{
+    QVariantList  out;
+    const QString dir = documentsFolder();
+    QDir          d(dir);
+    // Both Tenjin (*.json) and Anki (*.apkg) packages.
+    const auto entries = d.entryInfoList(
+        QStringList{} << "*.json" << "*.apkg",
+        QDir::Files | QDir::Readable, QDir::Time);
+    for (const QFileInfo& fi : entries) {
+        const bool isAnki = fi.suffix().compare("apkg", Qt::CaseInsensitive) == 0;
+        QVariantMap m;
+        m["name"]    = fi.fileName();
+        m["path"]    = fi.absoluteFilePath();
+        m["format"]  = isAnki ? QStringLiteral("anki") : QStringLiteral("tenjin");
+        m["sizeStr"] = QStringLiteral("%1 KB").arg(
+            static_cast<double>(fi.size()) / 1024.0, 0, 'f', 1);
+        m["modified"] = fi.lastModified().toString("yyyy-MM-dd HH:mm");
+        out.append(m);
+    }
+    return out;
+}
+
 bool AppViewModel::importFromPath(const QString& absolutePath)
 {
-    // importData accepts either a file URL or a raw path; normalise to
-    // a file URL so it consistently takes the QUrl branch.
+    // Dispatch by extension: .apkg → Anki import, everything else → JSON.
+    if (absolutePath.endsWith(QStringLiteral(".apkg"), Qt::CaseInsensitive))
+        return importAnki(QUrl::fromLocalFile(absolutePath).toString());
     return importData(QUrl::fromLocalFile(absolutePath).toString());
 }
 

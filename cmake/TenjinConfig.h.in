@@ -1,5 +1,5 @@
-// TenjinConfig.h — generated from cmake/TenjinConfig.h.in
-// Do NOT edit by hand. Edit .env and re-configure.
+// Generated from cmake/TenjinConfig.h.in — do not edit by hand.
+// Edit .env and re-run cmake to regenerate.
 
 #pragma once
 
@@ -12,5 +12,7 @@ inline constexpr const char* kBundleId       = "@TENJIN_BUNDLE_ID@";
 inline constexpr const char* kOrgName        = "@TENJIN_ORG_NAME@";
 inline constexpr const char* kOrgDomain      = "@TENJIN_ORG_DOMAIN@";
 inline constexpr const char* kAppDescription = "@TENJIN_APP_DESCRIPTION@";
+// Leave empty until the cloud backend is deployed.
+inline constexpr const char* kCloudUrl       = "@TENJIN_CLOUD_URL@";
 
 } // namespace Tenjin::Config

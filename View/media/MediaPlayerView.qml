@@ -30,7 +30,7 @@ ColumnLayout {
         Layout.preferredHeight: mpRoot.isVideo ? Math.max(180, width * 0.5625)
                                                : Platform.touchTarget * 1.4
         Layout.maximumHeight: mpRoot.isVideo ? 480 : Platform.touchTarget * 1.4
-        color: "#000000"
+        color: Platform.mediaBackdrop
         radius: Platform.radius - 2
         clip: true
 
@@ -45,7 +45,8 @@ ColumnLayout {
         Text {
             anchors.centerIn: parent
             visible: !mpRoot.isVideo
-            text: qsTr("\u266A  Audio")
+            text: TenjinIcons.audioFile + "  " + qsTr("Audio")
+            text.font.family: TenjinIcons.family
             color: Platform.textOnDark
             font.pixelSize: Platform.fontBase
         }
@@ -56,7 +57,7 @@ ColumnLayout {
             visible: mpRoot.isVideo && player.playbackState !== MediaPlayer.PlayingState
             width: 64; height: 64; radius: 32
             color: Qt.rgba(0, 0, 0, 0.55)
-            Text { anchors.centerIn: parent; text: "\u25B6"; color: "#ffffff"; font.pixelSize: 30 }
+            Text { anchors.centerIn: parent; text: TenjinIcons.play; font.family: TenjinIcons.family; color: Platform.textOnDark; font.pixelSize: Platform.iconSizeLg }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: player.play() }
         }
 
@@ -94,7 +95,8 @@ ColumnLayout {
             color: playArea.containsMouse ? Platform.accentDark : Platform.accent
             Text {
                 anchors.centerIn: parent
-                text: player.playbackState === MediaPlayer.PlayingState ? "\u23F8" : "\u25B6"
+                text: player.playbackState === MediaPlayer.PlayingState ? TenjinIcons.pause : TenjinIcons.play
+                            font.family: TenjinIcons.family
                 color: Platform.bg; font.pixelSize: Platform.fontLarge
             }
             MouseArea {
@@ -135,7 +137,8 @@ ColumnLayout {
             color: muteArea.containsMouse ? Platform.surfaceAlt : "transparent"
             Text {
                 anchors.centerIn: parent
-                text: muteBtn.muted || volumeSlider.value === 0 ? "\uD83D\uDD07" : "\uD83D\uDD0A"
+                text: muteBtn.muted || volumeSlider.value === 0 ? TenjinIcons.volumeOff : TenjinIcons.volumeUp
+                font.family: TenjinIcons.family
                 font.pixelSize: Platform.fontBase
             }
             MouseArea {
@@ -169,7 +172,7 @@ ColumnLayout {
             implicitWidth: Platform.touchTarget; implicitHeight: Platform.touchTarget
             radius: Platform.radius
             color: fsArea.containsMouse ? Platform.surfaceAlt : "transparent"
-            Text { anchors.centerIn: parent; text: "\u26F6"; font.pixelSize: Platform.fontBase }
+            Text { anchors.centerIn: parent; text: TenjinIcons.fullscreen; font.family: TenjinIcons.family; font.pixelSize: Platform.fontBase }
             MouseArea {
                 id: fsArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: mpRoot.fullscreen = true
@@ -190,7 +193,7 @@ ColumnLayout {
 
         Rectangle {
             anchors.fill: parent
-            color: "#000000"
+            color: Platform.mediaBackdrop
 
             VideoOutput {
                 id: fsVideoOut
@@ -216,20 +219,21 @@ ColumnLayout {
                         implicitWidth: Platform.touchTarget; implicitHeight: Platform.touchTarget
                         radius: Platform.radius; color: Platform.accent
                         Text { anchors.centerIn: parent
-                            text: player.playbackState === MediaPlayer.PlayingState ? "\u23F8" : "\u25B6"
+                            text: player.playbackState === MediaPlayer.PlayingState ? TenjinIcons.pause : TenjinIcons.play
+                            font.family: TenjinIcons.family
                             color: Platform.bg; font.pixelSize: Platform.fontLarge }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: player.playbackState === MediaPlayer.PlayingState
                                        ? player.pause() : player.play() }
                     }
-                    Text { text: mpRoot.fmtTime(player.position); color: "#ffffff"; font.pixelSize: Platform.fontBase }
+                    Text { text: mpRoot.fmtTime(player.position); color: Platform.textOnDark; font.pixelSize: Platform.fontBase }
                     Slider {
                         Layout.fillWidth: true
                         from: 0; to: player.duration > 0 ? player.duration : 1
                         value: player.position
                         onMoved: player.position = value
                     }
-                    Text { text: mpRoot.fmtTime(player.duration); color: "#ffffff"; font.pixelSize: Platform.fontBase }
+                    Text { text: mpRoot.fmtTime(player.duration); color: Platform.textOnDark; font.pixelSize: Platform.fontBase }
                 }
             }
 
@@ -238,7 +242,8 @@ ColumnLayout {
                 anchors { top: parent.top; right: parent.right; margins: 16 }
                 width: Platform.touchTarget + 30; height: Platform.touchTarget
                 radius: Platform.radius; color: Qt.rgba(0, 0, 0, 0.6)
-                Text { anchors.centerIn: parent; text: qsTr("\u2715  Close"); color: "#ffffff"; font.pixelSize: Platform.fontBase }
+                Text { anchors.centerIn: parent; text: TenjinIcons.close + "  " + qsTr("Close")
+                text.font.family: TenjinIcons.family; color: Platform.textOnDark; font.pixelSize: Platform.fontBase }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     onClicked: mpRoot.fullscreen = false }
             }

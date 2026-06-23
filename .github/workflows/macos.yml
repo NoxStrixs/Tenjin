@@ -121,6 +121,12 @@ jobs:
           echo "===== FULL FILE WITH LINE NUMBERS ====="
           awk '{printf("%4d | %s\n", NR, $0)}' App/CMakeLists.txt
 
+      - name: Cache icon font
+        uses: actions/cache@v4
+        with:
+          path: View/fonts/MaterialSymbolsOutlined.ttf
+          key: ${{ env.CACHE_VERSION }}-iconfont-v1
+
       - name: Configure (CMake, Ninja)
         run: |
           QT_MAC="${{ github.workspace }}/Qt/Qt/6.8.3/macos"

@@ -103,7 +103,7 @@ Rectangle {
 
             IconBtn {
                 visible: root.editMode
-                glyph: "\u2715"
+                glyph: TenjinIcons.close
                 onActivated: root.deleteRequested(root.blockId)
             }
         }
@@ -116,7 +116,7 @@ Rectangle {
             text: root.blockContent
             placeholderText: qsTr("LaTeX, e.g.  \\frac{a}{b}")
             wrapMode: TextEdit.WrapAnywhere
-            font.family: "monospace"
+            font.family: Platform.fontMono
             color: Platform.textPrimary
             selectByMouse: true
             onTextChanged: if (activeFocus) root.contentEdited(root.blockId, text)

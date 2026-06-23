@@ -58,7 +58,8 @@ Item {
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: popup.opened ? "\u25B4" : "\u25BE"
+                text: popup.opened ? TenjinIcons.expandLess : TenjinIcons.expandMore
+                font.family: TenjinIcons.family
                 color: trigger._hasFilters ? Platform.textOnDark : Platform.textMuted
                 font.pixelSize: Platform.fontTiny
             }
@@ -242,8 +243,9 @@ Item {
                     spacing: Platform.spacingSm
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "\uD83C\uDFF7\uFE0F"
-                        font.pixelSize: 32
+                        text: TenjinIcons.tags
+                        font.family: TenjinIcons.family
+                        font.pixelSize: Platform.iconSizeXl
                         color: Platform.textMuted
                     }
                     Text {

@@ -2,6 +2,7 @@
 #include <DatabaseManager/Schema.h>
 
 #include <QDate>
+#include <QSet>
 #include <QDateTime>
 #include <QFile>
 #include <QHash>
@@ -244,6 +245,121 @@ Result_t<std::vector<EntryReviewEvent_t>> DatabaseManager::GetEntryHistory(ID_t 
                                             q.value(3).toInt()});
     }
     return events;
+}
+
+Result_t<GlobalStats_t> DatabaseManager::GetGlobalStats()
+{
+    GlobalStats_t s;
+
+    // Daily review counts across all decks, chronological.
+    {
+        QSqlQuery q(m_db);
+        if (!q.exec("SELECT date(reviewed_at/1000, 'unixepoch', 'localtime') AS d, "
+                    "COUNT(*) AS c, AVG(quality) AS aq "
+                    "FROM review_log GROUP BY d ORDER BY d ASC;"))
+            return std::unexpected(q.lastError().text().toStdString());
+        while (q.next()) {
+            const std::string day = q.value(0).toString().toStdString();
+            const int         cnt = q.value(1).toInt();
+            s.daily.push_back(DailyStat_t{day, cnt, q.value(2).toDouble()});
+            s.totalReviews += cnt;
+            if (s.firstReviewDate.empty())
+                s.firstReviewDate = day;
+        }
+    }
+
+    // Retention across all decks.
+    {
+        QSqlQuery q(m_db);
+        if (q.exec("SELECT SUM(CASE WHEN quality >= 2 THEN 1 ELSE 0 END), COUNT(*) "
+                   "FROM review_log;")
+            && q.next()) {
+            const int total = q.value(1).toInt();
+            s.retention     = (total > 0)
+                              ? q.value(0).toDouble() / static_cast<double>(total)
+                              : 0.0;
+        }
+    }
+
+    // Total words.
+    {
+        QSqlQuery q(m_db);
+        if (q.exec("SELECT COUNT(*) FROM entry;") && q.next())
+            s.totalWords = q.value(0).toInt();
+    }
+
+    // Due counts: today (<= today) and next 7 days.
+    {
+        const QString today    = QDate::currentDate().toString("yyyy-MM-dd");
+        const QString in7       = QDate::currentDate().addDays(7).toString("yyyy-MM-dd");
+        QSqlQuery q(m_db);
+        q.prepare("SELECT "
+                  "SUM(CASE WHEN next_review_date <= :today THEN 1 ELSE 0 END), "
+                  "SUM(CASE WHEN next_review_date > :today AND next_review_date <= :in7 "
+                  "         THEN 1 ELSE 0 END) "
+                  "FROM review WHERE next_review_date IS NOT NULL AND next_review_date != '';");
+        q.bindValue(":today", today);
+        q.bindValue(":in7", in7);
+        if (q.exec() && q.next()) {
+            s.dueToday     = q.value(0).toInt();
+            s.dueNext7Days = q.value(1).toInt();
+        }
+    }
+
+    // Reviews today.
+    {
+        const QString today = QDate::currentDate().toString("yyyy-MM-dd");
+        QSqlQuery     q(m_db);
+        q.prepare("SELECT COUNT(*) FROM review_log "
+                  "WHERE date(reviewed_at/1000, 'unixepoch', 'localtime') = :today;");
+        q.bindValue(":today", today);
+        if (q.exec() && q.next())
+            s.reviewsToday = q.value(0).toInt();
+    }
+
+    // Streaks from the distinct set of review days.
+    {
+        QSet<QDate> days;
+        QSqlQuery   q(m_db);
+        if (q.exec("SELECT DISTINCT date(reviewed_at/1000, 'unixepoch', 'localtime') "
+                   "FROM review_log;")) {
+            while (q.next()) {
+                const QDate d = QDate::fromString(q.value(0).toString(), "yyyy-MM-dd");
+                if (d.isValid())
+                    days.insert(d);
+            }
+        }
+        // Longest run.
+        int longest = 0;
+        for (const QDate& d : days) {
+            if (days.contains(d.addDays(-1)))
+                continue; // not a run start
+            int run = 1;
+            QDate cur = d;
+            while (days.contains(cur.addDays(1))) {
+                cur = cur.addDays(1);
+                ++run;
+            }
+            longest = std::max(longest, run);
+        }
+        s.longestStreakDays = longest;
+        // Current run ending today or yesterday.
+        const QDate today = QDate::currentDate();
+        QDate anchor = days.contains(today) ? today
+                     : days.contains(today.addDays(-1)) ? today.addDays(-1)
+                     : QDate();
+        int current = 0;
+        if (anchor.isValid()) {
+            QDate cur = anchor;
+            while (days.contains(cur)) {
+                ++current;
+                cur = cur.addDays(-1);
+            }
+        }
+        s.currentStreakDays = current;
+    }
+
+    return s;
 }
 
 } // namespace Service

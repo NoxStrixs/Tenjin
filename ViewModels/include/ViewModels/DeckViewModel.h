@@ -90,6 +90,8 @@ public slots:
     createSmartDeck(const QString& name, int filterMode, const QVariantList& tagIds);
     Q_INVOKABLE QVariantMap  deckStats(qint64 deckId);
     Q_INVOKABLE QVariantMap  deckAnalytics(qint64 deckId);
+    // Collection-wide statistics for the dashboard.
+    Q_INVOKABLE QVariantMap  globalStats();
     Q_INVOKABLE QVariantList wordHistory(qint64 deckId, qint64 wordId);
     bool                     deleteDeck(qint64 deckId);
 

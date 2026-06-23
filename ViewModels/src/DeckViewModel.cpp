@@ -94,6 +94,43 @@ QVariantMap DeckViewModel::deckStats(qint64 deckId)
     return out;
 }
 
+QVariantMap DeckViewModel::globalStats()
+{
+    QVariantMap out;
+    auto result = m_deckService->GetGlobalStats();
+    if (!result) {
+        out["totalReviews"]      = 0;
+        out["totalWords"]        = 0;
+        out["dueToday"]          = 0;
+        out["dueNext7Days"]      = 0;
+        out["retention"]         = 0.0;
+        out["currentStreakDays"] = 0;
+        out["longestStreakDays"] = 0;
+        out["reviewsToday"]      = 0;
+        out["daily"]             = QVariantList{};
+        return out;
+    }
+    out["totalReviews"]      = result->totalReviews;
+    out["totalWords"]        = result->totalWords;
+    out["dueToday"]          = result->dueToday;
+    out["dueNext7Days"]      = result->dueNext7Days;
+    out["retention"]         = result->retention;
+    out["currentStreakDays"] = result->currentStreakDays;
+    out["longestStreakDays"] = result->longestStreakDays;
+    out["reviewsToday"]      = result->reviewsToday;
+    out["firstReviewDate"]   = QString::fromStdString(result->firstReviewDate);
+    QVariantList daily;
+    for (const auto& d : result->daily) {
+        QVariantMap m;
+        m["date"]       = QString::fromStdString(d.date);
+        m["count"]      = d.count;
+        m["avgQuality"] = d.avgQuality;
+        daily.append(m);
+    }
+    out["daily"] = daily;
+    return out;
+}
+
 QVariantMap DeckViewModel::deckAnalytics(qint64 deckId)
 {
     QVariantMap out;

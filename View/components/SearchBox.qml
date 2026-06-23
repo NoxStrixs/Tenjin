@@ -19,6 +19,9 @@ import TenjinView
 // list rebuilds whenever the deck model's row count changes.
 Item {
     id: root
+
+    // Public: focus the text field (called by Ctrl/Cmd+F shortcut).
+    function focusSearch() { searchField.forceActiveFocus() }
     implicitHeight: Platform.touchTarget
     Layout.preferredWidth: Platform.isMobile ? -1 : Math.min(280, parentWidth * 0.32)
     Layout.fillWidth: Platform.isMobile
@@ -117,7 +120,7 @@ Item {
             anchors { fill: parent; leftMargin: 10; rightMargin: 6 }
             spacing: 6
 
-            Text { text: "\u2315"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+            Text { text: TenjinIcons.search; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
 
             TextField {
                 id: searchField
@@ -150,7 +153,8 @@ Item {
             // Clear button
             Text {
                 visible: searchField.text.length > 0
-                text: "\u2715"
+                text: TenjinIcons.close
+                font.family: TenjinIcons.family
                 color: clearArea.containsMouse ? Platform.textPrimary : Platform.textMuted
                 font.pixelSize: Platform.fontBase
                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
@@ -176,9 +180,10 @@ Item {
                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 Text {
                     anchors.centerIn: parent
-                    text: "\u2630"
+                    text: TenjinIcons.menu
+                font.family: TenjinIcons.family
                     font.pixelSize: Platform.fontBase
-                    font.bold: true
+                    font.weight: Font.Normal
                     color: appVM.entryVM.searchInContent ? Platform.textOnDark : Platform.textMuted
                 }
                 MouseArea {

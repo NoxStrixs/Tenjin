@@ -30,7 +30,7 @@ Rectangle {
             Row {
                 anchors.fill: parent
                 Repeater {
-                    model: ["Words", "Decks"]
+                    model: [qsTr("Words"), qsTr("Decks")]
                     Rectangle {
                         width: parent.width / 2
                         height: 38
@@ -40,7 +40,7 @@ Rectangle {
                         Text {
                             anchors.centerIn: parent
                             text: modelData
-                            font.pixelSize: 12
+                            font.pixelSize: Platform.fontSmall
                             font.bold: parent.active
                             color: parent.active ? Platform.accent : Platform.textMuted
                             Behavior on color { ColorAnimation { duration: Platform.durationFast } }
@@ -94,7 +94,7 @@ Rectangle {
                     anchors.centerIn: parent
                     text: sidebarMode === 0 ? qsTr("+ Word") : qsTr("+ Deck")
                     color: Platform.bg
-                    font.pixelSize: 12
+                    font.pixelSize: Platform.fontSmall
                     font.bold: true
                 }
                 MouseArea {
@@ -218,13 +218,15 @@ Rectangle {
                 }
 
                 // Empty state
-                Text {
+                EmptyState {
                     anchors.centerIn: parent
+                    width: parent.width
                     visible: wordListView.count === 0
-                    text: qsTr("No words yet.\nClick + Word to add one.")
-                    color: Platform.textMuted
-                    font.pixelSize: 12
-                    horizontalAlignment: Text.AlignHCenter
+                    icon: TenjinIcons.words
+                    title: qsTr("No words yet")
+                    subtitle: qsTr("Add your first word to start building your collection.")
+                    ctaText: qsTr("+ Word")
+                    onCtaClicked: sidebarRoot.addEntryRequested()
                 }
             }
             }
@@ -276,7 +278,7 @@ Rectangle {
                         }
                         Text {
                             text: "✦"
-                            font.pixelSize: 9
+                            font.pixelSize: Platform.fontTiny
                             color: Platform.textMuted
                             visible: model.isSmart
                         }
@@ -287,7 +289,7 @@ Rectangle {
                             visible: stats.total > 0
                             implicitWidth: dueText.implicitWidth + 12
                             implicitHeight: 18
-                            radius: 9
+                            radius: height / 2
                             color: stats.due > 0 ? Platform.accent : "transparent"
                             border.color: stats.due > 0 ? Platform.accent : Platform.border
                             border.width: 1
@@ -317,13 +319,15 @@ Rectangle {
                     }
                 }
 
-                Text {
+                EmptyState {
                     anchors.centerIn: parent
+                    width: parent.width
                     visible: deckListView.count === 0
-                    text: qsTr("No decks yet.\nClick + Deck to add one.")
-                    color: Platform.textMuted
-                    font.pixelSize: 12
-                    horizontalAlignment: Text.AlignHCenter
+                    icon: TenjinIcons.decks
+                    title: qsTr("No decks yet")
+                    subtitle: qsTr("Group related words into a deck to start reviewing.")
+                    ctaText: qsTr("+ Deck")
+                    onCtaClicked: sidebarRoot.addDeckRequested()
                 }
             }
         }
@@ -356,19 +360,21 @@ Rectangle {
                 anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
                 spacing: 10
                 Text {
-                    text: "\uD83C\uDFF7\uFE0F"
-                    font.pixelSize: 14
+                    text: TenjinIcons.tags
+                    font.family: TenjinIcons.family
+                    font.pixelSize: Platform.iconSize
                 }
                 Text {
                     Layout.fillWidth: true
                     text: qsTr("Manage tags")
                     color: parent.parent._active ? Platform.accent : Platform.textPrimary
-                    font.pixelSize: 12
+                    font.pixelSize: Platform.fontSmall
                     font.bold: parent.parent._active
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 }
                 Text {
-                    text: "\u203A"
+                    text: TenjinIcons.chevronRight
+                    font.family: TenjinIcons.family
                     color: Platform.textMuted
                     font.pixelSize: Platform.fontLarge
                 }
@@ -408,7 +414,7 @@ Rectangle {
                             anchors.centerIn: parent
                             text: parent.modelData.label
                             color: Platform.accentDark
-                            font.pixelSize: 12
+                            font.pixelSize: Platform.fontSmall
                             font.bold: true
                         }
                         MouseArea {

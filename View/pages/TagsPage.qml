@@ -115,10 +115,11 @@ Item {
                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 Text {
                     anchors.centerIn: parent
-                    text: "\u2039"
+                    text: TenjinIcons.chevronLeft
+                    font.family: TenjinIcons.family
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontTitle
-                    font.bold: true
+                    font.weight: Font.Normal
                 }
                 MouseArea {
                     id: tagsBackArea
@@ -167,7 +168,7 @@ Item {
             RowLayout {
                 anchors { fill: parent; leftMargin: 10; rightMargin: 6 }
                 spacing: 6
-                Text { text: "\u2315"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                Text { text: TenjinIcons.search; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 TextField {
                     id: filterInput
                     Layout.fillWidth: true
@@ -181,7 +182,8 @@ Item {
                 }
                 Text {
                     visible: filterInput.text.length > 0
-                    text: "\u2715"
+                    text: TenjinIcons.close
+                    font.family: TenjinIcons.family
                     color: clearArea.containsMouse ? Platform.textPrimary : Platform.textMuted
                     font.pixelSize: Platform.fontBase
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
@@ -254,7 +256,8 @@ Item {
 
                     // Tag glyph
                     Text {
-                        text: "\uD83C\uDFF7\uFE0F"
+                        text: TenjinIcons.tags
+                        font.family: TenjinIcons.family
                         font.pixelSize: Platform.fontLarge
                     }
 
@@ -354,20 +357,18 @@ Item {
             }
 
             // Empty state
-            Column {
+            EmptyState {
                 anchors.centerIn: parent
+                width: parent.width
                 visible: tagList.count === 0
-                spacing: 12
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "\uD83C\uDFF7\uFE0F"; font.pixelSize: 52; color: Platform.textMuted }
-                Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: tagsPageRoot.filterText.length > 0
-                          ? "No tags match \"" + tagsPageRoot.filterText + "\"."
-                          : "No tags yet.\nTap + Tag to create one."
-                    color: Platform.textMuted
-                    font.pixelSize: Platform.fontBase
-                    horizontalAlignment: Text.AlignHCenter
-                }
+                readonly property bool _filtered: tagsPageRoot.filterText.length > 0
+                icon: TenjinIcons.tags
+                title: _filtered ? qsTr("No matches") : qsTr("No tags yet")
+                subtitle: _filtered
+                          ? qsTr("No tags match \"%1\".").arg(tagsPageRoot.filterText)
+                          : qsTr("Tags label words across decks so you can filter and find them fast.")
+                ctaText: _filtered ? "" : qsTr("+ Tag")
+                onCtaClicked: tagsPageRoot.addTagRequested()
             }
         }
     }

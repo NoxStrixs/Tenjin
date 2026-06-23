@@ -163,7 +163,8 @@ ThemedDialog {
                         anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                         spacing: 8
                         Text {
-                            text: "\uD83C\uDFF7\uFE0F"
+                            text: TenjinIcons.tags
+                            font.family: TenjinIcons.family
                             font.pixelSize: Platform.fontBase
                         }
                         Text {

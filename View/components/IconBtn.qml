@@ -9,7 +9,15 @@ Rectangle {
     property string glyph: ""
     property bool   active: false
     property alias  hovered: ibArea.containsMouse
+    // Human-readable label for screen readers (VoiceOver / TalkBack).
+    // Always set this when using IconBtn — the glyph alone is not accessible.
+    property string accessibleName: ""
     signal activated()
+
+    Accessible.role: Accessible.Button
+    Accessible.name: accessibleName
+    Accessible.focusable: true
+    Accessible.onPressAction: ib.activated()
 
     Layout.preferredWidth: Math.round(Platform.touchTarget * 0.9)
     Layout.preferredHeight: Math.round(Platform.touchTarget * 0.9)
@@ -28,6 +36,7 @@ Rectangle {
     Text {
         anchors.centerIn: parent
         text: ib.glyph
+        font.family: TenjinIcons.family
         color: ib.active ? Platform.accent : Platform.textMuted
         font.pixelSize: Platform.fontLarge
         Behavior on color { ColorAnimation { duration: Platform.durationFast } }

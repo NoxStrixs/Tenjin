@@ -1,0 +1,40 @@
+name: Tenjin Setup
+description: Load .env into GITHUB_ENV and seed empty translation stubs.
+
+inputs:
+  extra-defaults:
+    description: "Shell commands to echo extra KEY=VALUE into GITHUB_ENV before .env is parsed"
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Load .env into environment
+      shell: bash
+      run: |
+        ${{ inputs.extra-defaults }}
+        if [ -f .env ]; then
+          awk -F= '
+            /^[[:space:]]*#/ { next } /^[[:space:]]*$/ { next } NF < 2 { next }
+            {
+              k=$1; $1=""; v=substr($0,2)
+              sub(/^[[:space:]]+/,"",k); sub(/[[:space:]]+$/,"",k)
+              sub(/^[[:space:]]+/,"",v); sub(/[[:space:]]+$/,"",v)
+              gsub(/\r/,"",v)
+              if (v ~ /^".*"$/ || v ~ /^'\''.*'\''$/) v=substr(v,2,length(v)-2)
+              print k "=" v
+            }
+          ' .env >> "$GITHUB_ENV"
+        fi
+
+    - name: Seed empty translation stubs
+      shell: bash
+      run: |
+        mkdir -p translations
+        for lang in ja es fr de zh_CN pt ko it ru ar; do
+          f="translations/tenjin_${lang}.ts"
+          [ -f "$f" ] && continue
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n<TS version="2.1" language="%s">\n</TS>\n' \
+            "$lang" > "$f"
+        done

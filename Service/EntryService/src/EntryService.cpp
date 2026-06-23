@@ -71,6 +71,11 @@ Result_t<bool> EntryService::ImportFromJson(const QString& path)
     return m_db->ImportFromJson(path);
 }
 
+Result_t<int> EntryService::ImportFromAnki(const QString& apkgPath, const QString& intoDeck)
+{
+    return m_db->ImportFromAnki(apkgPath, intoDeck);
+}
+
 Result_t<Tag_t> EntryService::CreateTag(const std::string& name)
 {
     if (name.empty())

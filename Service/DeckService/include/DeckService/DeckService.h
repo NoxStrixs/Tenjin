@@ -45,6 +45,7 @@ public:
     Result_t<DeckStats_t>                     GetDeckStats(ID_t deckId) const;
     Result_t<DeckAnalytics_t>                 GetDeckAnalytics(ID_t deckId) const;
     Result_t<std::vector<EntryReviewEvent_t>> GetEntryHistory(ID_t deckId, ID_t wordId) const;
+    Result_t<GlobalStats_t>                   GetGlobalStats() const;
 
     // Review session
     Result_t<ReviewSession_t> StartSession(ID_t deckId);

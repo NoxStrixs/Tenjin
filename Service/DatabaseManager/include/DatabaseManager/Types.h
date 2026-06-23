@@ -144,6 +144,20 @@ struct DeckAnalytics_t {
     double                   retention    = 0.0; // fraction graded "remembered"
 };
 
+// Collection-wide study statistics, aggregated across every deck.
+struct GlobalStats_t {
+    std::vector<DailyStat_t> daily;          // per-day review counts (all decks)
+    int    totalReviews     = 0;             // lifetime graded reviews
+    int    totalWords       = 0;             // entries in the collection
+    int    dueToday         = 0;             // cards due now or earlier
+    int    dueNext7Days     = 0;             // cards becoming due within a week
+    double retention        = 0.0;           // fraction graded "remembered" (q>=2)
+    int    currentStreakDays = 0;            // consecutive days with >=1 review, ending today/yesterday
+    int    longestStreakDays = 0;            // best consecutive-day run ever
+    int    reviewsToday      = 0;            // reviews logged today
+    std::string firstReviewDate;            // ISO date of earliest review, "" if none
+};
+
 // One historical review event for a word (for per-word history charts).
 struct EntryReviewEvent_t {
     std::int64_t reviewedAt   = 0; // epoch milliseconds

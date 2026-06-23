@@ -31,6 +31,25 @@ def ensure_image(image: str, dockerfile: str) -> None:
         build_image(image, dockerfile)
 
 
+def _ensure_dep_volume(image: str, volume: str) -> None:
+    """Create the dependency-cache volume and chown it to the build user once.
+
+    A fresh named volume is root-owned; the non-root build user could not write
+    FetchContent output into it. A single root-run mkdir+chown fixes ownership
+    for all subsequent non-root runs. Idempotent and cheap.
+    """
+    subprocess.run(
+        [
+            "docker", "run", "--rm",
+            "-v", f"{volume}:/deps",
+            image,
+            "sh", "-c",
+            f"mkdir -p /deps/fetchcontent && chown -R {os.getuid()}:{os.getgid()} /deps",
+        ],
+        check = True,
+    )
+
+
 def run(image: str,
         cmd: list[str],
         *,
@@ -44,6 +63,13 @@ def run(image: str,
     for k, v in (env or {}).items():
         env_flags += ["-e", f"{k}={v}"]
 
+    # A named volume for dependency downloads/builds (FetchContent: miniz, etc.).
+    # Keeping these off the bind-mounted workspace avoids host/VM clock-skew
+    # confusing Ninja ("build.ninja still dirty") and caches deps across runs.
+    dep_cache_volume = f"tenjin-deps-{image}"
+    if not as_root:
+        _ensure_dep_volume(image, dep_cache_volume)
+
     subprocess.run(
         [
             "docker", "run",
@@ -51,6 +77,8 @@ def run(image: str,
             *user_flags,
             *env_flags,
             "-v", f"{ROOT}:/workspace",
+            "-v", f"{dep_cache_volume}:/deps",
+            "-e", "FETCHCONTENT_BASE_DIR=/deps/fetchcontent",
             "-w", "/workspace",
             image,
             *cmd,

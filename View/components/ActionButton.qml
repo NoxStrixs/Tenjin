@@ -7,6 +7,10 @@ Button {
 
     property string variant: "neutral"
 
+    // Button maps `text` to Accessible.name automatically.
+    Accessible.role: Accessible.Button
+    Accessible.name: control.text
+
     implicitHeight: Platform.touchTarget
 
     readonly property color _bg: variant === "primary" ? Platform.accent

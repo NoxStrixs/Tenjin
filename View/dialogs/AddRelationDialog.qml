@@ -96,7 +96,7 @@ ThemedDialog {
             RowLayout {
                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                 spacing: 6
-                Text { text: "\u2315"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                Text { text: TenjinIcons.search; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 TextField {
                     id: wordSearch
                     Layout.fillWidth: true

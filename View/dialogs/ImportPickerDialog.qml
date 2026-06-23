@@ -25,7 +25,7 @@ ThemedDialog {
     property string _selectedPath: ""
 
     onAboutToShow: {
-        _files = appVM.availableExports()
+        _files = appVM.availableImports()
         _selectedPath = ""
     }
 
@@ -39,7 +39,7 @@ ThemedDialog {
 
         Text {
             Layout.fillWidth: true
-            text: qsTr("Pick an export file from your Documents folder.")
+            text: qsTr("Pick a Tenjin (.json) or Anki (.apkg) file from your Documents folder.")
             color: Platform.textMuted
             font.pixelSize: Platform.fontSmall
             wrapMode: Text.WordWrap
@@ -50,7 +50,7 @@ ThemedDialog {
             text: appVM.documentsFolder
             color: Platform.textMuted
             font.pixelSize: Platform.fontTiny
-            font.family: "monospace"
+            font.family: Platform.fontMono
             elide: Text.ElideMiddle
             wrapMode: Text.NoWrap
         }
@@ -89,7 +89,8 @@ ThemedDialog {
                         spacing: 8
 
                         Text {
-                            text: "\uD83D\uDCC4"
+                            text: TenjinIcons.document
+                            font.family: TenjinIcons.family
                             font.pixelSize: Platform.fontLarge
                             color: parent.parent._selected ? Platform.bg : Platform.textMuted
                         }
@@ -129,14 +130,15 @@ ThemedDialog {
                     spacing: 8
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "\uD83D\uDCC1"
+                        text: TenjinIcons.folder
+                        font.family: TenjinIcons.family
                         font.pixelSize: 40
                         color: Platform.textMuted
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         horizontalAlignment: Text.AlignHCenter
-                        text: qsTr("No tenjin-export-*.json files found.\n") +
+                        text: qsTr("No .json or .apkg files found.\n") +
                               "Drop one in your Documents folder, then reopen this dialog."
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontSmall

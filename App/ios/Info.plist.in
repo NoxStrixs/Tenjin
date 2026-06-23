@@ -100,6 +100,10 @@
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
 
+    <!-- App Store category. -->
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.education</string>
+
     <key>UIRequiredDeviceCapabilities</key>
     <array>
         <string>arm64</string>

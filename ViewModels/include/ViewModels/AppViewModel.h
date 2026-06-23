@@ -130,6 +130,16 @@ public slots:
 public:
     Q_INVOKABLE bool exportData(const QString& fileUrl);
     Q_INVOKABLE bool importData(const QString& fileUrl);
+    // Import an Anki .apkg package. fileUrl may be a file:// URL or raw path.
+    // Returns true on success and posts a status message with the count.
+    Q_INVOKABLE bool importAnki(const QString& fileUrl, const QString& intoDeck = {});
+
+    // Returns true exactly once after the app's version changes (i.e. just
+    // after an update). Records the current version so the next call returns
+    // false. Used to show the "What's new" sheet a single time per update.
+    // Returns false on a fresh install (no prior version stored) so new users
+    // see onboarding instead of a changelog.
+    Q_INVOKABLE bool consumeJustUpdated();
 
     // FileDialog-free import/export surface. QtQuick.Dialogs.FileDialog
     // doesn't work on iOS (no native picker available, the Quick fallback
@@ -151,6 +161,9 @@ public:
     //   when the user taps a row in the picker.
     Q_INVOKABLE QString      exportToDocuments();
     Q_INVOKABLE QVariantList availableExports() const;
+    // Like availableExports but also lists *.apkg (Anki) files so the mobile
+    // import picker can offer both formats.
+    Q_INVOKABLE QVariantList availableImports() const;
     Q_INVOKABLE bool         importFromPath(const QString& absolutePath);
 
     // FileDialog-free media picker companion to availableExports(). Lists

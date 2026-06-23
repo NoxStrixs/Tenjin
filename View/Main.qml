@@ -1,3 +1,4 @@
+import QtQuick.Window
 import TenjinView
 import QtQuick
 import QtQuick.Controls
@@ -16,8 +17,10 @@ ApplicationWindow {
     minimumHeight: Platform.isMobile ? 0 : Platform.minWindowHeight
     title: qsTr("Tenjin")
     color: Platform.bg
-    // 1 = AutomaticVisibility, 5 = FullScreen (Window visibility enum ints).
-    visibility: Platform.isMobile ? 5 : 1
+    visibility: Platform.isMobile ? Window.FullScreen : Window.AutomaticVisibility
+
+    // Keep the width-aware layout switch current (drives iPad split-view).
+    onWidthChanged: Platform.currentWidth = width
 
     // Page indices — must match AppViewModel::Page_t.
     readonly property int _pageWords:    0
@@ -26,6 +29,38 @@ ApplicationWindow {
     readonly property int _pageHelp:     3
     readonly property int _pageNews:     4
     readonly property int _pageSettings: 5
+    readonly property int _pageStats:    6
+
+    // ── Keyboard shortcuts (desktop, iPad, Android tablets w/ keyboard) ──────
+    // StandardKey maps to the platform-native chord automatically
+    // (Cmd on macOS/iOS, Ctrl elsewhere).
+    Shortcut {
+        sequences: [StandardKey.Find]
+        enabled: !Platform.isMobile
+        onActivated: desktopSearchBox.focusSearch()
+    }
+    Shortcut {
+        sequence: "Ctrl+N"
+        onActivated: {
+            if (appVM.currentPage === root._pageWords) addEntryDialog.open()
+            else if (appVM.currentPage === root._pageDecks) addDeckDialog.open()
+            else if (appVM.currentPage === root._pageTags) addTagDialog.open()
+        }
+    }
+    Shortcut { sequence: "Ctrl+1"; onActivated: appVM.currentPage = root._pageWords }
+    Shortcut { sequence: "Ctrl+2"; onActivated: appVM.currentPage = root._pageDecks }
+    Shortcut { sequence: "Ctrl+3"; onActivated: appVM.currentPage = root._pageTags }
+    Shortcut { sequence: "Ctrl+,"; onActivated: appVM.currentPage = root._pageSettings }
+    Shortcut { sequence: "Ctrl+4"; onActivated: appVM.currentPage = root._pageStats }
+    Shortcut { sequence: "Ctrl+D"; onActivated: Platform.toggleTheme() }
+    Shortcut {
+        sequences: [StandardKey.HelpContents]
+        onActivated: appVM.currentPage = root._pageHelp
+    }
+    Shortcut {
+        sequence: StandardKey.Cancel  // Esc
+        onActivated: if (appVM.currentPage > root._pageWords) appVM.currentPage = root._pageWords
+    }
 
     // Callbacks exposed to pages (SettingsPage in particular) so they can
     // reach window-scoped helpers without ids.
@@ -33,8 +68,20 @@ ApplicationWindow {
         welcomePopup.step = 0
         welcomePopup.open()
     }
-    function openImportDialog() { importDialog.open() }
-    function openExportDialog() { exportDialog.open() }
+    function openWhatsNew() { whatsNewSheet.open() }
+    function openImportDialog() {
+        if (Platform.isMobile) importPickerDialog.open()
+        else if (importDialog) importDialog.open()
+    }
+    function openExportDialog() {
+        if (Platform.isMobile) {
+            const path = appVM.exportToDocuments()
+            if (path.length > 0)
+                notifService.toast(qsTr("Exported to: ") + path)
+        } else if (exportDialog) {
+            exportDialog.open()
+        }
+    }
 
     // Surfaces the first news item flagged popup=true that the user hasn't
     // yet dismissed. Run after welcome flow (or at startup if welcome was
@@ -52,6 +99,26 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        Platform.currentWidth = width
+        // Keep the daily reminder text reflecting how many cards are due.
+        // Guarded: a stats failure must never prevent the window from showing.
+        try {
+            if (appVM && appVM.deckVM) {
+                const gs = appVM.deckVM.globalStats()
+                if (gs && gs.dueToday > 0)
+                    notifService.setReminderBody(
+                        qsTr("You have %1 cards due for review.").arg(gs.dueToday))
+            }
+        } catch (e) {
+            console.warn("globalStats at startup failed:", e)
+        }
+        // Read safe area from Qt 6.6+ SafeArea attached property.
+        if (typeof SafeArea !== "undefined") {
+            Platform.safeAreaTop    = SafeArea.margins.top
+            Platform.safeAreaBottom = SafeArea.margins.bottom
+            Platform.safeAreaLeft   = SafeArea.margins.left
+            Platform.safeAreaRight  = SafeArea.margins.right
+        }
         Platform.theme = appVM.theme
         // Belt and suspenders for mobile fullscreen: after Qt's iOS bootstrap
         // has reported a real screen size, resize the QML window to match
@@ -64,10 +131,13 @@ ApplicationWindow {
                 height = s.size.height
             }
         }
-        if (!appVM.welcomeAcknowledged)
+        if (!appVM.welcomeAcknowledged) {
             welcomePopup.open()
-        else
+        } else if (appVM.consumeJustUpdated()) {
+            whatsNewSheet.open()
+        } else {
             _showNextNewsPopup()
+        }
     }
     Connections {
         target: appVM
@@ -88,7 +158,7 @@ ApplicationWindow {
         RowLayout {
             anchors { fill: parent; leftMargin: 16; rightMargin: 16; topMargin: Platform.safeAreaTop }
             spacing: 12
-            visible: !Platform.isMobile
+            visible: Platform.useWideLayout
 
             // Sidebar toggle
             Rectangle {
@@ -99,7 +169,8 @@ ApplicationWindow {
                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 Text {
                     anchors.centerIn: parent
-                    text: appVM.sidebarVM.collapsed ? "\u203A" : "\u2039"
+                    text: appVM.sidebarVM.collapsed ? TenjinIcons.chevronRight : TenjinIcons.chevronLeft
+                    font.family: TenjinIcons.family
                     font.pixelSize: Platform.fontLarge
                     color: Platform.textMuted
                 }
@@ -147,7 +218,8 @@ ApplicationWindow {
             // About — hover popup with version info.
             IconBtn {
                 id: aboutBtn
-                glyph: "\u24D8"
+                glyph: TenjinIcons.info
+                accessibleName: qsTr("Help")
                 onActivated: aboutPopup.open()
                 onHoveredChanged: hovered ? aboutPopup.open() : aboutPopup.close()
             }
@@ -162,24 +234,34 @@ ApplicationWindow {
             }
             IconBtn {
                 id: newsBtn
-                glyph: "\u2709"
+                glyph: TenjinIcons.news
+                accessibleName: qsTr("News")
                 active: appVM.currentPage === root._pageNews
                 onActivated: appVM.currentPage = root._pageNews
             }
             IconBtn {
                 id: settingsBtn
-                glyph: "\u2699"
+                glyph: TenjinIcons.settings
+                accessibleName: qsTr("Settings")
                 active: appVM.currentPage === root._pageSettings
                 onActivated: appVM.currentPage = root._pageSettings
             }
             IconBtn {
+                glyph: TenjinIcons.autoAwesome
+                accessibleName: qsTr("Statistics")
+                active: appVM.currentPage === root._pageStats
+                onActivated: appVM.currentPage = root._pageStats
+            }
+            IconBtn {
                 id: themeBtn
-                glyph: Platform.isDark ? "\u2600" : "\u263E"
+                glyph: Platform.isDark ? TenjinIcons.lightMode : TenjinIcons.darkMode
+                accessibleName: Platform.isDark ? qsTr("Switch to light mode") : qsTr("Switch to dark mode")
                 onActivated: appVM.setTheme(Platform.isDark ? 0 : 1)
             }
             IconBtn {
                 id: debugBtn
-                glyph: "\u2328"
+                glyph: TenjinIcons.keyboard
+                accessibleName: qsTr("Keyboard shortcuts")
                 active: debugDrawer.visible
                 onActivated: debugDrawer.visible = !debugDrawer.visible
             }
@@ -190,7 +272,7 @@ ApplicationWindow {
         RowLayout {
             anchors { fill: parent; leftMargin: 12; rightMargin: 12; topMargin: Platform.safeAreaTop }
             spacing: 10
-            visible: Platform.isMobile
+            visible: !Platform.useWideLayout
 
             Rectangle {
                 Layout.preferredWidth: Platform.touchTarget
@@ -200,7 +282,8 @@ ApplicationWindow {
                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 Text {
                     anchors.centerIn: parent
-                    text: "\u2630"
+                    text: TenjinIcons.menu
+                    font.family: TenjinIcons.family
                     font.pixelSize: Platform.fontTitle
                     color: Platform.textPrimary
                 }
@@ -217,6 +300,7 @@ ApplicationWindow {
             // "page title" slot on non-Words pages since the drawer already
             // indicates which page is active.
             SearchBox {
+                id: desktopSearchBox
                 parentWidth: root.width
                 dropdownEnabled: true
                 Layout.fillWidth: true
@@ -236,8 +320,8 @@ ApplicationWindow {
                     id: mAddLabel
                     anchors.centerIn: parent
                     text: appVM.currentPage === root._pageWords ? qsTr("+ Word")
-                        : appVM.currentPage === root._pageDecks ? "+ Deck"
-                                                                 : "+ Tag"
+                        : appVM.currentPage === root._pageDecks ? qsTr("+ Deck")
+                                                                 : qsTr("+ Tag")
                     color: Platform.bg
                     font.pixelSize: Platform.fontBase
                     font.bold: true
@@ -308,16 +392,16 @@ ApplicationWindow {
         property int step: 0
         readonly property int stepCount: 4
         readonly property var titles: [
-            "Welcome to Tenjin",
-            "Words, decks, tags",
-            "Spaced-repetition reviews",
-            "You're ready"
+            qsTr("Welcome to Tenjin"),
+            qsTr("Words, decks, tags"),
+            qsTr("Spaced-repetition reviews"),
+            qsTr("You're ready")
         ]
         readonly property var bodies: [
-            "Your personal study companion for vocabulary, phrases, and anything else worth remembering. Let's take a quick look around.",
-            "Add words with rich content — text, formulas, images, audio, video. Group related words into decks, and tag them however you like for fast filtering.",
-            "Decks schedule cards using a proven spaced-repetition algorithm. Review what's due each day and Tenjin tracks what you know.",
-            "Toggle light and dark from the header at any time. Open Help anytime to revisit the basics, or News to see what's new."
+            qsTr("Your personal study companion for vocabulary, phrases, and anything else worth remembering. Let's take a quick look around."),
+            qsTr("Add words with rich content — text, formulas, images, audio, video. Group related words into decks, and tag them however you like for fast filtering."),
+            qsTr("Decks schedule cards using a proven spaced-repetition algorithm. Review what's due each day and Tenjin tracks what you know."),
+            qsTr("Toggle light and dark from the header at any time. Open Help anytime to revisit the basics, or News to see what's new.")
         ]
 
         function finish() {
@@ -591,7 +675,7 @@ ApplicationWindow {
         spacing: 0
 
         Sidebar {
-            visible: !Platform.isMobile && !appVM.sidebarVM.collapsed && appVM.currentPage <= root._pageTags
+            visible: Platform.useWideLayout && !appVM.sidebarVM.collapsed && appVM.currentPage <= root._pageTags
             Layout.preferredWidth: Platform.sidebarWidth
             Layout.fillHeight: true
             onAddEntryRequested: addEntryDialog.open()
@@ -599,7 +683,7 @@ ApplicationWindow {
             onAddTagRequested: addTagDialog.open()
         }
         Rectangle {
-            visible: !Platform.isMobile && !appVM.sidebarVM.collapsed && appVM.currentPage <= root._pageTags
+            visible: Platform.useWideLayout && !appVM.sidebarVM.collapsed && appVM.currentPage <= root._pageTags
             Layout.preferredWidth: 1; Layout.fillHeight: true
             color: Platform.border
         }
@@ -620,6 +704,7 @@ ApplicationWindow {
                 applicationRoot: root
                 onBackRequested: appVM.currentPage = root._pageWords
             }
+            StatsPage    { onBackRequested: appVM.currentPage = root._pageWords }
         }
     }
 
@@ -644,23 +729,47 @@ ApplicationWindow {
     }
 
     // File pickers
-    FileDialog {
-        id: importDialog
-        title: qsTr("Import collection")
-        fileMode: FileDialog.OpenFile
-        nameFilters: ["Tenjin export (*.json)", "All files (*)"]
-        onAccepted: appVM.importData(selectedFile)
+    // FileDialogs: functional on desktop, unavailable on iOS (no native picker).
+    // On mobile, import/export uses the custom picker and exportToDocuments().
+    Loader {
+        id: importDialogLoader
+        active: !Platform.isMobile
+        sourceComponent: FileDialog {
+            title: qsTr("Import collection")
+            fileMode: FileDialog.OpenFile
+            nameFilters: [qsTr("Tenjin or Anki (*.json *.apkg)"),
+                          qsTr("Tenjin export (*.json)"),
+                          qsTr("Anki package (*.apkg)"),
+                          qsTr("All files (*)")]
+            onAccepted: {
+                const f = selectedFile.toString().toLowerCase()
+                if (f.endsWith(".apkg")) appVM.importAnki(selectedFile)
+                else appVM.importData(selectedFile)
+            }
+        }
     }
-    FileDialog {
-        id: exportDialog
-        title: qsTr("Export collection")
-        fileMode: FileDialog.SaveFile
-        nameFilters: ["Tenjin export (*.json)"]
-        defaultSuffix: "json"
-        onAccepted: appVM.exportData(selectedFile)
+    Loader {
+        id: exportDialogLoader
+        active: !Platform.isMobile
+        sourceComponent: FileDialog {
+            title: qsTr("Export collection")
+            fileMode: FileDialog.SaveFile
+            nameFilters: [qsTr("Tenjin export (*.json)")]
+            defaultSuffix: "json"
+            onAccepted: appVM.exportData(selectedFile)
+        }
     }
 
+    // importDialog / exportDialog are used by SettingsPage via openImportDialog() etc.
+    // Route to the loader's item on desktop, or to the picker on mobile.
+    property var importDialog: importDialogLoader.item
+    property var exportDialog: exportDialogLoader.item
+
+    // Import picker for mobile (FileDialog unavailable on iOS)
+    ImportPickerDialog { id: importPickerDialog }
+
     // Add dialogs
+    WhatsNewSheet  { id: whatsNewSheet }
     AddEntryDialog { id: addEntryDialog }
     AddDeckDialog  { id: addDeckDialog }
     AddTagDialog   { id: addTagDialog }
@@ -668,6 +777,15 @@ ApplicationWindow {
     // Error toast
     Connections { target: appVM.entryVM; function onErrorOccurred(msg) { toast.show(msg) } }
     Connections { target: appVM.deckVM;  function onErrorOccurred(msg) { toast.show(msg) } }
+    Connections {
+        target: notifService
+        function onToastRequested(message, level) { toast.show(message) }
+        function onAlertRequested(title, body) {
+            // No dedicated alert dialog yet; surface as a toast so the message
+            // is never lost. (A richer alert UI can replace this later.)
+            toast.show(title + (body.length > 0 ? (": " + body) : ""))
+        }
+    }
 
     Rectangle {
         id: toast
@@ -740,7 +858,7 @@ ApplicationWindow {
                     implicitWidth: 26; implicitHeight: 26; radius: Platform.radius
                     color: dbgCloseArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
-                    Text { anchors.centerIn: parent; text: "\u2715"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+                    Text { anchors.centerIn: parent; text: TenjinIcons.close; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
                     MouseArea { id: dbgCloseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: debugDrawer.visible = false }
                 }
             }
@@ -769,13 +887,13 @@ ApplicationWindow {
                             width: parent.width - 8
                             x: 4
                             spacing: 6
-                            Text { text: time; color: Platform.textMuted; font.pixelSize: Platform.fontSmall; font.family: "monospace" }
+                            Text { text: time; color: Platform.textMuted; font.pixelSize: Platform.fontSmall; font.family: Platform.fontMono }
                             Text {
                                 width: parent.width - 70
                                 text: message
                                 wrapMode: Text.Wrap
                                 font.pixelSize: Platform.fontSmall
-                                font.family: "monospace"
+                                font.family: Platform.fontMono
                                 color: level === "critical" ? Platform.danger
                                      : level === "warning"  ? Platform.accentDark
                                                               : Platform.textPrimary
@@ -824,7 +942,7 @@ ApplicationWindow {
                             placeholderText: qsTr("e.g. appVM.theme  /  Platform.toggleTheme()")
                             color: Platform.textPrimary
                             font.pixelSize: 12
-                            font.family: "monospace"
+                            font.family: Platform.fontMono
                             wrapMode: TextArea.Wrap
                             background: null
                         }

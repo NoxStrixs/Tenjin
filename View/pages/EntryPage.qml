@@ -37,7 +37,7 @@ Item {
                 spacing: 12
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "\uD83D\uDCD6"; font.pixelSize: 52
+                    text: TenjinIcons.words; font.family: TenjinIcons.family; font.pixelSize: Platform.iconSizeHero
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter

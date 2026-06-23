@@ -96,7 +96,8 @@ Item {
 
                 ActionButton {
                     visible: detailRoot.showBack
-                    text: "\u2039"
+                    text: TenjinIcons.chevronLeft
+                    font.family: TenjinIcons.family
                     variant: "neutral"
                     onClicked: detailRoot.backRequested()
                 }
@@ -411,7 +412,7 @@ Item {
                     color: Platform.textOnDark
                     font.pixelSize: Platform.fontSmall
                     font.bold: true
-                    font.family: "monospace"
+                    font.family: Platform.fontMono
                 }
             }
             Text {
@@ -481,7 +482,8 @@ Item {
                         verticalCenter: parent.verticalCenter
                         rightMargin: 12
                     }
-                    text: "\u25BE"
+                    text: TenjinIcons.expandMore
+        font.family: TenjinIcons.family
                     color: Platform.textMuted
                     font.pixelSize: Platform.fontBase
                 }
@@ -595,7 +597,7 @@ Item {
                         placeholderTextColor: Platform.textMuted
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontBase
-                        font.family: "monospace"
+                        font.family: Platform.fontMono
                         background: Rectangle { color: "transparent" }
                         Keys.onReturnPressed: entryCustomLangDialog.accept()
                     }
@@ -902,10 +904,11 @@ Item {
                                     Text {
                                         visible: appVM.entryVM.editMode
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: "\u2715"
+                                        text: TenjinIcons.close
+                                        font.family: TenjinIcons.family
                                         color: removeArea.containsMouse ? Platform.danger : Platform.textMuted
                                         font.pixelSize: Platform.fontSmall
-                                        font.bold: true
+                                        font.weight: Font.Normal
                                         Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                                         MouseArea {
                                             id: removeArea

@@ -53,7 +53,7 @@ Rectangle {
                             anchors.centerIn: parent
                             text: "\u5929" // 天
                             color: Platform.bg
-                            font.pixelSize: 22
+                            font.pixelSize: Platform.brandMark
                             font.bold: true
                         }
                     }
@@ -71,9 +71,9 @@ Rectangle {
             // Content nav — Words / Decks / Tags
             Repeater {
                 model: [
-                    { label: qsTr("Words"), page: 0, glyph: "\uD83D\uDCD6" },
-                    { label: qsTr("Decks"), page: 1, glyph: "\uD83D\uDCDA" },
-                    { label: qsTr("Tags"),  page: 2, glyph: "\uD83C\uDFF7\uFE0F" }
+                    { label: qsTr("Words"), page: 0, glyph: TenjinIcons.words },
+                    { label: qsTr("Decks"), page: 1, glyph: TenjinIcons.decks },
+                    { label: qsTr("Tags"),  page: 2, glyph: TenjinIcons.tags }
                 ]
                 delegate: Rectangle {
                     id: navItem
@@ -94,7 +94,12 @@ Rectangle {
                     RowLayout {
                         anchors { fill: parent; leftMargin: 20; rightMargin: 16 }
                         spacing: 14
-                        Text { text: navItem.modelData.glyph; font.pixelSize: Platform.fontLarge }
+                        Text {
+                            text: navItem.modelData.glyph
+                            font.family: TenjinIcons.family
+                            font.pixelSize: Platform.fontLarge
+                            color: navItem.current ? Platform.accent : Platform.textMuted
+                        }
                         Text {
                             Layout.fillWidth: true
                             text: navItem.modelData.label
@@ -119,9 +124,10 @@ Rectangle {
             // the content rows; routing in Main.qml just sets appVM.currentPage.
             Repeater {
                 model: [
-                    { label: qsTr("Help"),     glyph: "?",      page: 3 },
-                    { label: qsTr("News"),     glyph: "\u2709", page: 4 },
-                    { label: qsTr("Settings"), glyph: "\u2699", page: 5 }
+                    { label: qsTr("Statistics"), glyph: TenjinIcons.autoAwesome, page: 6 },
+                    { label: qsTr("Help"),       glyph: TenjinIcons.help,        page: 3 },
+                    { label: qsTr("News"),       glyph: TenjinIcons.news,        page: 4 },
+                    { label: qsTr("Settings"),   glyph: TenjinIcons.settings,    page: 5 }
                 ]
                 delegate: Rectangle {
                     id: utilItem
@@ -146,7 +152,7 @@ Rectangle {
                             text: utilItem.modelData.glyph
                             color: Platform.textMuted
                             font.pixelSize: Platform.fontLarge
-                            font.bold: utilItem.modelData.glyph === "?"
+                            font.weight: utilItem.modelData.glyph === "?" ? Font.Bold : Font.Normal
                         }
                         Text {
                             Layout.fillWidth: true
@@ -177,7 +183,7 @@ Rectangle {
                 RowLayout {
                     anchors { fill: parent; leftMargin: 20; rightMargin: 16 }
                     spacing: 14
-                    Text { text: Platform.isDark ? "\u2600" : "\u263E"; font.pixelSize: Platform.fontLarge; color: Platform.textMuted }
+                    Text { text: Platform.isDark ? TenjinIcons.lightMode : TenjinIcons.darkMode; font.family: TenjinIcons.family; font.pixelSize: Platform.fontLarge; color: Platform.textMuted }
                     Text {
                         Layout.fillWidth: true
                         text: Platform.isDark ? qsTr("Light theme") : qsTr("Dark theme")
@@ -249,8 +255,8 @@ Rectangle {
                 Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: Platform.border }
                 RowLayout {
                     anchors { fill: parent; leftMargin: 20; rightMargin: 16; bottomMargin: Platform.safeAreaBottom }
-                    Text { text: qsTr("\u24D8  About"); color: Platform.textMuted; font.pixelSize: Platform.fontBase; Layout.fillWidth: true }
-                    Text { text: drawerRoot.aboutExpanded ? "\u25B4" : "\u25BE"; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+                    Text { text: TenjinIcons.info + "  " + qsTr("About"); font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontBase; Layout.fillWidth: true }
+                    Text { text: drawerRoot.aboutExpanded ? TenjinIcons.expandLess : TenjinIcons.expandMore; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
                 }
                 MouseArea {
                     id: aboutArea

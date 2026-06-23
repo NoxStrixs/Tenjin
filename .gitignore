@@ -14,3 +14,9 @@ __pycache__/
 .vscode/
 .idea/
 *.swp
+
+# Bundled UI assets fetched at configure time by cmake/Assets.cmake.
+# Git-ignored to keep the repo small; CI caches them. Vendor manually to pin.
+View/fonts/JetBrainsMono-Regular.ttf
+View/fonts/JetBrainsMono-Bold.ttf
+View/flags/*.svg

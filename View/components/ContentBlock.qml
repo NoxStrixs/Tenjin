@@ -125,7 +125,8 @@ Rectangle {
 
             Text {
                 visible: root.editMode
-                text: "\u283F"  // braille dots, used as a drag affordance
+                text: TenjinIcons.drag
+                font.family: TenjinIcons.family
                 color: Platform.textMuted
                 font.pixelSize: Platform.fontLarge
                 Layout.alignment: Qt.AlignVCenter
@@ -223,7 +224,8 @@ Rectangle {
                 indicator: Text {
                     x: posCombo.width - width - 8
                     y: (posCombo.height - height) / 2
-                    text: "\u25BE"
+                    text: TenjinIcons.expandMore
+                    font.family: TenjinIcons.family
                     color: Platform.textMuted
                     font.pixelSize: Platform.fontBase - 3
                 }
@@ -311,10 +313,11 @@ Rectangle {
                     Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                     Text {
                         anchors.centerIn: parent
-                        text: "\u2212"   // minus
+                        text: TenjinIcons.close
+                        font.family: TenjinIcons.family
                         color: spanMinusArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
                         font.pixelSize: Platform.fontBase
-                        font.bold: true
+                        font.weight: Font.Normal
                     }
                     MouseArea {
                         id: spanMinusArea
@@ -597,7 +600,7 @@ Rectangle {
                 placeholderTextColor: Platform.textMuted
                 color: Platform.textPrimary
                 font.pixelSize: Platform.fontBase
-                font.family: "monospace"
+                font.family: Platform.fontMono
                 background: Rectangle {
                     color: Platform.bg
                     radius: Platform.radius
@@ -666,9 +669,10 @@ Rectangle {
                     Text {
                         anchors.centerIn: parent
                         text: fb.glyph
+                        font.family: TenjinIcons.family
                         color: fbArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
                         font.pixelSize: Platform.fontBase
-                        font.bold: true
+                        font.weight: Font.Normal
                     }
                     MouseArea {
                         id: fbArea
@@ -681,11 +685,11 @@ Rectangle {
                     }
                 }
 
-                FmtBtn { glyph: "B"; onTriggered: editField.toggleBold() }
-                FmtBtn { glyph: "I"; onTriggered: editField.toggleItalic() }
-                FmtBtn { glyph: "U"; onTriggered: editField.toggleUnderline() }
-                FmtBtn { glyph: "S\u0336"; onTriggered: editField.toggleStrike() }
-                FmtBtn { glyph: "\u2022"; onTriggered: editField.insertBullet() }
+                FmtBtn { glyph: TenjinIcons.bold; onTriggered: editField.toggleBold() }
+                FmtBtn { glyph: TenjinIcons.italic; onTriggered: editField.toggleItalic() }
+                FmtBtn { glyph: TenjinIcons.underline; onTriggered: editField.toggleUnderline() }
+                FmtBtn { glyph: TenjinIcons.strike; onTriggered: editField.toggleStrike() }
+                FmtBtn { glyph: TenjinIcons.bullet; onTriggered: editField.insertBullet() }
 
                 // Foreground colour
                 Rectangle {
@@ -702,7 +706,8 @@ Rectangle {
                     width: Platform.isMobile ? 34 : 26; height: Platform.isMobile ? 34 : 26
                     radius: Platform.radius - 2; color: bgColorDialog.selectedColor
                     border.color: Platform.border; border.width: 1
-                    Text { anchors.centerIn: parent; text: "\u270E"; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
+                    Text { anchors.centerIn: parent; text: TenjinIcons.edit
+                    font.family: TenjinIcons.family; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onPressed: (m) => m.accepted = true
                         onClicked: bgColorDialog.open() }
@@ -1070,10 +1075,7 @@ Rectangle {
     Component {
         id: mediaPlayerComponent
         Loader {
-            // MediaPlayerView lives in ../media/ since Batch 6.3 reorganised
-            // View/ into subdirectories. Qt.resolvedUrl is anchored on this
-            // file's location, so the relative path needs the parent step.
-            source: Qt.resolvedUrl("../media/MediaPlayerView.qml")
+            source: Qt.resolvedUrl("MediaPlayerView.qml")
             onLoaded: {
                 if (item) {
                     item.source = appVM.entryVM.resolveMediaUrl(root.blockContent)
@@ -1099,9 +1101,7 @@ Rectangle {
             Loader {
                 anchors.fill: parent
                 anchors.margins: 4
-                // WebEmbed.qml moved to ../media/ in Batch 6.3 alongside
-                // MediaPlayerView (the two media-only QML files).
-                source: Qt.resolvedUrl("../media/WebEmbed.qml")
+                source: Qt.resolvedUrl("WebEmbed.qml")
                 onLoaded: if (item) item.src = appVM.entryVM.resolveMediaUrl(root.blockContent)
             }
         }
@@ -1114,7 +1114,8 @@ Rectangle {
             spacing: 4
             Text {
                 Layout.fillWidth: true
-                text: "\uD83D\uDD17  " + root.blockContent
+                text: TenjinIcons.link + "  " + root.blockContent
+                font.family: TenjinIcons.family
                 color: Platform.accentDark
                 font.pixelSize: Platform.fontBase
                 font.underline: true
@@ -1148,7 +1149,7 @@ Rectangle {
             RowLayout {
                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                 spacing: 10
-                Text { text: "\uD83D\uDCCE"; font.pixelSize: Platform.fontLarge }
+                Text { text: TenjinIcons.attach; font.family: TenjinIcons.family; font.pixelSize: Platform.fontLarge }
                 Text {
                     Layout.fillWidth: true
                     text: root.mediaFileName
@@ -1215,10 +1216,11 @@ Rectangle {
                 border.width: 1
                 Text {
                     anchors.centerIn: parent
-                    text: "\u2715"
+                    text: TenjinIcons.close
+                    font.family: TenjinIcons.family
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontTitle
-                    font.bold: true
+                    font.weight: Font.Normal
                 }
                 MouseArea { anchors.fill: parent; onClicked: mediaViewer.close() }
             }

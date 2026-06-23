@@ -17,6 +17,7 @@ Item {
     property var applicationRoot: null
 
     function _openWelcome()  { if (applicationRoot && applicationRoot.openWelcomePopup) applicationRoot.openWelcomePopup() }
+    function _openWhatsNew() { if (applicationRoot && applicationRoot.openWhatsNew) applicationRoot.openWhatsNew() }
     function _openImport()   { if (applicationRoot && applicationRoot.openImportDialog) applicationRoot.openImportDialog() }
     function _openExport()   { if (applicationRoot && applicationRoot.openExportDialog) applicationRoot.openExportDialog() }
 
@@ -103,12 +104,12 @@ Item {
                 RowLayout {
                     anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: Platform.spacingMd
-                    Text { text: Platform.isDark ? "\u2600" : "\u263E"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: Platform.isDark ? TenjinIcons.lightMode : TenjinIcons.darkMode; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         Text { text: qsTr("Theme"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                        Text { text: Platform.isDark ? "Dark" : "Light"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                        Text { text: Platform.isDark ? qsTr("Dark") : qsTr("Light"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
                     Rectangle {
                         Layout.preferredWidth: 52
@@ -136,7 +137,68 @@ Item {
             SectionDivider {}
 
             // ── Language ────────────────────────────────────────────────────
-            SectionHeader { text: qsTr("Language") }
+            // ── Cloud sync (coming soon) ──────────────────────────
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.touchTarget + 16
+                color: syncRow.containsMouse ? Platform.surfaceAlt : "transparent"
+                opacity: cloudService.available ? 1.0 : 0.55
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    spacing: Platform.spacingMd
+                    Text { text: TenjinIcons.sync; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    ColumnLayout {
+                        Layout.fillWidth: true; spacing: 1
+                        Text { text: qsTr("Sync decks"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                        Text {
+                            text: cloudService.available
+                                  ? qsTr("Back up and sync your decks.")
+                                  : qsTr("Coming soon \u2014 requires a subscription.")
+                            color: Platform.textMuted; font.pixelSize: Platform.fontSmall
+                        }
+                    }
+                    Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                }
+                MouseArea {
+                    id: syncRow; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (cloudService.available) cloudService.syncDecks()
+                        else notifService.toast(qsTr("Deck sync is coming soon!"))
+                    }
+                }
+            }
+            Connections {
+                target: cloudService
+                function onSyncResult(status, message) { notifService.toast(message) }
+            }
+
+            // ── Bug report ────────────────────────────────────────────
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.touchTarget + 16
+                color: bugRow.containsMouse ? Platform.surfaceAlt : "transparent"
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    spacing: Platform.spacingMd
+                    Text { text: TenjinIcons.bugReport; font.family: TenjinIcons.family; font.pixelSize: Platform.fontLarge }
+                    ColumnLayout {
+                        Layout.fillWidth: true; spacing: 1
+                        Text { text: qsTr("Send feedback"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                        Text { text: qsTr("Report a bug or suggest an improvement"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                    }
+                    Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                }
+                MouseArea {
+                    id: bugRow; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: bugReportDialog.open()
+                }
+            }
+
+            SectionDivider {}
+
+                        SectionHeader { text: qsTr("Language") }
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: uiLangCol.implicitHeight + Platform.spacingMd * 2
@@ -151,7 +213,8 @@ Item {
                     }
                     spacing: Platform.spacingMd
                     Text {
-                        text: "\uD83C\uDF10"
+                        text: TenjinIcons.globe
+                        font.family: TenjinIcons.family
                         font.pixelSize: Platform.fontLarge
                         Layout.alignment: Qt.AlignTop
                     }
@@ -172,36 +235,28 @@ Item {
                             font.pixelSize: Platform.fontSmall
                             wrapMode: Text.WordWrap
                         }
-                        ComboBox {
+                        StyledComboBox {
                             id: uiLangCombo
                             Layout.fillWidth: true
                             Layout.topMargin: 4
                             Layout.preferredHeight: Platform.touchTarget
-                            font.pixelSize: Platform.fontBase
-                            // Build {code, label} pairs so the picker shows
-                            // a friendly name, not "ja" / "zh_CN" alone.
+                            // {code, name, flags} per supported UI language. Name
+                            // and flag codes come from the generated LanguageFlags
+                            // singleton (single source of truth).
                             function buildOptions() {
-                                const names = {
-                                    en: "English",   ja: "\u65E5\u672C\u8A9E",
-                                    es: "Espa\u00F1ol", fr: "Fran\u00E7ais",
-                                    de: "Deutsch",   it: "Italiano",
-                                    pt: "Portugu\u00EAs", ru: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439",
-                                    ko: "\uD55C\uAD6D\uC5B4",
-                                    zh_CN: "\u4E2D\u6587 (\u7B80\u4F53)",
-                                    zh_TW: "\u4E2D\u6587 (\u7E41\u9AD4)",
-                                    ar: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629"
-                                }
                                 const codes = appVM.supportedUiLanguages
                                 const opts = []
                                 for (let i = 0; i < codes.length; i++) {
                                     const c = codes[i]
-                                    opts.push({ code: c, label: (names[c] || c) + "  --  " + c })
+                                    opts.push({ code: c,
+                                                name: LanguageFlags.name(c),
+                                                flags: LanguageFlags.flags(c) })
                                 }
                                 return opts
                             }
                             property var options: buildOptions()
                             model: options
-                            textRole: "label"
+                            textRole: "name"
                             valueRole: "code"
                             function _sync() {
                                 const code = appVM.uiLanguage
@@ -219,11 +274,29 @@ Item {
                                 const sel = uiLangCombo.options[idx]
                                 if (sel) appVM.uiLanguage = sel.code
                             }
-                            background: Rectangle {
-                                radius: Platform.radius
-                                color: Platform.surface
-                                border.color: uiLangCombo.activeFocus ? Platform.accent : Platform.border
-                                border.width: uiLangCombo.activeFocus ? 2 : 1
+                            // Flag(s) + native name, no code suffix.
+                            delegate: ItemDelegate {
+                                id: uiDel
+                                required property var modelData
+                                required property int index
+                                width: uiLangCombo.width
+                                height: 32
+                                highlighted: uiLangCombo.highlightedIndex === index
+                                contentItem: RowLayout {
+                                    spacing: Platform.spacingMd
+                                    LanguageFlagRow { codes: uiDel.modelData.flags }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: uiDel.modelData.name
+                                        color: Platform.textPrimary
+                                        font.pixelSize: Platform.fontBase
+                                        verticalAlignment: Text.AlignVCenter
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                                background: Rectangle {
+                                    color: uiDel.highlighted ? Platform.surfaceAlt : "transparent"
+                                }
                             }
                         }
                     }
@@ -241,14 +314,14 @@ Item {
                 RowLayout {
                     anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: Platform.spacingMd
-                    Text { text: "\u21BB"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.refresh; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         Text { text: qsTr("Show welcome again"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
                         Text { text: qsTr("Re-open the first-launch carousel now"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
-                    Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
                 MouseArea {
                     id: showWelcomeArea
@@ -256,6 +329,33 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: { appVM.setWelcomeAcknowledged(false); settingsRoot._openWelcome() }
+                }
+            }
+
+            // What's new
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.touchTarget + 16
+                color: whatsNewArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    spacing: Platform.spacingMd
+                    Text { text: TenjinIcons.autoAwesome; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+                        Text { text: qsTr("What's new"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                        Text { text: qsTr("See the highlights from the latest update"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                    }
+                    Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                }
+                MouseArea {
+                    id: whatsNewArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: settingsRoot._openWhatsNew()
                 }
             }
             Rectangle {
@@ -266,14 +366,14 @@ Item {
                 RowLayout {
                     anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: Platform.spacingMd
-                    Text { text: "\u2709"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.mail; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         Text { text: qsTr("Reset news popups"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
                         Text { text: qsTr("Show every news item again on next launch"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
-                    Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
                 MouseArea {
                     id: resetNewsArea
@@ -286,6 +386,67 @@ Item {
             SectionDivider {}
 
             // ── Data ────────────────────────────────────────────────────────
+            // ── Reminders ─────────────────────────────────────────────
+            SectionHeader { text: qsTr("Reminders") }
+
+            // Daily review reminder toggle.
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.touchTarget + 16
+                color: "transparent"
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    spacing: Platform.spacingMd
+                    Text { text: TenjinIcons.news; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+                        Text { text: qsTr("Daily review reminder"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
+                        Text { text: qsTr("A daily nudge when cards are due"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                    }
+                    Switch {
+                        checked: notifService.reminderEnabled
+                        onToggled: notifService.reminderEnabled = checked
+                    }
+                }
+            }
+
+            // Time picker — only visible when reminders are on.
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: visible ? Platform.touchTarget + 16 : 0
+                visible: notifService.reminderEnabled
+                color: "transparent"
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    spacing: Platform.spacingMd
+                    Text { text: TenjinIcons.refresh; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text {
+                        Layout.fillWidth: true
+                        text: qsTr("Remind me at")
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontBase
+                    }
+                    // Hour spinner
+                    SpinBox {
+                        from: 0; to: 23
+                        value: notifService.reminderHour
+                        onValueModified: notifService.reminderHour = value
+                        textFromValue: function(v) { return (v < 10 ? "0" : "") + v }
+                        implicitWidth: 72
+                    }
+                    Text { text: ":"; color: Platform.textPrimary; font.pixelSize: Platform.fontLarge }
+                    SpinBox {
+                        from: 0; to: 59
+                        value: notifService.reminderMinute
+                        onValueModified: notifService.reminderMinute = value
+                        textFromValue: function(v) { return (v < 10 ? "0" : "") + v }
+                        implicitWidth: 72
+                    }
+                }
+            }
+
+            // ── Data ──────────────────────────────────────────────────
             SectionHeader { text: qsTr("Data") }
             Rectangle {
                 Layout.fillWidth: true
@@ -295,14 +456,14 @@ Item {
                 RowLayout {
                     anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: Platform.spacingMd
-                    Text { text: "\u2934"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.upload; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         Text { text: qsTr("Import collection"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
                         Text { text: qsTr("Restore from a Tenjin export (.json)"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
-                    Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
                 MouseArea { id: importArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settingsRoot._openImport() }
             }
@@ -314,14 +475,14 @@ Item {
                 RowLayout {
                     anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: Platform.spacingMd
-                    Text { text: "\u2935"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.download; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         Text { text: qsTr("Export collection"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
                         Text { text: qsTr("Save all words, decks and tags to a .json file"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                     }
-                    Text { text: "\u203A"; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 }
                 MouseArea { id: exportArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settingsRoot._openExport() }
             }
@@ -427,11 +588,13 @@ Item {
                             }
                         }
 
-                        ComboBox {
+                        // Vocab language filter — same StyledComboBox skin as the
+                        // interface picker. Content stays text-only ("code -- name")
+                        // because it allows arbitrary custom codes with no flag.
+                        StyledComboBox {
                             id: langCombo
                             Layout.fillWidth: true
                             Layout.preferredHeight: Platform.touchTarget
-                            font.pixelSize: Platform.fontBase
                             model: langComboRow.options
                             textRole: "label"
                             valueRole: "code"
@@ -460,74 +623,6 @@ Item {
                             onActivated: (idx) => {
                                 const sel = langComboRow.options[idx]
                                 if (sel) appVM.entryVM.currentLanguageFilter = sel.code
-                            }
-
-                            // App-consistent skin -- mirrors the ContentBlock
-                            // pos ComboBox styling so the page doesn't look
-                            // like it's got a stock Qt widget pasted in.
-                            background: Rectangle {
-                                radius: Platform.radius
-                                color: Platform.surface
-                                border.color: langCombo.activeFocus ? Platform.accent : Platform.border
-                                border.width: langCombo.activeFocus ? 2 : 1
-                                Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
-                            }
-                            contentItem: Text {
-                                leftPadding: 12
-                                rightPadding: langCombo.indicator.width + 6
-                                text: langCombo.displayText
-                                color: Platform.textPrimary
-                                font: langCombo.font
-                                verticalAlignment: Text.AlignVCenter
-                                elide: Text.ElideRight
-                            }
-                            indicator: Text {
-                                anchors {
-                                    right: parent.right
-                                    verticalCenter: parent.verticalCenter
-                                    rightMargin: 12
-                                }
-                                text: "\u25BE"
-                                color: Platform.textMuted
-                                font.pixelSize: Platform.fontBase
-                            }
-                            popup: Popup {
-                                y: langCombo.height + 2
-                                width: langCombo.width
-                                implicitHeight: Math.min(contentItem.implicitHeight, 320)
-                                padding: 1
-                                background: Rectangle {
-                                    color: Platform.surface
-                                    radius: Platform.radius
-                                    border.color: Platform.border
-                                    border.width: 1
-                                }
-                                contentItem: ListView {
-                                    clip: true
-                                    implicitHeight: contentHeight
-                                    model: langCombo.popup.visible ? langCombo.delegateModel : null
-                                    currentIndex: langCombo.highlightedIndex
-                                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                                }
-                            }
-                            delegate: ItemDelegate {
-                                id: langDelegate
-                                required property var modelData
-                                required property int index
-                                width: langCombo.width
-                                height: 32
-                                highlighted: langCombo.highlightedIndex === index
-                                contentItem: Text {
-                                    leftPadding: 10
-                                    text: langDelegate.modelData.label
-                                    color: Platform.textPrimary
-                                    font.pixelSize: Platform.fontBase
-                                    verticalAlignment: Text.AlignVCenter
-                                    elide: Text.ElideRight
-                                }
-                                background: Rectangle {
-                                    color: langDelegate.highlighted ? Platform.surfaceAlt : "transparent"
-                                }
                             }
                         }
 
@@ -605,10 +700,84 @@ Item {
                             placeholderTextColor: Platform.textMuted
                             color: Platform.textPrimary
                             font.pixelSize: Platform.fontBase
-                            font.family: "monospace"
+                            font.family: Platform.fontMono
                             background: Rectangle { color: "transparent" }
                             Keys.onReturnPressed: customLangDialog.accept()
                         }
+                    }
+                }
+            }
+
+            // ── About & legal ─────────────────────────────────────────
+            SectionHeader { text: qsTr("About") }
+
+            // Privacy policy
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.touchTarget + 16
+                color: privacyArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Accessible.role: Accessible.Button
+                Accessible.name: qsTr("Privacy policy")
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    spacing: Platform.spacingMd
+                    Text { text: TenjinIcons.info; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text {
+                        Layout.fillWidth: true
+                        text: qsTr("Privacy policy")
+                        color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true
+                    }
+                    Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                }
+                MouseArea {
+                    id: privacyArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: Qt.openUrlExternally("https://tenjin.app/privacy")
+                }
+            }
+
+            // Terms of service
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.touchTarget + 16
+                color: tosArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Accessible.role: Accessible.Button
+                Accessible.name: qsTr("Terms of service")
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    spacing: Platform.spacingMd
+                    Text { text: TenjinIcons.document; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text {
+                        Layout.fillWidth: true
+                        text: qsTr("Terms of service")
+                        color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true
+                    }
+                    Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                }
+                MouseArea {
+                    id: tosArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: Qt.openUrlExternally("https://tenjin.app/terms")
+                }
+            }
+
+            // Version
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Platform.touchTarget + 16
+                color: "transparent"
+                RowLayout {
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                    spacing: Platform.spacingMd
+                    Text { text: TenjinIcons.autoAwesome; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text {
+                        Layout.fillWidth: true
+                        text: qsTr("Version")
+                        color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true
+                    }
+                    Text {
+                        text: Qt.application.version
+                        color: Platform.textMuted; font.pixelSize: Platform.fontBase
                     }
                 }
             }
@@ -635,10 +804,10 @@ Item {
 
             Repeater {
                 model: [
-                    { key: "words",   label: qsTr("Delete all words"),  hint: "Removes every entry, its content blocks, tags, and relations." },
-                    { key: "tags",    label: qsTr("Delete all tags"),   hint: "Removes every tag; words and decks stay, but lose tag associations." },
-                    { key: "decks",   label: qsTr("Delete all decks"),  hint: "Removes every deck (manual and smart). Words and tags stay." },
-                    { key: "all",     label: qsTr("Delete everything"), hint: "Wipes every word, tag, and deck. Cannot be undone." }
+                    { key: "words",   label: qsTr("Delete all words"),  hint: qsTr("Removes every entry, its content blocks, tags, and relations.") },
+                    { key: "tags",    label: qsTr("Delete all tags"),   hint: qsTr("Removes every tag; words and decks stay, but lose tag associations.") },
+                    { key: "decks",   label: qsTr("Delete all decks"),  hint: qsTr("Removes every deck (manual and smart). Words and tags stay.") },
+                    { key: "all",     label: qsTr("Delete everything"), hint: qsTr("Wipes every word, tag, and deck. Cannot be undone.") }
                 ]
                 delegate: Rectangle {
                     id: dz
@@ -690,6 +859,8 @@ Item {
 
     // Typed-confirmation dialog. The user must type "DELETE" exactly
     // before the destructive button enables; an Esc / Cancel aborts.
+
+    BugReportDialog { id: bugReportDialog }
     ThemedDialog {
         id: dangerConfirm
         title: qsTr("Confirm destructive action")
@@ -715,6 +886,7 @@ Item {
             else if (actionKey === "tags")  appVM.deleteAllTags()
             else if (actionKey === "decks") appVM.deleteAllDecks()
             else if (actionKey === "all")   appVM.deleteEverything()
+            haptics.heavy()
         }
 
         standardButtons: confirmInput.text === "DELETE"
@@ -757,7 +929,7 @@ Item {
                     placeholderTextColor: Platform.textMuted
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontBase
-                    font.family: "monospace"
+                    font.family: Platform.fontMono
                     background: Rectangle { color: "transparent" }
                 }
             }

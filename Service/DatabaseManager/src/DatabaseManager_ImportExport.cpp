@@ -1,4 +1,5 @@
 #include <DatabaseManager/DatabaseManager.h>
+#include <DatabaseManager/AnkiImporter.h>
 #include <DatabaseManager/Schema.h>
 
 #include <QDate>
@@ -376,6 +377,121 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
     if (!m_db.commit())
         return fail("Failed to commit import transaction.");
     return true;
+}
+
+Result_t<int> DatabaseManager::ImportFromAnki(const QString& apkgPath, const QString& intoDeck)
+{
+    auto parsed = ParseApkg(apkgPath);
+    if (!parsed)
+        return std::unexpected(parsed.error());
+
+    const AnkiImportResult& res = parsed.value();
+
+    if (!m_db.transaction())
+        return std::unexpected("Failed to begin Anki import transaction.");
+
+    auto fail = [&](const QString& msg) -> Result_t<int> {
+        m_db.rollback();
+        return std::unexpected(msg.toStdString());
+    };
+
+    // Resolve-or-create a tag by name, caching ids within this import.
+    QHash<QString, qint64> tagCache;
+    auto tagId = [&](const QString& name) -> qint64 {
+        if (auto it = tagCache.constFind(name); it != tagCache.constEnd())
+            return it.value();
+        QSqlQuery sel(m_db);
+        sel.prepare("SELECT id FROM tag WHERE name = :n;");
+        sel.bindValue(":n", name);
+        if (sel.exec() && sel.next()) {
+            const qint64 id = sel.value(0).toLongLong();
+            tagCache.insert(name, id);
+            return id;
+        }
+        QSqlQuery ins(m_db);
+        ins.prepare("INSERT INTO tag (name) VALUES (:n);");
+        ins.bindValue(":n", name);
+        if (!ins.exec())
+            return -1;
+        const qint64 id = ins.lastInsertId().toLongLong();
+        tagCache.insert(name, id);
+        return id;
+    };
+
+    // Resolve-or-create the destination deck (manual).
+    qint64 deckId = -1;
+    QString deckName = intoDeck;
+    if (deckName.isEmpty() && !res.notes.empty())
+        deckName = res.notes.front().deckName;
+    if (!deckName.isEmpty()) {
+        QSqlQuery sel(m_db);
+        sel.prepare("SELECT id FROM deck WHERE name = :n;");
+        sel.bindValue(":n", deckName);
+        if (sel.exec() && sel.next()) {
+            deckId = sel.value(0).toLongLong();
+        } else {
+            QSqlQuery ins(m_db);
+            ins.prepare("INSERT INTO deck (name, is_smart, filter_mode) VALUES (:n, 0, '');");
+            ins.bindValue(":n", deckName);
+            if (ins.exec())
+                deckId = ins.lastInsertId().toLongLong();
+        }
+    }
+
+    int imported = 0;
+    for (const AnkiNote& note : res.notes) {
+        // Create the entry.
+        QSqlQuery ew(m_db);
+        ew.prepare("INSERT INTO entry (title) VALUES (:t);");
+        ew.bindValue(":t", note.title);
+        if (!ew.exec())
+            return fail("Anki entry insert: " + ew.lastError().text());
+        const qint64 wid = ew.lastInsertId().toLongLong();
+
+        // Extra fields → Note content blocks, stacked vertically.
+        int row = 0;
+        for (const QString& body : note.extraFields) {
+            QSqlQuery cb(m_db);
+            cb.prepare("INSERT INTO entry_content "
+                       "(entry_id, type, kind, content, row, col, row_span, col_span, pos) "
+                       "VALUES (:wid, :ty, :knd, :ct, :r, 0, 1, 1, '');");
+            cb.bindValue(":wid", wid);
+            cb.bindValue(":ty", static_cast<int>(ContentType_t::Note));
+            cb.bindValue(":knd", QString::fromStdString(ToKindString(ContentType_t::Note)));
+            cb.bindValue(":ct", body);
+            cb.bindValue(":r", row++);
+            if (!cb.exec())
+                return fail("Anki block insert: " + cb.lastError().text());
+        }
+
+        // Tags.
+        for (const QString& t : note.tags) {
+            const qint64 tid = tagId(t);
+            if (tid < 0)
+                continue;
+            QSqlQuery wt(m_db);
+            wt.prepare("INSERT OR IGNORE INTO entry_tag (entry_id, tag_id) VALUES (:w, :t);");
+            wt.bindValue(":w", wid);
+            wt.bindValue(":t", tid);
+            wt.exec();
+        }
+
+        // Deck membership.
+        if (deckId >= 0) {
+            QSqlQuery dm(m_db);
+            dm.prepare("INSERT OR IGNORE INTO deck_entry (deck_id, entry_id) VALUES (:d, :w);");
+            dm.bindValue(":d", deckId);
+            dm.bindValue(":w", wid);
+            dm.exec();
+        }
+
+        ++imported;
+    }
+
+    if (!m_db.commit())
+        return fail("Failed to commit Anki import.");
+
+    return imported;
 }
 
 } // namespace Service

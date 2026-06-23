@@ -38,10 +38,11 @@ Item {
                 Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                 Text {
                     anchors.centerIn: parent
-                    text: "\u2039"
+                    text: TenjinIcons.chevronLeft
+                    font.family: TenjinIcons.family
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontTitle
-                    font.bold: true
+                    font.weight: Font.Normal
                 }
                 MouseArea {
                     id: newsBackArea
@@ -181,7 +182,7 @@ Item {
                 spacing: 12
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "\u2709"; font.pixelSize: 52; color: Platform.textMuted
+                    text: TenjinIcons.news; font.family: TenjinIcons.family; font.pixelSize: 52; color: Platform.textMuted
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter

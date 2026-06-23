@@ -290,7 +290,7 @@ Item {
                         Layout.leftMargin: 8
                         implicitWidth: 28
                         implicitHeight: 22
-                        radius: 11
+                        radius: height / 2
                         color: wd._selected ? Platform.accent : Platform.surfaceAlt
                         border.color: Platform.border
                         border.width: 1
@@ -318,7 +318,8 @@ Item {
                     // Chevron — affordance for "tap opens the word".
                     Text {
                         Layout.alignment: Qt.AlignVCenter
-                        text: "\u203A"
+                        text: TenjinIcons.chevronRight
+                        font.family: TenjinIcons.family
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontTitle
                         rightPadding: 4
@@ -335,7 +336,7 @@ Item {
                         visible: !appVM.deckVM.selectedDeckIsSmart
                         implicitWidth: 30
                         implicitHeight: 30
-                        radius: 15
+                        radius: height / 2
                         color: rmArea.containsMouse ? Platform.danger : "transparent"
                         border.color: rmArea.containsMouse ? Platform.danger : Platform.border
                         border.width: 1
@@ -343,10 +344,11 @@ Item {
                         Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
                         Text {
                             anchors.centerIn: parent
-                            text: "\u2715"
+                            text: TenjinIcons.close
+                            font.family: TenjinIcons.family
                             color: rmArea.containsMouse ? Platform.textOnDark : Platform.textMuted
                             font.pixelSize: Platform.fontBase
-                            font.bold: true
+                            font.weight: Font.Normal
                             Behavior on color { ColorAnimation { duration: Platform.durationFast } }
                         }
                         MouseArea {
@@ -372,8 +374,9 @@ Item {
                 spacing: 12
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: appVM.deckVM.selectedDeckIsSmart ? "\u2728" : "\uD83D\uDCD6"
-                    font.pixelSize: 52
+                    text: appVM.deckVM.selectedDeckIsSmart ? TenjinIcons.autoAwesome : TenjinIcons.words
+                    font.family: TenjinIcons.family
+                    font.pixelSize: Platform.iconSizeHero
                     color: Platform.textMuted
                 }
                 Text {

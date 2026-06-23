@@ -114,10 +114,20 @@ public:
     Result_t<DeckStats_t>                     GetDeckStats(ID_t deckId);
     Result_t<DeckAnalytics_t>                 GetDeckAnalytics(ID_t deckId);
     Result_t<std::vector<EntryReviewEvent_t>> GetEntryHistory(ID_t deckId, ID_t wordId);
+    // Collection-wide stats across every deck: streaks, retention, daily
+    // counts, and due-forecast. Powers the statistics dashboard.
+    Result_t<GlobalStats_t>                   GetGlobalStats();
 
     // Import / export
     Result_t<bool> ExportToJson(const QString& path);
     Result_t<bool> ImportFromJson(const QString& path);
+
+    // Import notes from an Anki .apkg package. Returns the number of words
+    // created/updated on success. Each note becomes one entry: the first
+    // field is the title, remaining fields become Note content blocks, and
+    // Anki tags map onto Tenjin tags. Optionally places imported words into
+    // a deck named after the Anki deck (or `intoDeck` if non-empty).
+    Result_t<int> ImportFromAnki(const QString& apkgPath, const QString& intoDeck = {});
 
 private:
     // Assigns a fresh guid to any pre-existing row that lacks one.

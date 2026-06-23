@@ -93,17 +93,19 @@ Rectangle {
                 onClicked: listRoot.wordActivated(row.modelData.wordId)
             }
 
-            Text {
+            EmptyState {
                 anchors.centerIn: parent
-                width: parent.width - 48
+                width: parent.width
                 visible: entryList.count === 0
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-                text: appVM.entryVM.searchQuery.length > 0 || appVM.entryVM.tagFilters.length > 0
-                      ? "No words match the current filter."
-                      : "No words yet.\nTap + Word to add one."
-                color: Platform.textMuted
-                font.pixelSize: Platform.fontBase
+                readonly property bool _filtered: appVM.entryVM.searchQuery.length > 0
+                                                  || appVM.entryVM.tagFilters.length > 0
+                icon: TenjinIcons.words
+                title: _filtered ? qsTr("No matches") : qsTr("No words yet")
+                subtitle: _filtered
+                          ? qsTr("No words match the current filter. Try clearing it.")
+                          : qsTr("Add your first word to start building your collection.")
+                ctaText: _filtered ? "" : qsTr("+ Word")
+                onCtaClicked: addEntryDialog.open()
             }
         }
     }

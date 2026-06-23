@@ -25,7 +25,7 @@ Rectangle {
             RowLayout {
                 Layout.fillWidth: true
                 Text {
-                    text: qsTr("Card ") + (appVM.reviewVM.currentIndex + 1) + " / " + appVM.reviewVM.totalCards
+                    text: qsTr("Card %1 / %2").arg(appVM.reviewVM.currentIndex + 1).arg(appVM.reviewVM.totalCards)
                     color: Platform.textMuted; font.pixelSize: Platform.fontBase
                 }
                 Item { Layout.fillWidth: true }
@@ -42,13 +42,13 @@ Rectangle {
                 id: reviewProgress
                 Layout.fillWidth: true
                 from: 0; to: appVM.reviewVM.totalCards; value: appVM.reviewVM.currentIndex
-                background: Rectangle { color: Platform.surface; radius: 4; border.color: Platform.border; border.width: 1 }
+                background: Rectangle { color: Platform.surface; radius: Platform.radiusSmall; border.color: Platform.border; border.width: 1 }
                 contentItem: Item {
                     implicitHeight: 6
                     Rectangle {
                         width: reviewProgress.visualPosition * parent.width
                         height: parent.height
-                        radius: 4
+                        radius: Platform.radiusSmall
                         color: Platform.accent
                     }
                 }
@@ -71,7 +71,7 @@ Rectangle {
                         visible: !appVM.reviewVM.showingAnswer
                         text: qsTr("Show Answer")
                         implicitHeight: Platform.touchTarget; implicitWidth: 140
-                        onClicked: appVM.reviewVM.revealAnswer()
+                        onClicked: { haptics.light(); appVM.reviewVM.revealAnswer() }
                         background: Rectangle { color: Platform.accent; radius: Platform.radius }
                         contentItem: Text { text: showBtn.text; color: Platform.textOnDark; font.pixelSize: Platform.fontBase; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     }
@@ -90,10 +90,10 @@ Rectangle {
                 visible: appVM.reviewVM.showingAnswer; spacing: Platform.isMobile ? 4 : 8
                 Repeater {
                     model: [
-                        { q: 0, label: Platform.isMobile ? "0" : "0 - Forgot", color: "#e74c3c" },
-                        { q: 1, label: Platform.isMobile ? "1" : "1 - Hard",   color: "#e67e22" },
-                        { q: 2, label: Platform.isMobile ? "2" : "2 - Good",   color: "#2ecc71" },
-                        { q: 3, label: Platform.isMobile ? "3" : "3 - Easy",   color: "#3498db" }
+                        { q: 0, label: Platform.isMobile ? qsTr("0") : qsTr("0 – Forgot"), color: Platform.gradeForgot },
+                        { q: 1, label: Platform.isMobile ? qsTr("1") : qsTr("1 – Hard"),   color: Platform.gradeHard },
+                        { q: 2, label: Platform.isMobile ? qsTr("2") : qsTr("2 – Good"),   color: Platform.gradeGood },
+                        { q: 3, label: Platform.isMobile ? qsTr("3") : qsTr("3 – Easy"),   color: Platform.gradeEasy }
                     ]
                     Button {
                         id: qBtn
@@ -102,7 +102,7 @@ Rectangle {
                         Layout.fillWidth: true
                         implicitHeight: Platform.touchTarget + (Platform.isMobile ? 8 : 0)
                         text: modelData.label
-                        onClicked: appVM.reviewVM.submitQuality(modelData.q)
+                        onClicked: { haptics.medium(); appVM.reviewVM.submitQuality(modelData.q) }
                         background: Rectangle { color: qBtn.color; radius: Platform.radius }
                         contentItem: Text { text: qBtn.text; color: Platform.textOnDark; font.pixelSize: Platform.fontBase; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     }
@@ -115,7 +115,7 @@ Rectangle {
         ColumnLayout {
             anchors.centerIn: parent; spacing: 20
             Text { Layout.alignment: Qt.AlignHCenter; text: qsTr("🎉 Session complete!"); color: Platform.success; font.pixelSize: Platform.fontTitle; font.bold: true }
-            Text { Layout.alignment: Qt.AlignHCenter; text: qsTr("All ") + appVM.reviewVM.totalCards + " cards reviewed."; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+            Text { Layout.alignment: Qt.AlignHCenter; text: qsTr("All %1 cards reviewed.").arg(appVM.reviewVM.totalCards); color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
             Button {
                 id: backBtn
                 Layout.alignment: Qt.AlignHCenter

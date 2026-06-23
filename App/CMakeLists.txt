@@ -6,34 +6,63 @@ qt_add_executable(Tenjin
 
 tenjin_configure_translations(${TENJIN_APP_NAME})
 
+if(NOT DEFINED TENJIN_BUILD_NUMBER)
+    set(TENJIN_BUILD_NUMBER "1")
+endif()
+
 set_target_properties(Tenjin PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     OUTPUT_NAME              "${TENJIN_APP_NAME}"
 )
 
-# Corrected to link directly to the proper QML module target
 target_link_libraries(Tenjin
     PRIVATE
+        TenjinViewplugin
+        TenjinView
         TenjinViewModels
-        TenjinView         # <─── FIXED: Changed from TenjinViewplugin to TenjinView
         Qt6::Quick
         Qt6::QuickControls2
+        Qt6::Svg
+        Qt6::Sql
         tenjin_warnings
         tenjin_sanitizers
 )
 
 target_include_directories(Tenjin PRIVATE src)
 
-if(IOS OR ANDROID)
-    target_link_libraries(Tenjin PRIVATE Qt6::QSQLiteDriverPlugin)
+# SQLite driver: on static Qt builds (iOS, Android) the plugin must be
+# explicitly imported via Q_IMPORT_PLUGIN in main.cpp AND linked here.
+# On macOS and Linux with shared Qt the driver loads dynamically at runtime —
+# linking the static plugin target would cause a duplicate-symbol linker error.
+if(IOS OR ANDROID OR QT_FEATURE_static)
+    target_link_libraries(Tenjin PRIVATE
+        Qt6::QSQLiteDriverPlugin
+        Qt6::QJpegPlugin
+        Qt6::QGifPlugin
+        Qt6::QSvgPlugin
+        Qt6::QICOPlugin
+    )
 endif()
 
-# iOS static plugin imports
+if(MEDIA_SUPPORT)
+    target_link_libraries(Tenjin PRIVATE Qt6::Multimedia)
+endif()
+
+if(ANDROID)
+    set_target_properties(Tenjin PROPERTIES
+        QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
+        QT_ANDROID_VERSION_NAME       "${PROJECT_VERSION}"
+        QT_ANDROID_VERSION_CODE       "${TENJIN_BUILD_NUMBER}"
+        QT_ANDROID_MIN_SDK_VERSION    "26"
+        QT_ANDROID_TARGET_SDK_VERSION "34"
+        QT_ANDROID_PACKAGE_NAME       "${TENJIN_BUNDLE_ID}"
+    )
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     if(COMMAND qt_import_qml_plugins)
-        qt_import_qml_plugins(Tenjin) # <─── Now successfully processes TenjinView's imports
+        qt_import_qml_plugins(Tenjin)
     endif()
-
     qt_import_plugins(Tenjin
         INCLUDE_BY_TYPE platforms
         INCLUDE_BY_TYPE iconengines
@@ -42,23 +71,24 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    if(NOT DEFINED TENJIN_BUILD_NUMBER)
-        set(TENJIN_BUILD_NUMBER "1")
-    endif()
-
     target_sources(Tenjin PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets"
+        "${CMAKE_CURRENT_SOURCE_DIR}/ios/PrivacyInfo.xcprivacy"
     )
     set_source_files_properties(
         "${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets"
         PROPERTIES MACOSX_PACKAGE_LOCATION Resources
+    )
+    # PrivacyInfo.xcprivacy must sit at the bundle root (not Resources/).
+    set_source_files_properties(
+        "${CMAKE_CURRENT_SOURCE_DIR}/ios/PrivacyInfo.xcprivacy"
+        PROPERTIES MACOSX_PACKAGE_LOCATION .
     )
 
     set(_TENJIN_IOS_PLIST_TEMPLATE "")
     foreach(_candidate
         "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info_plist.in"
         "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in"
-        "${CMAKE_SOURCE_DIR}/Info_plist.in"
         "${CMAKE_SOURCE_DIR}/App/ios/Info_plist.in"
     )
         if(EXISTS "${_candidate}")
@@ -70,7 +100,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         message(FATAL_ERROR "iOS Info.plist template not found.")
     endif()
 
-    message(STATUS "Tenjin iOS: plist template = ${_TENJIN_IOS_PLIST_TEMPLATE}")
     configure_file(
         "${_TENJIN_IOS_PLIST_TEMPLATE}"
         "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
@@ -90,14 +119,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
         XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED      "NO"
         XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED       "NO"
+        XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS     "${CMAKE_CURRENT_SOURCE_DIR}/ios/Tenjin.entitlements"
     )
 
     if(DEFINED APPLE_TEAM_ID)
         set_target_properties(Tenjin PROPERTIES
-            XCODE_ATTRIBUTE_DEVELOPMENT_TEAM          "${APPLE_TEAM_ID}"
-            XCODE_ATTRIBUTE_CODE_SIGN_STYLE           "Automatic"
-            XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED     "YES"
-            XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED      "YES"
+            XCODE_ATTRIBUTE_DEVELOPMENT_TEAM      "${APPLE_TEAM_ID}"
+            XCODE_ATTRIBUTE_CODE_SIGN_STYLE       "Automatic"
+            XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "YES"
+            XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED  "YES"
         )
     endif()
 

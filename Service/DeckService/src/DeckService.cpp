@@ -66,6 +66,11 @@ Result_t<DeckAnalytics_t> DeckService::GetDeckAnalytics(ID_t deckId) const
     return m_db->GetDeckAnalytics(deckId);
 }
 
+Result_t<GlobalStats_t> DeckService::GetGlobalStats() const
+{
+    return m_db->GetGlobalStats();
+}
+
 Result_t<std::vector<EntryReviewEvent_t>> DeckService::GetEntryHistory(ID_t deckId,
                                                                        ID_t wordId) const
 {

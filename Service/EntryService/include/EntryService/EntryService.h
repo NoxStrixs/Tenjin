@@ -58,6 +58,7 @@ public:
     // Import / Export
     Result_t<bool> ExportToJson(const QString& path);
     Result_t<bool> ImportFromJson(const QString& path);
+    Result_t<int>  ImportFromAnki(const QString& apkgPath, const QString& intoDeck = {});
 
     // Tags
     Result_t<Tag_t>              CreateTag(const std::string& name);

@@ -23,6 +23,7 @@ TARGETS = {
             f"-DCMAKE_TOOLCHAIN_FILE=/opt/Qt/{QT_VERSION}/mingw_64/lib/cmake/Qt6/qt.toolchain.cmake",
             f"-DQT_HOST_PATH=/opt/Qt/{QT_VERSION}/gcc_64",
             f"-DQT_HOST_PATH_CMAKE_DIR=/opt/Qt/{QT_VERSION}/gcc_64/lib/cmake",
+            "-DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc-posix",
             "-DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++-posix",
             "-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER",
             "-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY",

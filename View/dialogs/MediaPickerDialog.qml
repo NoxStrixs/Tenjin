@@ -35,10 +35,10 @@ ThemedDialog {
     property string _selectedPath: ""
 
     function _iconForSuffix(s) {
-        if (["png","jpg","jpeg","gif","bmp","webp","svg","heic"].indexOf(s) >= 0) return "\uD83D\uDDBC\uFE0F"   // 🖼
-        if (["mp4","webm","mkv","mov","m4v"].indexOf(s) >= 0)                     return "\uD83C\uDFAC"          // 🎬
-        if (["mp3","wav","ogg","flac","m4a"].indexOf(s) >= 0)                     return "\uD83C\uDFB5"          // 🎵
-        return "\uD83D\uDCC4"
+        if (["png","jpg","jpeg","gif","bmp","webp","svg","heic"].indexOf(s) >= 0) return TenjinIcons.image
+        if (["mp4","webm","mkv","mov","m4v"].indexOf(s) >= 0)                     return TenjinIcons.videoFile
+        if (["mp3","wav","ogg","flac","m4a"].indexOf(s) >= 0)                     return TenjinIcons.audioFile
+        return TenjinIcons.document
     }
 
     onAboutToShow: {
@@ -67,7 +67,7 @@ ThemedDialog {
             text: appVM.documentsFolder
             color: Platform.textMuted
             font.pixelSize: Platform.fontTiny
-            font.family: "monospace"
+            font.family: Platform.fontMono
             elide: Text.ElideMiddle
             wrapMode: Text.NoWrap
         }
@@ -187,7 +187,8 @@ ThemedDialog {
                     spacing: 8
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "\uD83C\uDFAC"
+                        text: TenjinIcons.videoFile
+                        font.family: TenjinIcons.family
                         font.pixelSize: 40
                         color: Platform.textMuted
                     }

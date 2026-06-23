@@ -28,6 +28,10 @@ import TenjinView
 Item {
     id: root
     property int deckId: -1
+    // When true, the panel reports its content height via implicitHeight and
+    // does not scroll internally — for embedding inside another ScrollView
+    // (e.g. the global StatsPage). When false it fills its parent and scrolls.
+    property bool embedded: false
 
     property var analytics: ({ totalReviews: 0, retention: 0, daily: [] })
 
@@ -109,12 +113,22 @@ Item {
     readonly property int _currentStreak: _streak(analytics.daily)
     readonly property int _bestDayCount:  _bestDay(analytics.daily)
 
+    implicitHeight: root.embedded ? _content.implicitHeight : 0
+
     ScrollView {
+        id: _scroll
         anchors.fill: parent
         contentWidth: availableWidth
         clip: true
+        // When embedded, the panel is sized to its content and the OUTER page
+        // scrolls, so hide this scrollbar and stop the inner flickable from
+        // stealing drags. ScrollView has no `interactive` property — that lives
+        // on the internal Flickable, reached via contentItem.
+        ScrollBar.vertical.policy: root.embedded ? ScrollBar.AlwaysOff : ScrollBar.AsNeeded
+        Component.onCompleted: if (root.embedded && contentItem) contentItem.interactive = false
 
         ColumnLayout {
+            id: _content
             width: root.width
             spacing: 16
 
@@ -374,7 +388,7 @@ Item {
                                 readonly property real _ratio: heatmap.windowMax > 0 ? _count / heatmap.windowMax : 0
                                 implicitWidth: 14
                                 implicitHeight: 14
-                                radius: 2
+                                radius: Platform.radiusSmall
                                 color: _count === 0
                                     ? Platform.surfaceAlt
                                     : Qt.rgba(
