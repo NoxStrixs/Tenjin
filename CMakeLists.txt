@@ -51,6 +51,8 @@ if(TENJIN_BUILD_GUI)
     find_package(Qt6 6.8 REQUIRED COMPONENTS
         Quick
         QuickControls2
+        QuickLayouts
+        QuickDialogs2
         Svg
     )
 endif()

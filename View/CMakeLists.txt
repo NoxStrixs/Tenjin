@@ -19,8 +19,8 @@ endif()
 # Declaring modules imported inside our .qml files
 set(_TENJIN_QML_IMPORTS
     QtQuick
+    QtQuick.Window
     QtQuick.Controls
-    QtQuick.Controls.Basic
     QtQuick.Layouts
     QtQuick.Dialogs
     QtQml
@@ -149,6 +149,8 @@ target_link_libraries(TenjinView
     PRIVATE  TenjinViewModels
              Qt6::Quick
              Qt6::QuickControls2
+             Qt6::QuickLayouts
+             Qt6::QuickDialogs2
              Qt6::Svg
              ${TENJIN_MEDIA_COMPONENTS}
              tenjin_warnings
