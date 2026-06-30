@@ -21,6 +21,7 @@ set(_TENJIN_QML_IMPORTS
     QtQuick
     QtQuick.Window
     QtQuick.Controls
+    QtQuick.Controls.Basci
     QtQuick.Layouts
     QtQuick.Dialogs
     QtQml
@@ -148,6 +149,7 @@ qt_add_qml_module(TenjinView
 target_link_libraries(TenjinView
     PRIVATE  TenjinViewModels
              Qt6::Quick
+             Qt6::QuickWindow
              Qt6::QuickControls2
              Qt6::QuickLayouts
              Qt6::QuickDialogs2

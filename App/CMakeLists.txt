@@ -64,7 +64,7 @@ if(ANDROID)
 endif()
 
 # Force-link the static QML-module plugins (QtQuick, QtQuick.Layouts,
-# QtQuick.Dialogs, QtQuick.Controls.Basic, TenjinView, …). qt_import_qml_plugins
+# QtQuick.Dialogs, TenjinView, …). qt_import_qml_plugins
 # runs qmlimportscanner at configure time, links every imported module's static
 # plugin recursively, and is a NO-OP on a shared Qt — so it is safe to call
 # unconditionally. Without it, a static build loads its QML, fails to resolve
