@@ -1,4 +1,5 @@
 #include <ViewModels/SidebarViewModel.h>
+#include <unordered_set>
 
 SidebarModel::SidebarModel(QObject* parent) : QAbstractListModel(parent) {}
 
@@ -18,12 +19,22 @@ void SidebarModel::setData(const std::vector<Service::Tag_t>&                   
                            std::function<std::vector<Service::Entry_t>(Service::ID_t)> wordFetcher)
 {
     beginResetModel();
+
+    // Preserve which tags were expanded across the rebuild. Without this, every
+    // reload (filter change, data change, an edit elsewhere) collapses all
+    // groups, so a tag the user opened snaps shut on the next refresh.
+    std::unordered_set<Service::ID_t> wasExpanded;
+    for (const auto& t : m_tags)
+        if (t.expanded)
+            wasExpanded.insert(t.id);
+
     m_tags.clear();
     for (const auto& t : tags) {
         TagItem_t item;
-        item.id    = t.id;
-        item.name  = QString::fromStdString(t.name);
-        auto words = wordFetcher(t.id);
+        item.id       = t.id;
+        item.name     = QString::fromStdString(t.name);
+        item.expanded = wasExpanded.count(t.id) > 0;
+        auto words    = wordFetcher(t.id);
         for (const auto& w : words)
             item.words.push_back({w.id, QString::fromStdString(w.word)});
         m_tags.push_back(std::move(item));

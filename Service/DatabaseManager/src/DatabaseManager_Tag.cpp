@@ -162,4 +162,29 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForTag(ID_t tagId)
     return words;
 }
 
+Result_t<std::vector<Entry_t>> DatabaseManager::GetUntaggedEntries()
+{
+    // Entries with no row in entry_tag. These never appear under any tag in the
+    // sidebar, so without this they'd be invisible there (though still listed
+    // and searchable elsewhere). The sidebar surfaces them in an "Untagged"
+    // group built from this query.
+    QSqlQuery q(m_db);
+    q.prepare("SELECT w.id, w.title, w.created_at, w.language FROM entry w "
+              "WHERE NOT EXISTS "
+              "(SELECT 1 FROM entry_tag wt WHERE wt.entry_id = w.id) "
+              "ORDER BY w.title ASC;");
+
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+
+    std::vector<Entry_t> words;
+    while (q.next()) {
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
+    }
+    return words;
+}
+
 } // namespace Service

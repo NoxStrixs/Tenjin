@@ -1,27 +1,47 @@
-# Icon Font
+# Fonts (vendored)
 
-Place `MaterialSymbolsOutlined.ttf` here before building.
+These fonts are **committed assets** — not downloaded at build time — for
+reproducible, offline, store-pipeline-safe builds across all targets.
 
-Download from the official release:
-  https://github.com/google/material-symbols/raw/main/variablefont/MaterialSymbolsOutlined%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf
+## Required files
 
-Rename the file to: MaterialSymbolsOutlined.ttf
+| File | Source | License |
+|------|--------|---------|
+| `MaterialSymbolsOutlined.ttf` | [google/material-design-icons `variablefont/`](https://github.com/google/material-design-icons/tree/master/variablefont) | OFL-1.1 |
+| `MaterialSymbolsOutlined.codepoints` | same folder (glyph-name → codepoint) | OFL-1.1 |
+| `JetBrainsMono-Regular.ttf` | [JetBrains/JetBrainsMono](https://github.com/JetBrains/JetBrainsMono) `fonts/ttf/` | OFL-1.1 |
+| `JetBrainsMono-Bold.ttf` | same | OFL-1.1 |
+| `OFL.txt` | the SIL Open Font License text | — |
 
-License: SIL Open Font License 1.1 (OFL-1.1)
-The font file must NOT be committed to a public repository if it exceeds
-GitHub's 100 MB LFS threshold. Current size is ~3.5 MB — safe to commit directly.
+Rename the Material Symbols variable font from
+`MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf` to
+`MaterialSymbolsOutlined.ttf` (and the same for `.codepoints`).
 
-The font is referenced in View/TenjinIcons.qml as a singleton and loaded
-once at startup via FontLoader. All icon glyphs are in the Unicode Private
-Use Area (U+E000–U+F8FF) so they render identically on every platform.
+The build (`cmake/IconFont.cmake`, `cmake/Assets.cmake`) **fails configuration**
+if any of these is missing or looks truncated (< 1 MB) — by design.
 
----
+## Bundling & runtime
 
-## Monospace UI font (JetBrains Mono)
+All four are embedded through the `TenjinView` QML module (`RESOURCES` in
+`View/CMakeLists.txt`):
 
-`JetBrainsMono-Regular.ttf` and `JetBrainsMono-Bold.ttf` are fetched here at
-configure time by `cmake/Assets.cmake` (OFL-1.1) and bundled through the
-`TenjinView` QML module. Loaded in `App/src/main.cpp` via
-`QFontDatabase::addApplicationFont`, exposed to QML as `Platform.fontMono`.
-Git-ignored; CI caches them. Offline: place manually or set
-`-DTENJIN_NO_ASSET_DOWNLOAD=ON`.
+```
+qrc:/qt/qml/TenjinView/fonts/MaterialSymbolsOutlined.ttf   (icons)
+qrc:/qt/qml/TenjinView/fonts/JetBrainsMono-Regular.ttf     (Platform.fontMono)
+qrc:/qt/qml/TenjinView/fonts/JetBrainsMono-Bold.ttf
+```
+
+The mono fonts are registered in `App/src/main.cpp` via
+`QFontDatabase::addApplicationFont` (`:` resource path).
+
+## Updating the icon font (deliberate)
+
+Material Symbols reassigns codepoints over time, so updating requires realigning
+the glyph table:
+
+1. Replace `MaterialSymbolsOutlined.ttf` **and** `.codepoints` together.
+2. `tools/tool verify-icons --fix`  (rewrites `View/TenjinIcons.qml`)
+3. Commit all three.
+
+CI (`verify-icons`) fails the build if `TenjinIcons.qml` and the committed
+`.codepoints` disagree, so glyphs can never silently drift.

@@ -267,10 +267,10 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
                             "guid, updated_at) "
                             "VALUES (:wid, :ty, :knd, :ct, :r, :c, :rs, :cs, :pos, :g, :u);");
                 ins.bindValue(":wid", wid);
-                ins.bindValue(":ty", b.value("type").toInt());
+                const ContentType_t insType = ValidContentType(b.value("type").toInt());
+                ins.bindValue(":ty", static_cast<int>(insType));
                 ins.bindValue(":knd",
-                              QString::fromStdString(ToKindString(
-                                  static_cast<ContentType_t>(b.value("type").toInt()))));
+                              QString::fromStdString(ToKindString(insType)));
                 ins.bindValue(":ct", b.value("content").toString());
                 ins.bindValue(":r", b.value("row").toInt());
                 ins.bindValue(":c", b.value("col").toInt());
@@ -287,10 +287,10 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
                     "UPDATE entry_content SET type = :ty, kind = :knd, content = :ct, row = :r, "
                     "col = :c, "
                     "row_span = :rs, col_span = :cs, pos = :pos, updated_at = :u WHERE id = :id;");
-                up.bindValue(":ty", b.value("type").toInt());
+                const ContentType_t upType = ValidContentType(b.value("type").toInt());
+                up.bindValue(":ty", static_cast<int>(upType));
                 up.bindValue(":knd",
-                             QString::fromStdString(ToKindString(
-                                 static_cast<ContentType_t>(b.value("type").toInt()))));
+                             QString::fromStdString(ToKindString(upType)));
                 up.bindValue(":ct", b.value("content").toString());
                 up.bindValue(":r", b.value("row").toInt());
                 up.bindValue(":c", b.value("col").toInt());

@@ -1,3 +1,17 @@
+# Platform-specific notification delivery backend. Exactly one is compiled:
+# iOS uses UserNotifications (.mm), Android uses a JNI call to a Java helper,
+# everything else uses the no-op default that falls back to an in-app toast.
+if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(_TENJIN_NOTIFY_BACKEND src/NotificationService_ios.mm)
+    set(_TENJIN_MOTION_BACKEND src/MotionService_ios.mm)
+elseif(ANDROID)
+    set(_TENJIN_NOTIFY_BACKEND src/NotificationService_android.cpp)
+    set(_TENJIN_MOTION_BACKEND src/MotionService_android.cpp)
+else()
+    set(_TENJIN_NOTIFY_BACKEND src/NotificationService_default.cpp)
+    set(_TENJIN_MOTION_BACKEND src/MotionService_default.cpp)
+endif()
+
 qt_add_library(TenjinViewModels STATIC
     src/AppViewModel.cpp
     src/ContentBlockModel.cpp
@@ -14,6 +28,8 @@ qt_add_library(TenjinViewModels STATIC
     src/ReviewViewModel.cpp
     src/FormulaRenderer.cpp
     src/NotificationService.cpp
+    ${_TENJIN_NOTIFY_BACKEND}
+    ${_TENJIN_MOTION_BACKEND}
     src/CloudService.cpp
     src/HapticsService.cpp
 
@@ -50,3 +66,18 @@ target_link_libraries(TenjinViewModels
         tenjin_warnings
         tenjin_sanitizers
 )
+
+# iOS: the notification backend uses the UserNotifications framework; the
+# reduced-motion probe uses UIKit (UIAccessibility).
+if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_link_libraries(TenjinViewModels PRIVATE
+        "-framework UserNotifications"
+        "-framework UIKit")
+endif()
+
+# Android: the notification backend uses QtAndroidPrivate (runtime permission),
+# which lives in Qt6::CorePrivate.
+if(ANDROID)
+    find_package(Qt6 6.8 REQUIRED COMPONENTS CorePrivate)
+    target_link_libraries(TenjinViewModels PRIVATE Qt6::CorePrivate)
+endif()

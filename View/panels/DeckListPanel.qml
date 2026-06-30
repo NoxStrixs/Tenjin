@@ -34,12 +34,12 @@ Rectangle {
                     radius: Platform.radius
                     border.color: deckDel._selected ? Platform.border : "transparent"
                     border.width: 1
-                    Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
-                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color        { ColorAnimation { duration: Platform.effDurationFast } }
+                    Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                 }
 
                 scale: deckDel.pressed ? 0.98 : 1.0
-                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
 
                 contentItem: RowLayout {
                     spacing: 8

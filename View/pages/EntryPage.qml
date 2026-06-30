@@ -37,7 +37,7 @@ Item {
                 spacing: 12
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: TenjinIcons.words; font.family: TenjinIcons.family; font.pixelSize: Platform.iconSizeHero
+                    text: TenjinIcons.words; font.family: TenjinIcons.family; font.pixelSize: 52
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter

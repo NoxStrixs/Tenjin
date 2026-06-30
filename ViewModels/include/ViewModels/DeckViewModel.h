@@ -92,6 +92,7 @@ public slots:
     Q_INVOKABLE QVariantMap  deckAnalytics(qint64 deckId);
     // Collection-wide statistics for the dashboard.
     Q_INVOKABLE QVariantMap  globalStats();
+    Q_INVOKABLE bool         setNewCardsPerDay(qint64 deckId, int perDay);
     Q_INVOKABLE QVariantList wordHistory(qint64 deckId, qint64 wordId);
     bool                     deleteDeck(qint64 deckId);
 

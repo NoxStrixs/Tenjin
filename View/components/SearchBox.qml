@@ -114,7 +114,7 @@ Item {
         radius: Platform.radius
         border.color: searchField.activeFocus ? Platform.accent : Platform.border
         border.width: 1
-        Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+        Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
 
         RowLayout {
             anchors { fill: parent; leftMargin: 10; rightMargin: 6 }
@@ -157,7 +157,7 @@ Item {
                 font.family: TenjinIcons.family
                 color: clearArea.containsMouse ? Platform.textPrimary : Platform.textMuted
                 font.pixelSize: Platform.fontBase
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 MouseArea {
                     id: clearArea
                     anchors.fill: parent
@@ -177,7 +177,7 @@ Item {
                 color: appVM.entryVM.searchInContent ? Platform.accent : Platform.surfaceAlt
                 border.color: appVM.entryVM.searchInContent ? Platform.accent : Platform.border
                 border.width: 1
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 Text {
                     anchors.centerIn: parent
                     text: TenjinIcons.menu
@@ -231,7 +231,7 @@ Item {
                     background: Rectangle {
                         color: resultRow.hovered ? Platform.surfaceAlt : "transparent"
                         radius: Platform.radius - 2
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     }
                     contentItem: RowLayout {
                         spacing: 8

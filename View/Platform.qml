@@ -34,39 +34,18 @@ QtObject {
     readonly property color textOnDark:  "#ffffff"
     readonly property color overlayDim:  "#80000000"
 
-    // Opaque media-surface colours (video letterbox, player chrome). These must
-    // NOT follow the light/dark theme — they always sit on black video.
-    readonly property color mediaBackdrop:   "#000000"
-    readonly property color mediaScrimLight: "#00000000"
-    readonly property color mediaScrimHeavy: "#66000000"
-    readonly property color mediaControlBg:  "#cc1e1b16"
-    readonly property color mediaCloseBg:    "#aa000000"
-
-    // Spaced-repetition answer-quality grades. Fixed red→blue hues carry meaning
-    // independent of theme; darkened slightly in light mode for contrast on the
-    // cream background.
-    readonly property color gradeForgot: isDark ? "#e74c3c" : "#c0392b"
-    readonly property color gradeHard:   isDark ? "#e67e22" : "#ca6f1e"
-    readonly property color gradeGood:   isDark ? "#2ecc71" : "#27ae60"
-    readonly property color gradeEasy:   isDark ? "#3498db" : "#2980b9"
-
     // ── Sizing ────────────────────────────────────────────────────────────────
     readonly property int touchTarget:  isMobile ? 48 : 36
     readonly property int iconSize:     isMobile ? 24 : 16
-    readonly property int iconSizeLg:   isMobile ? 28 : 22
-    readonly property int iconSizeXl:   isMobile ? 44 : 40
-    // Oversized decorative glyph for empty-states / hero headers.
-    readonly property int iconSizeHero: isMobile ? 56 : 52
+    readonly property int iconSizeLg:    isMobile ? 32 : 24
+    readonly property int iconSizeXl:    isMobile ? 44 : 36
+    readonly property int iconSizeHero:  isMobile ? 64 : 56
     readonly property int headerHeight: isMobile ? 56 : 48
     readonly property int sidebarWidth: 220
 
     // Bundled monospace family (JetBrainsMono, loaded in main.cpp via
     // QFontDatabase). Used for timestamps, code, and formula source.
     readonly property string fontMono: "JetBrains Mono"
-
-    // App wordmark (天) sizes — drawer header and large splash.
-    readonly property int brandMark:      isMobile ? 22 : 20
-    readonly property int brandMarkLarge: isMobile ? 46 : 46
 
     readonly property int fontTiny:   isMobile ? 12 : 10
     readonly property int fontSmall:  isMobile ? 14 : 11
@@ -81,7 +60,6 @@ QtObject {
     readonly property int spacingXl:   isMobile ? 24 : 18
     readonly property int pagePadding: isMobile ? 16 : 24
 
-    readonly property int radiusSmall: 3
     readonly property int radius:      6
     readonly property int radiusLarge: 10
 
@@ -99,6 +77,21 @@ QtObject {
 
     readonly property int durationFast: 120
     readonly property int durationMed:  200
+
+    // ── Motion / accessibility ─────────────────────────────────────────────
+    // When true, UI animations collapse to near-instant. Bound to an in-app
+    // Settings toggle (persisted) and, where available, an OS "reduce motion"
+    // probe (see MotionService). UI binds to the effective* helpers below so a
+    // single switch disables every transition without per-call conditionals.
+    property bool reducedMotionUser:   false   // in-app toggle
+    property bool reducedMotionSystem: false   // OS accessibility probe
+    readonly property bool reducedMotion: reducedMotionUser || reducedMotionSystem
+
+    // Effective durations: 0 when reduced motion is on, otherwise the base.
+    readonly property int effDurationFast: reducedMotion ? 0 : durationFast
+    readonly property int effDurationMed:  reducedMotion ? 0 : durationMed
+    // Page-transition slide distance (px); collapses to 0 under reduced motion.
+    readonly property int pageSlideDistance: reducedMotion ? 0 : 24
 
     readonly property int minWindowWidth:  720
     readonly property int minWindowHeight: 480

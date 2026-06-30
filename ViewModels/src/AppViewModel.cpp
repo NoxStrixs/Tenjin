@@ -23,6 +23,13 @@
 #include <QUrl>
 #include <QVariantMap>
 
+namespace tenjin {
+// Platform probe for the OS "reduce motion" accessibility setting. Implemented
+// per platform (iOS/Android); a default returns false where there is no such
+// setting. Declared here and defined in the MotionService_* translation units.
+bool platformPrefersReducedMotion();
+}
+
 AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
 {
     const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -60,6 +67,10 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
 
     QSettings settings;
     m_theme               = settings.value("appearance/theme", 0).toInt();
+    m_reducedMotion       = settings.value("appearance/reducedMotion", false).toBool();
+    m_systemReducedMotion = tenjin::platformPrefersReducedMotion();
+    m_ageBand             = settings.value("privacy/ageBand", AgeUnknown).toInt();
+    m_consentStatus       = settings.value("privacy/consentStatus", ConsentNotRequired).toInt();
     m_welcomeAcknowledged = settings.value("onboarding/welcomeAcknowledged", false).toBool();
 
     const QStringList ids = settings.value("news/dismissed").toStringList();
@@ -203,6 +214,57 @@ void AppViewModel::setTheme(int theme)
     emit themeChanged();
 }
 
+void AppViewModel::setReducedMotion(bool on)
+{
+    if (m_reducedMotion == on)
+        return;
+    m_reducedMotion = on;
+    QSettings().setValue("appearance/reducedMotion", on);
+    emit reducedMotionChanged();
+}
+
+void AppViewModel::setAgeBand(int band)
+{
+    if (band != AgeUnder13 && band != Age13Plus)
+        band = AgeUnknown;
+    m_ageBand = band;
+
+    // 13+ needs no parental consent; under-13 starts in Pending until a verified
+    // parent grants it. The neutral age screen must not be re-answerable to
+    // raise the band trivially, so callers should treat this as one-shot.
+    if (band == Age13Plus)
+        m_consentStatus = ConsentNotRequired;
+    else if (band == AgeUnder13 && m_consentStatus == ConsentNotRequired)
+        m_consentStatus = ConsentPending;
+
+    QSettings settings;
+    settings.setValue("privacy/ageBand", m_ageBand);
+    settings.setValue("privacy/consentStatus", m_consentStatus);
+    settings.setValue("privacy/ageSetAt",
+                      QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    emit consentChanged();
+}
+
+void AppViewModel::recordParentalConsent(bool granted, const QString& grantedBy)
+{
+    // Only meaningful for under-13 users.
+    if (m_ageBand != AgeUnder13)
+        return;
+
+    m_consentStatus = granted ? ConsentGranted : ConsentDenied;
+
+    // COPPA requires a record of the consent event: who/when/for-what. We log an
+    // auditable entry locally; when the backend exists this should also be
+    // mirrored server-side. We deliberately store only the method note, not any
+    // parent identity document.
+    QSettings settings;
+    settings.setValue("privacy/consentStatus", m_consentStatus);
+    settings.setValue("privacy/consentRecordedAt",
+                      QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    settings.setValue("privacy/consentMethod", grantedBy);
+    emit consentChanged();
+}
+
 void AppViewModel::setWelcomeAcknowledged(bool acknowledged)
 {
     if (m_welcomeAcknowledged == acknowledged)
@@ -332,6 +394,22 @@ QString AppViewModel::documentsFolder() const
     if (dir.isEmpty() || !QDir().mkpath(dir))
         dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     return dir;
+}
+
+void AppViewModel::autoBackupBeforeDestructive(const QString& reason)
+{
+    // Write a timestamped JSON snapshot of all data into the documents folder
+    // before a destructive bulk delete. Recoverable through the normal import
+    // picker. Best effort: failure is surfaced but does not block the delete
+    // the user already confirmed.
+    const QString dir = documentsFolder();
+    QDir().mkpath(dir);
+    const QString stamp = QDateTime::currentDateTime().toString("yyyy-MM-dd-HHmmss");
+    const QString path  = dir + "/tenjin-backup-" + reason + "-" + stamp + ".json";
+    if (exportData(QUrl::fromLocalFile(path).toString()))
+        setStatusMessage(QStringLiteral("Backup saved before deleting: ") + path);
+    else
+        setStatusMessage(QStringLiteral("Warning: automatic backup failed before delete."));
 }
 
 QString AppViewModel::exportToDocuments()
@@ -499,6 +577,7 @@ bool AppViewModel::deleteTagAndAffectedDecks(qint64 tagId)
 
 int AppViewModel::deleteAllWords()
 {
+    autoBackupBeforeDestructive(QStringLiteral("delete-words"));
     auto r = m_entryService->DeleteAllEntries();
     if (!r) {
         setStatusMessage("Could not delete words: " + QString::fromStdString(r.error()));
@@ -525,6 +604,7 @@ int AppViewModel::deleteAllWords()
 
 int AppViewModel::deleteAllTags()
 {
+    autoBackupBeforeDestructive(QStringLiteral("delete-tags"));
     auto r = m_entryService->DeleteAllTags();
     if (!r) {
         setStatusMessage("Could not delete tags: " + QString::fromStdString(r.error()));
@@ -539,6 +619,7 @@ int AppViewModel::deleteAllTags()
 
 int AppViewModel::deleteAllDecks()
 {
+    autoBackupBeforeDestructive(QStringLiteral("delete-decks"));
     auto r = m_deckService->DeleteAllDecks();
     if (!r) {
         setStatusMessage("Could not delete decks: " + QString::fromStdString(r.error()));
@@ -551,6 +632,11 @@ int AppViewModel::deleteAllDecks()
 
 bool AppViewModel::deleteEverything()
 {
+    // Safety net: write a timestamped backup before wiping everything, so an
+    // accidental "delete all" is recoverable via the normal import flow. Best
+    // effort — if the backup fails we still proceed (the user explicitly
+    // confirmed), but we surface a note so they know.
+    autoBackupBeforeDestructive(QStringLiteral("delete-all"));
     // Order matters: kill decks first so they can't try to recompute
     // smart-filter membership while words/tags are mid-delete. Tags
     // before words is fine either way — both cascade.

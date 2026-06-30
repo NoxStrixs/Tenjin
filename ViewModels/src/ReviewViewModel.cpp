@@ -1,6 +1,7 @@
 #include <EntryService/EntryService.h>
 #include <ViewModels/ReviewViewModel.h>
 
+#include <QDateTime>
 #include <QRegularExpression>
 #include <QStringList>
 
@@ -32,6 +33,14 @@ qint64 ReviewViewModel::currentWordId() const
         return -1;
     auto card = m_deckService->CurrentCard(*m_session);
     return card ? card->wordId : -1;
+}
+
+bool ReviewViewModel::currentIsLeech() const
+{
+    if (!m_session)
+        return false;
+    auto card = m_deckService->CurrentCard(*m_session);
+    return card ? card->isLeech : false;
 }
 
 QString ReviewViewModel::currentWord() const
@@ -114,6 +123,9 @@ void ReviewViewModel::startSession(qint64 deckId)
     }
     m_session       = std::move(*result);
     m_showingAnswer = false;
+    m_sessionCorrect   = 0;
+    m_sessionIncorrect = 0;
+    m_sessionStartMs   = QDateTime::currentMSecsSinceEpoch();
     emit sessionChanged();
     emit showingAnswerChanged();
 }
@@ -141,7 +153,21 @@ void ReviewViewModel::submitQuality(int quality)
         emit errorOccurred(QString::fromStdString(result.error()));
         return;
     }
+    // Track session accuracy. Quality >= 2 (Good/Easy) counts as correct,
+    // matching the review grade buttons (0 Forgot, 1 Hard, 2 Good, 3 Easy).
+    if (quality >= 2)
+        ++m_sessionCorrect;
+    else
+        ++m_sessionIncorrect;
     m_showingAnswer = false;
     emit sessionChanged();
     emit showingAnswerChanged();
+}
+
+int ReviewViewModel::sessionElapsedSeconds() const
+{
+    if (m_sessionStartMs == 0)
+        return 0;
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    return static_cast<int>((nowMs - m_sessionStartMs) / 1000);
 }

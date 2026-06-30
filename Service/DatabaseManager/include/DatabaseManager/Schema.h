@@ -15,7 +15,13 @@ namespace Schema {
 
 // The version the application code expects. A freshly created DB jumps straight
 // to this; an older DB is migrated up to it.
-inline constexpr int kSchemaVersion = 2;
+// Pre-release schema epoch. Because the kV2/kV3 migrations were folded into the
+// single consolidated base schema, there is no forward-migration path from older
+// dev databases. Bumping this number forces any database created under a
+// previous layout to be wiped and rebuilt (see Migrate). Start high (100) to
+// stay clear of the old 1/2/3 sequence, and bump again on any pre-release schema
+// change. Replace this wipe-on-mismatch policy with real migrations at launch.
+inline constexpr int kSchemaVersion = 100;
 
 // Brings `db` from its current user_version up to kSchemaVersion. Throws
 // std::runtime_error on failure (transaction is rolled back first).

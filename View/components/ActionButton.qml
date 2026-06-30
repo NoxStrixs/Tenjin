@@ -23,7 +23,7 @@ Button {
 
     // Press feedback — scale slightly down on press for tactile feel.
     scale: control.down ? 0.97 : 1.0
-    Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+    Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
 
     background: Rectangle {
         color: control.down ? Qt.darker(control._bg, 1.15)
@@ -32,7 +32,7 @@ Button {
         radius: Platform.radius
         border.color: Platform.border
         border.width: control._bordered ? 1 : 0
-        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
     }
 
     contentItem: Text {

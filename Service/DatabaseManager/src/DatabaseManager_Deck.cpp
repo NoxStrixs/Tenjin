@@ -41,7 +41,8 @@ Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name, bool isSmart,
 Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, name, is_smart, filter_mode, created_at FROM deck WHERE id = :id;");
+    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day "
+              "FROM deck WHERE id = :id;");
     q.bindValue(":id", QVariant::fromValue(id));
 
     if (!q.exec())
@@ -54,17 +55,19 @@ Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
     const std::string  fmStr   = q.value(3).toString().toStdString();
     const FilterMode_t mode    = (fmStr == "OR") ? FilterMode_t::Or : FilterMode_t::And;
 
-    return Deck_t{.id         = q.value(0).toLongLong(),
-                  .name       = q.value(1).toString().toStdString(),
-                  .bIsSmart   = isSmart,
-                  .filterMode = mode,
-                  .createdAt  = q.value(4).toString().toStdString()};
+    return Deck_t{.id             = q.value(0).toLongLong(),
+                  .name           = q.value(1).toString().toStdString(),
+                  .bIsSmart       = isSmart,
+                  .filterMode     = mode,
+                  .createdAt      = q.value(4).toString().toStdString(),
+                  .newCardsPerDay = q.value(5).toInt()};
 }
 
 Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
 {
     QSqlQuery q(m_db);
-    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at FROM deck ORDER BY name ASC;"))
+    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day "
+                "FROM deck ORDER BY name ASC;"))
         return std::unexpected(q.lastError().text().toStdString());
 
     std::vector<Deck_t> decks;
@@ -73,11 +76,12 @@ Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
         const std::string  fmStr   = q.value(3).toString().toStdString();
         const FilterMode_t mode    = (fmStr == "OR") ? FilterMode_t::Or : FilterMode_t::And;
 
-        decks.push_back(Deck_t{.id         = q.value(0).toLongLong(),
-                               .name       = q.value(1).toString().toStdString(),
-                               .bIsSmart   = isSmart,
-                               .filterMode = mode,
-                               .createdAt  = q.value(4).toString().toStdString()});
+        decks.push_back(Deck_t{.id             = q.value(0).toLongLong(),
+                               .name           = q.value(1).toString().toStdString(),
+                               .bIsSmart       = isSmart,
+                               .filterMode     = mode,
+                               .createdAt      = q.value(4).toString().toStdString(),
+                               .newCardsPerDay = q.value(5).toInt()});
     }
     return decks;
 }
@@ -94,6 +98,22 @@ Result_t<bool> DatabaseManager::DeleteDeck(ID_t id)
     if (q.numRowsAffected() == 0)
         return std::unexpected("No deck found with id: " + std::to_string(id));
 
+    return true;
+}
+
+Result_t<bool> DatabaseManager::SetDeckNewCardsPerDay(ID_t id, int perDay)
+{
+    if (perDay < 0)
+        perDay = 0;
+    QSqlQuery q(m_db);
+    q.prepare("UPDATE deck SET new_cards_per_day = :n WHERE id = :id;");
+    q.bindValue(":n", perDay);
+    q.bindValue(":id", QVariant::fromValue(id));
+
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+    if (q.numRowsAffected() == 0)
+        return std::unexpected("No deck found with id: " + std::to_string(id));
     return true;
 }
 

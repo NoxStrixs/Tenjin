@@ -1,150 +1,64 @@
-# IconFont.cmake — guarantee Material Symbols Outlined is available at build.
+# IconFont.cmake — locate the VENDORED Material Symbols Outlined font.
 #
 # Sets:
-#   TENJIN_ICON_FONT_DIR   directory containing the font
-#   TENJIN_ICON_FONT_FILE  absolute path to MaterialSymbolsOutlined.ttf
+#   TENJIN_ICON_FONT_DIR        directory containing the font
+#   TENJIN_ICON_FONT_FILE       absolute path to MaterialSymbolsOutlined.ttf
+#   TENJIN_ICON_CODEPOINTS_FILE absolute path to the matching .codepoints
 #
-# Resolution order:
-#   1. If View/fonts/MaterialSymbolsOutlined.ttf already exists AND validates as
-#      a real TrueType file, use it (vendored / cached).
-#   2. Otherwise download from a list of mirrors at configure time, unless
-#      TENJIN_NO_FONT_DOWNLOAD is set (offline / hermetic builds).
+# POLICY: the icon font and its .codepoints are VENDORED — committed into the
+# repository under View/fonts/ — not downloaded at build time. This is the
+# professional standard for App Store / Play Store pipelines:
+#   * Reproducible: the exact glyph table ships with the source, so codepoints
+#     never drift mid-release (Material Symbols reassigns codepoints over time,
+#     e.g. `search` moved e8b6 -> ef7a; an unpinned download silently breaks
+#     glyphs and fails CI verify-icons).
+#   * Offline / hermetic: no configure-time network, no CDN flakiness, no
+#     proxy/firewall failures in CI or on developer machines.
+#   * Auditable: the binary is reviewed and version-controlled like any asset.
 #
-# Policy:
-#   The previous behaviour (warn-and-continue when the font is missing) shipped
-#   binaries whose icon glyphs silently fell back to system fonts. On Windows
-#   that floods the log with DirectWrite CreateFontFaceFromHDC() failures and
-#   every icon renders as tofu. We therefore make a missing font a HARD ERROR
-#   for release-style builds. Set TENJIN_REQUIRE_ICON_FONT=OFF to opt out
-#   (e.g. a Debug build with no network), in which case the app shows a visible
-#   "icon font missing" banner at runtime instead of a broken UI.
+# To update the font deliberately (NOT automatically):
+#   1. Download the variable TTF + .codepoints from the official source:
+#        https://github.com/google/material-design-icons/tree/master/variablefont
+#      Files (rename the TTF):
+#        MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf
+#            -> View/fonts/MaterialSymbolsOutlined.ttf
+#        MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].codepoints
+#            -> View/fonts/MaterialSymbolsOutlined.codepoints
+#   2. Run:  tools/tool verify-icons --fix     (realigns TenjinIcons.qml glyphs)
+#   3. Commit both files and the updated TenjinIcons.qml together.
 #
-# License: SIL Open Font License 1.1 (OFL-1.1). Redistributable.
+# License: SIL Open Font License 1.1 (OFL-1.1). Redistributable; keep the OFL
+# license text alongside the font (View/fonts/OFL.txt).
 
-set(TENJIN_ICON_FONT_DIR  "${CMAKE_SOURCE_DIR}/View/fonts")
-set(TENJIN_ICON_FONT_FILE "${TENJIN_ICON_FONT_DIR}/MaterialSymbolsOutlined.ttf")
+set(TENJIN_ICON_FONT_DIR        "${CMAKE_SOURCE_DIR}/View/fonts")
+set(TENJIN_ICON_FONT_FILE       "${TENJIN_ICON_FONT_DIR}/MaterialSymbolsOutlined.ttf")
+set(TENJIN_ICON_CODEPOINTS_FILE "${TENJIN_ICON_FONT_DIR}/MaterialSymbolsOutlined.codepoints")
 
-# Require the font by default for everything except explicit Debug builds.
-if(NOT DEFINED TENJIN_REQUIRE_ICON_FONT)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(TENJIN_REQUIRE_ICON_FONT OFF)
-    else()
-        set(TENJIN_REQUIRE_ICON_FONT ON)
-    endif()
+if(NOT EXISTS "${TENJIN_ICON_FONT_FILE}")
+    message(FATAL_ERROR
+        "Vendored icon font missing:\n"
+        "    ${TENJIN_ICON_FONT_FILE}\n"
+        "This font is a required, committed asset. See cmake/IconFont.cmake and "
+        "View/fonts/README.md for how to obtain and place it. It is intentionally "
+        "NOT downloaded at build time.")
 endif()
 
-# Mirrors, tried in order. The first is the canonical Google repo; the second
-# is the jsDelivr CDN mirror of the same file (useful where raw.githubusercontent
-# is blocked by a corporate proxy or rate-limited in CI).
-set(_TENJIN_FONT_URLS
-    "https://raw.githubusercontent.com/google/material-design-icons/master/variablefont/MaterialSymbolsOutlined%5BFILL,GRAD,opsz,wght%5D.ttf"
-    "https://cdn.jsdelivr.net/gh/google/material-design-icons@master/variablefont/MaterialSymbolsOutlined%5BFILL,GRAD,opsz,wght%5D.ttf"
-)
-
-# Optional integrity pin. Leave empty to skip (Google updates the VF in place,
-# so a hard pin would break periodically); when set, a mismatch is fatal.
-set(TENJIN_ICON_FONT_SHA256 "" CACHE STRING
-    "Expected SHA-256 of MaterialSymbolsOutlined.ttf (empty = no check)")
-
-# ── helper: validate a candidate file is a real TTF ──────────────────────────
-function(_tenjin_font_is_valid out_var path)
-    set(${out_var} FALSE PARENT_SCOPE)
-    if(NOT EXISTS "${path}")
-        return()
-    endif()
-    file(SIZE "${path}" _sz)
-    if(_sz LESS 1000000)            # a valid VF is several MB; HTML error pages are tiny
-        return()
-    endif()
-    # TrueType magic: 00 01 00 00  (also accept 'true'/'OTTO' just in case).
-    file(READ "${path}" _magic LIMIT 4 HEX)
-    if(_magic STREQUAL "00010000" OR _magic STREQUAL "74727565" OR _magic STREQUAL "4f54544f")
-        if(TENJIN_ICON_FONT_SHA256)
-            file(SHA256 "${path}" _got)
-            if(NOT _got STREQUAL TENJIN_ICON_FONT_SHA256)
-                message(FATAL_ERROR
-                    "Icon font SHA-256 mismatch.\n  expected ${TENJIN_ICON_FONT_SHA256}\n  got      ${_got}")
-            endif()
-        endif()
-        set(${out_var} TRUE PARENT_SCOPE)
-    endif()
-endfunction()
-
-# ── helper: fetch the .codepoints index next to the font (best-effort) ───────
-# Tiny (~60 KB); enables tools/scripts/verify_icons.py to validate glyphs
-# offline. Never fatal — a missing index only disables that check.
-function(_tenjin_fetch_codepoints)
-    set(_cp "${TENJIN_ICON_FONT_DIR}/MaterialSymbolsOutlined.codepoints")
-    if(EXISTS "${_cp}" OR TENJIN_NO_FONT_DOWNLOAD)
-        return()
-    endif()
-    set(_urls
-        "https://raw.githubusercontent.com/google/material-design-icons/master/variablefont/MaterialSymbolsOutlined%5BFILL,GRAD,opsz,wght%5D.codepoints"
-        "https://cdn.jsdelivr.net/gh/google/material-design-icons@master/variablefont/MaterialSymbolsOutlined%5BFILL,GRAD,opsz,wght%5D.codepoints"
-    )
-    foreach(_url IN LISTS _urls)
-        file(DOWNLOAD "${_url}" "${_cp}"
-            STATUS _st TLS_VERIFY ON INACTIVITY_TIMEOUT 30)
-        list(GET _st 0 _code)
-        if(_code EQUAL 0)
-            file(SIZE "${_cp}" _sz)
-            if(_sz GREATER 1000)
-                message(STATUS "Tenjin icon codepoints: fetched (${_sz} bytes)")
-                return()
-            endif()
-        endif()
-        file(REMOVE "${_cp}")
-    endforeach()
-endfunction()
-
-# 1. Already present and valid?
-_tenjin_font_is_valid(_have "${TENJIN_ICON_FONT_FILE}")
-if(_have)
-    message(STATUS "Tenjin icon font: using ${TENJIN_ICON_FONT_FILE}")
-    _tenjin_fetch_codepoints()
-    return()
+file(SIZE "${TENJIN_ICON_FONT_FILE}" _tenjin_font_size)
+if(_tenjin_font_size LESS 1000000)
+    message(FATAL_ERROR
+        "Vendored icon font is too small (${_tenjin_font_size} bytes) — it is "
+        "likely a Git LFS pointer or a truncated/corrupt file rather than the "
+        "real TTF (expected > 1 MB). Ensure View/fonts/MaterialSymbolsOutlined.ttf "
+        "is the actual font binary.")
 endif()
 
-# 2. Offline mode: do not download.
-if(TENJIN_NO_FONT_DOWNLOAD)
-    if(TENJIN_REQUIRE_ICON_FONT)
-        message(FATAL_ERROR
-            "Icon font missing and TENJIN_NO_FONT_DOWNLOAD is set.\n"
-            "  Vendor MaterialSymbolsOutlined.ttf into View/fonts/ before building,\n"
-            "  or configure with -DTENJIN_REQUIRE_ICON_FONT=OFF for a degraded build.")
-    endif()
-    message(WARNING "Icon font missing (offline). Runtime banner will be shown.")
-    return()
+message(STATUS "Tenjin icon font: vendored (${_tenjin_font_size} bytes)")
+
+if(EXISTS "${TENJIN_ICON_CODEPOINTS_FILE}")
+    message(STATUS "Tenjin icon codepoints: present (verify-icons enabled)")
+else()
+    message(WARNING
+        "Icon .codepoints not found at ${TENJIN_ICON_CODEPOINTS_FILE}. "
+        "verify-icons cannot validate glyph names without it; commit the matching "
+        ".codepoints file alongside the font.")
 endif()
-
-# 3. Download, trying each mirror until one validates.
-file(MAKE_DIRECTORY "${TENJIN_ICON_FONT_DIR}")
-set(_ok FALSE)
-foreach(_url IN LISTS _TENJIN_FONT_URLS)
-    message(STATUS "Tenjin icon font: downloading from ${_url}")
-    file(DOWNLOAD "${_url}" "${TENJIN_ICON_FONT_FILE}"
-        STATUS _st TLS_VERIFY ON INACTIVITY_TIMEOUT 30)
-    list(GET _st 0 _code)
-    if(_code EQUAL 0)
-        _tenjin_font_is_valid(_ok "${TENJIN_ICON_FONT_FILE}")
-        if(_ok)
-            file(SIZE "${TENJIN_ICON_FONT_FILE}" _dlsz)
-            message(STATUS "Tenjin icon font: downloaded and validated (${_dlsz} bytes)")
-            break()
-        endif()
-    endif()
-    file(REMOVE "${TENJIN_ICON_FONT_FILE}")
-endforeach()
-
-if(NOT _ok)
-    if(TENJIN_REQUIRE_ICON_FONT)
-        message(FATAL_ERROR
-            "Icon font could not be obtained from any mirror.\n"
-            "  Vendor MaterialSymbolsOutlined.ttf into View/fonts/ manually,\n"
-            "  or configure with -DTENJIN_REQUIRE_ICON_FONT=OFF for a degraded build.")
-    endif()
-    message(WARNING "Icon font download failed; runtime banner will be shown.")
-    return()
-endif()
-
-_tenjin_fetch_codepoints()

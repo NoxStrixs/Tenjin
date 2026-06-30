@@ -98,7 +98,7 @@ Item {
                 spacing: Platform.spacingMd
 
                 Rectangle {
-                    visible: !Platform.useWideLayout
+                    visible: true
                     Layout.preferredWidth: Platform.touchTarget
                     Layout.preferredHeight: Platform.touchTarget
                     radius: Platform.radius

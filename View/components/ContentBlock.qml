@@ -85,8 +85,8 @@ Rectangle {
                                 : (editMode || held) ? Platform.accent
                                                        : Platform.border
     border.width: _isNewlyAdded ? 2 : 1
-    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
-    Behavior on border.width { NumberAnimation { duration: Platform.durationFast } }
+    Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
+    Behavior on border.width { NumberAnimation { duration: Platform.effDurationFast } }
 
     SequentialAnimation on scale {
         running: root._isNewlyAdded
@@ -146,7 +146,7 @@ Rectangle {
                 border.color: root.isNote && root.editMode && noteLabelEdit.activeFocus
                               ? Platform.accent : Platform.border
                 border.width: 1
-                Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
 
                 // Static label -- visible for every type EXCEPT notes
                 // (whose label is user-editable below). For notes in read
@@ -310,7 +310,7 @@ Rectangle {
                     border.color: Platform.border
                     border.width: 1
                     opacity: root.blockColSpan > 1 ? 1.0 : 0.4
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     Text {
                         anchors.centerIn: parent
                         text: TenjinIcons.close
@@ -351,7 +351,7 @@ Rectangle {
                     border.color: Platform.border
                     border.width: 1
                     opacity: root.blockColSpan < 12 ? 1.0 : 0.4
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     Text {
                         anchors.centerIn: parent
                         text: "+"

@@ -30,11 +30,15 @@ target_link_libraries(Tenjin
 
 target_include_directories(Tenjin PRIVATE src)
 
-# SQLite driver: on static Qt builds (iOS, Android) the plugin must be
-# explicitly imported via Q_IMPORT_PLUGIN in main.cpp AND linked here.
-# On macOS and Linux with shared Qt the driver loads dynamically at runtime —
-# linking the static plugin target would cause a duplicate-symbol linker error.
-if(IOS OR ANDROID OR QT_FEATURE_static)
+# Static plugin linkage. On a STATIC Qt (iOS always; Android/desktop only when
+# Qt was built static) the image-format, SQL-driver and QML-module plugins must
+# be linked into the executable. On a SHARED Qt they load dynamically and
+# linking the static plugin targets would be a duplicate-symbol error.
+#
+# QT6_IS_SHARED_LIBS_BUILD is exported by find_package(Qt6) and is the
+# authoritative, OS-independent discriminator — unlike "IOS OR ANDROID", which
+# wrongly fired on Android's shared Qt and broke the link.
+if(NOT QT6_IS_SHARED_LIBS_BUILD)
     target_link_libraries(Tenjin PRIVATE
         Qt6::QSQLiteDriverPlugin
         Qt6::QJpegPlugin
@@ -59,10 +63,20 @@ if(ANDROID)
     )
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    if(COMMAND qt_import_qml_plugins)
-        qt_import_qml_plugins(Tenjin)
-    endif()
+# Force-link the static QML-module plugins (QtQuick, QtQuick.Layouts,
+# QtQuick.Dialogs, QtQuick.Controls.Basic, TenjinView, …). qt_import_qml_plugins
+# runs qmlimportscanner at configure time, links every imported module's static
+# plugin recursively, and is a NO-OP on a shared Qt — so it is safe to call
+# unconditionally. Without it, a static build loads its QML, fails to resolve
+# QtQuick.Window etc. at runtime, and shows a black window before quitting.
+# Calling it makes a missing QML plugin a link-time error instead.
+if(COMMAND qt_import_qml_plugins)
+    qt_import_qml_plugins(Tenjin)
+endif()
+
+# Platform/iconengine/imageformat plugins are only needed (and only exist as
+# static targets) on a static Qt. Gate on static-ness, not OS.
+if(NOT QT6_IS_SHARED_LIBS_BUILD)
     qt_import_plugins(Tenjin
         INCLUDE_BY_TYPE platforms
         INCLUDE_BY_TYPE iconengines

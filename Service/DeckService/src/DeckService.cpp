@@ -26,6 +26,11 @@ Result_t<bool> DeckService::DeleteDeck(ID_t deckId)
     return m_db->DeleteDeck(deckId);
 }
 
+Result_t<bool> DeckService::SetNewCardsPerDay(ID_t deckId, int perDay)
+{
+    return m_db->SetDeckNewCardsPerDay(deckId, perDay);
+}
+
 Result_t<bool> DeckService::AddEntryToDeck(ID_t deckId, ID_t wordId)
 {
     return m_db->AddEntryToDeck(deckId, wordId);

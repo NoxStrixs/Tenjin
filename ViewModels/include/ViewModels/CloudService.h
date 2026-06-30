@@ -27,6 +27,13 @@ public:
     bool available() const { return !m_baseUrl.isEmpty(); }
     bool syncBusy()  const { return m_syncBusy; }
 
+    // Children's-privacy gate. Driven by AppViewModel from the age/consent
+    // state. When false, any call that would transmit data off-device is
+    // suppressed (fail-closed). This is the COPPA control point: an under-13
+    // user without verifiable parental consent performs no data collection.
+    void setDataCollectionAllowed(bool allowed);
+    bool dataCollectionAllowed() const { return m_dataCollectionAllowed; }
+
     // Fetch the news feed. Emits newsReceived or networkError.
     Q_INVOKABLE void fetchNews();
 
@@ -64,4 +71,6 @@ private:
     QString               m_baseUrl;
     QNetworkAccessManager m_nam;
     bool                  m_syncBusy = false;
+    // Fail-closed: no data collection until consent state explicitly allows it.
+    bool                  m_dataCollectionAllowed = false;
 };

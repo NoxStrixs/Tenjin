@@ -35,7 +35,7 @@ Flickable {
         policy: ScrollBar.AsNeeded
         contentItem: Rectangle {
             implicitWidth: 6
-            radius: Platform.radiusSmall
+            radius: 3
             color: Platform.border
             opacity: parent.pressed ? 0.9 : 0.5
         }
@@ -358,7 +358,7 @@ Flickable {
                                     id: grabPad
                                     width: 18
                                     height: 18
-                                    radius: Platform.radiusSmall
+                                    radius: 3
                                     anchors { right: parent.right; bottom: parent.bottom; margins: 2 }
                                     color: spanHandle.pressed ? Platform.accent : Platform.surfaceAlt
                                     border.color: Platform.accentDark
@@ -429,7 +429,7 @@ Flickable {
                 color: newRowDrop.containsDrag ? Platform.border : "transparent"
                 border.color: Platform.border
                 border.width: 1
-                radius: Platform.radiusSmall
+                radius: 4
 
                 Text {
                     anchors.centerIn: parent

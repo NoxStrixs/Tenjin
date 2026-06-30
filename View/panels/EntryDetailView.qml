@@ -124,7 +124,7 @@ Item {
                     color: Platform.bg
                     border.color: titleEdit.activeFocus ? Platform.accent : Platform.border
                     border.width: titleEdit.activeFocus ? 2 : 1
-                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                     TextField {
                         id: titleEdit
                         anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
@@ -465,7 +465,7 @@ Item {
                     color: Platform.surface
                     border.color: entryLangCombo.activeFocus ? Platform.accent : Platform.border
                     border.width: entryLangCombo.activeFocus ? 2 : 1
-                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                 }
                 contentItem: Text {
                     leftPadding: 12
@@ -589,7 +589,7 @@ Item {
                     color: Platform.bg
                     border.color: entryCustomLangInput.activeFocus ? Platform.accent : Platform.border
                     border.width: 1
-                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                     TextField {
                         id: entryCustomLangInput
                         anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
@@ -697,7 +697,7 @@ Item {
             visible: appVM.entryVM.selectedEntryId > 0
             color: relationsDragger.active || relHandleHover.hovered
                    ? Platform.surfaceAlt : "transparent"
-            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+            Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
             // Pill visual -- conventional drag-handle look.
             Rectangle {
@@ -711,8 +711,8 @@ Item {
                            ? Platform.accentDark
                            : Platform.textMuted
                 opacity: relationsDragger.active || relHandleHover.hovered ? 1.0 : 0.55
-                Behavior on color   { ColorAnimation { duration: Platform.durationFast } }
-                Behavior on opacity { NumberAnimation { duration: Platform.durationFast } }
+                Behavior on color   { ColorAnimation { duration: Platform.effDurationFast } }
+                Behavior on opacity { NumberAnimation { duration: Platform.effDurationFast } }
             }
 
             HoverHandler {
@@ -796,7 +796,7 @@ Item {
                     color: addRelArea.containsMouse ? Platform.accent : Platform.surfaceAlt
                     border.color: Platform.border
                     border.width: 1
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     Text {
                         id: addRelLbl
                         anchors.centerIn: parent
@@ -804,7 +804,7 @@ Item {
                         color: addRelArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
                         font.pixelSize: Platform.fontSmall
                         font.bold: true
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     }
                     MouseArea {
                         id: addRelArea
@@ -868,7 +868,7 @@ Item {
                                 color: relChipArea.containsMouse ? Platform.surfaceAlt : Platform.surface
                                 border.color: Platform.border
                                 border.width: 1
-                                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                                 // Outer click target -- declared FIRST so it
                                 // sits BENEATH the Row in stacking order. QML
@@ -909,7 +909,7 @@ Item {
                                         color: removeArea.containsMouse ? Platform.danger : Platform.textMuted
                                         font.pixelSize: Platform.fontSmall
                                         font.weight: Font.Normal
-                                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                                         MouseArea {
                                             id: removeArea
                                             anchors.fill: parent

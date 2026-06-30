@@ -23,6 +23,21 @@ class AppViewModel : public QObject
     Q_PROPERTY(
         QString statusMessage READ statusMessage WRITE setStatusMessage NOTIFY statusMessageChanged)
     Q_PROPERTY(int theme READ theme WRITE setTheme NOTIFY themeChanged)
+    Q_PROPERTY(bool reducedMotion READ reducedMotion WRITE setReducedMotion NOTIFY reducedMotionChanged)
+    // Read-only: whether the OS "reduce motion" accessibility setting is on.
+    // Probed once at construction via a per-platform backend (iOS/Android);
+    // false on platforms without the setting. The UI ORs this with the in-app
+    // toggle so either source disables animations.
+    Q_PROPERTY(bool systemReducedMotion READ systemReducedMotion CONSTANT)
+
+    // ── Children's-privacy / consent state (COPPA, GDPR-K) ──────────────────
+    // ageBand is set once by a neutral age screen; consentStatus tracks
+    // verifiable parental consent for under-13 users. dataCollectionAllowed is
+    // the single gate the network layer checks before any off-device call.
+    Q_PROPERTY(int ageBand READ ageBand NOTIFY consentChanged)
+    Q_PROPERTY(int consentStatus READ consentStatus NOTIFY consentChanged)
+    Q_PROPERTY(bool ageScreenRequired READ ageScreenRequired NOTIFY consentChanged)
+    Q_PROPERTY(bool dataCollectionAllowed READ dataCollectionAllowed NOTIFY consentChanged)
     Q_PROPERTY(bool welcomeAcknowledged READ welcomeAcknowledged WRITE setWelcomeAcknowledged NOTIFY
                    welcomeAcknowledgedChanged)
     Q_PROPERTY(QVariantList newsItems READ newsItems NOTIFY newsItemsChanged)
@@ -52,6 +67,25 @@ public:
     };
     Q_ENUM(Page_t)
 
+    // COPPA/GDPR-K age band, established by a neutral age screen on first run.
+    // "Unknown" until the user answers; gates all off-device network calls.
+    enum AgeBand_t {
+        AgeUnknown = 0,
+        AgeUnder13 = 1, // COPPA applies: parental consent required before any collection
+        Age13Plus  = 2, // general audience
+    };
+    Q_ENUM(AgeBand_t)
+
+    // Verifiable-parental-consent status for an under-13 user. Network calls
+    // that transmit data stay blocked unless this is Granted.
+    enum ConsentStatus_t {
+        ConsentNotRequired = 0, // 13+ user, or nothing to consent to
+        ConsentPending     = 1, // under-13, awaiting verifiable parental consent
+        ConsentGranted     = 2, // parent verified and consented
+        ConsentDenied      = 3, // parent declined; app runs fully local
+    };
+    Q_ENUM(ConsentStatus_t)
+
     explicit AppViewModel(QObject* parent = nullptr);
 
     int currentPage() const
@@ -66,6 +100,46 @@ public:
     {
         return m_theme;
     }
+    bool reducedMotion() const
+    {
+        return m_reducedMotion;
+    }
+    bool systemReducedMotion() const
+    {
+        return m_systemReducedMotion;
+    }
+
+    int  ageBand() const
+    {
+        return m_ageBand;
+    }
+    int  consentStatus() const
+    {
+        return m_consentStatus;
+    }
+    // True until the user has answered the neutral age screen at least once.
+    bool ageScreenRequired() const
+    {
+        return m_ageBand == AgeUnknown;
+    }
+    // The single authority the network layer consults. Off-device data
+    // collection is allowed only when the user is 13+, OR an under-13 user has
+    // recorded verifiable parental consent. Unknown age = blocked (fail closed).
+    bool dataCollectionAllowed() const
+    {
+        if (m_ageBand == Age13Plus)
+            return true;
+        if (m_ageBand == AgeUnder13)
+            return m_consentStatus == ConsentGranted;
+        return false; // AgeUnknown — fail closed until the age screen is answered
+    }
+
+    // Records the age band from the neutral age screen. For under-13 this moves
+    // consent into Pending; for 13+ no consent is required.
+    Q_INVOKABLE void setAgeBand(int band);
+    // Records the outcome of the (verifiable) parental-consent flow for an
+    // under-13 user. `grantedBy` is a short audit note (method used).
+    Q_INVOKABLE void recordParentalConsent(bool granted, const QString& grantedBy = QString());
     bool welcomeAcknowledged() const
     {
         return m_welcomeAcknowledged;
@@ -124,6 +198,7 @@ public slots:
     void setCurrentPage(int page);
     void setStatusMessage(const QString& msg);
     void setTheme(int theme);
+    void setReducedMotion(bool on);
     void setWelcomeAcknowledged(bool acknowledged);
     void setHighlightedTagId(int tagId);
 
@@ -214,6 +289,9 @@ public:
 
     Q_PROPERTY(QString documentsFolder READ documentsFolder CONSTANT)
     QString documentsFolder() const;
+    // Writes a timestamped JSON backup of all data before a destructive bulk
+    // delete (recoverable via import). Best effort; never blocks the delete.
+    void autoBackupBeforeDestructive(const QString& reason);
 
     // -- UI language (separate from content-language filter) ----------
     //
@@ -254,6 +332,8 @@ signals:
     void availableLanguagesChanged();
     void uiLanguageChanged();
     void themeChanged();
+    void reducedMotionChanged();
+    void consentChanged();
     void welcomeAcknowledgedChanged();
     void newsDismissedChanged();
     void newsItemsChanged();
@@ -265,6 +345,10 @@ private:
     int           m_currentPage = PageWords;
     QString       m_statusMessage;
     int           m_theme               = 0;
+    bool          m_reducedMotion       = false;
+    bool          m_systemReducedMotion = false;
+    int           m_ageBand             = AgeUnknown;
+    int           m_consentStatus       = ConsentNotRequired;
     bool          m_welcomeAcknowledged = false;
     QSet<QString> m_newsDismissedIds;
     QVariantList  m_newsItems;

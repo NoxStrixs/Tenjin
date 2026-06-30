@@ -120,6 +120,8 @@ ApplicationWindow {
             Platform.safeAreaRight  = SafeArea.margins.right
         }
         Platform.theme = appVM.theme
+        Platform.reducedMotionUser = appVM.reducedMotion
+        Platform.reducedMotionSystem = appVM.systemReducedMotion
         // Belt and suspenders for mobile fullscreen: after Qt's iOS bootstrap
         // has reported a real screen size, resize the QML window to match
         // it. The Info_plist.in fix should be sufficient on its own, but
@@ -131,7 +133,14 @@ ApplicationWindow {
                 height = s.size.height
             }
         }
-        if (!appVM.welcomeAcknowledged) {
+        // Children's-privacy age screen must come first and block everything
+        // until answered. Only after an age band is set do we run the normal
+        // onboarding (welcome carousel, what's-new, news popups).
+        if (appVM.ageScreenRequired) {
+            ageGate.thisYear = new Date().getFullYear()
+            ageGate.birthYear = ageGate.thisYear - 20
+            ageGate.open()
+        } else if (!appVM.welcomeAcknowledged) {
             welcomePopup.open()
         } else if (appVM.consumeJustUpdated()) {
             whatsNewSheet.open()
@@ -142,6 +151,7 @@ ApplicationWindow {
     Connections {
         target: appVM
         function onThemeChanged() { Platform.theme = appVM.theme }
+        function onReducedMotionChanged() { Platform.reducedMotionUser = appVM.reducedMotion }
     }
 
     // ── Header ─────────────────────────────────────────────────────────────
@@ -166,7 +176,7 @@ ApplicationWindow {
                 Layout.preferredHeight: Math.round(Platform.touchTarget * 0.8)
                 radius: Platform.radius
                 color: sidebarToggleArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 Text {
                     anchors.centerIn: parent
                     text: appVM.sidebarVM.collapsed ? TenjinIcons.chevronRight : TenjinIcons.chevronLeft
@@ -253,6 +263,12 @@ ApplicationWindow {
                 onActivated: appVM.currentPage = root._pageStats
             }
             IconBtn {
+                id: langBtn
+                glyph: TenjinIcons.globe
+                accessibleName: qsTr("Change language")
+                onActivated: languageMenu.open()
+            }
+            IconBtn {
                 id: themeBtn
                 glyph: Platform.isDark ? TenjinIcons.lightMode : TenjinIcons.darkMode
                 accessibleName: Platform.isDark ? qsTr("Switch to light mode") : qsTr("Switch to dark mode")
@@ -279,7 +295,7 @@ ApplicationWindow {
                 Layout.preferredHeight: Platform.touchTarget
                 radius: Platform.radius
                 color: hamburgerArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 Text {
                     anchors.centerIn: parent
                     text: TenjinIcons.menu
@@ -313,9 +329,9 @@ ApplicationWindow {
                 Layout.preferredHeight: Platform.touchTarget
                 radius: Platform.radius
                 color: mAddArea.containsMouse ? Platform.accentDark : Platform.accent
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 scale: mAddArea.pressed ? 0.97 : 1.0
-                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                 Text {
                     id: mAddLabel
                     anchors.centerIn: parent
@@ -367,12 +383,173 @@ ApplicationWindow {
         }
         enter: Transition {
             ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Platform.durationFast }
-                NumberAnimation { property: "scale";   from: 0.96; to: 1; duration: Platform.durationFast; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Platform.effDurationFast }
+                NumberAnimation { property: "scale";   from: 0.96; to: 1; duration: Platform.effDurationFast; easing.type: Easing.OutCubic }
             }
         }
         exit: Transition {
-            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.durationFast }
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.effDurationFast }
+        }
+    }
+
+    // ── Quick language menu (header globe button) ───────────────────────────
+    Popup {
+        id: languageMenu
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        padding: 0
+        width: Platform.isMobile ? Math.min(root.width - 32, 360) : 360
+        height: Math.min(root.height - Platform.safeAreaTop - Platform.safeAreaBottom - 80, 520)
+        x: parent ? (parent.width - width) / 2 : 0
+        y: parent ? Math.max(Platform.safeAreaTop + 8, (parent.height - height) / 2) : 0
+        background: Rectangle { color: Platform.surface; radius: Platform.radiusLarge; border.color: Platform.border; border.width: 1 }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Platform.spacingLg
+            spacing: Platform.spacingMd
+
+            Text {
+                text: qsTr("Interface language")
+                color: Platform.textPrimary
+                font.pixelSize: Platform.fontLarge
+                font.bold: true
+            }
+
+            ListView {
+                id: langList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                model: appVM.builtinLanguages
+                spacing: 2
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                delegate: Rectangle {
+                    required property var modelData
+                    width: langList.width
+                    height: Platform.touchTarget
+                    radius: Platform.radius
+                    readonly property bool isCurrent: appVM.uiLanguage === modelData.code
+                    color: langDelegateArea.containsMouse ? Platform.surfaceAlt
+                           : (isCurrent ? Platform.surfaceAlt : "transparent")
+
+                    RowLayout {
+                        anchors { fill: parent; leftMargin: Platform.spacingMd; rightMargin: Platform.spacingMd }
+                        spacing: Platform.spacingMd
+
+                        LanguageFlagRow {
+                            codes: LanguageFlags.flags(modelData.code)
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelData.name
+                            color: Platform.textPrimary
+                            font.pixelSize: Platform.fontBase
+                            font.bold: parent.parent.isCurrent
+                        }
+                        Text {
+                            visible: parent.parent.isCurrent
+                            text: TenjinIcons.check
+                            font.family: TenjinIcons.family
+                            color: Platform.accent
+                            font.pixelSize: Platform.fontLarge
+                        }
+                    }
+                    MouseArea {
+                        id: langDelegateArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            appVM.setUiLanguage(modelData.code)
+                            languageMenu.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Children's-privacy age gate (shown first on first launch) ────────────
+    AgeGateDialog {
+        id: ageGate
+        onAnswered: function(band) {
+            // After the age band is recorded, continue the normal onboarding.
+            // An under-13 answer (band === 1) routes into the parental-consent
+            // flow; until consent is granted, off-device features stay disabled.
+            if (band === 1) {
+                parentalConsentNotice.open()
+            } else if (!appVM.welcomeAcknowledged) {
+                welcomePopup.open()
+            } else {
+                root._showNextNewsPopup()
+            }
+        }
+    }
+
+    // Parental-consent notice for under-13 users. This is the in-app entry point
+    // to the (verifiable) parental-consent flow. The actual verification (the
+    // COPPA VPC step) is performed by the backend / a consent vendor; this notice
+    // explains the situation and lets a parent begin. Until consent is granted,
+    // the app runs fully local (no off-device data collection).
+    Popup {
+        id: parentalConsentNotice
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        closePolicy: Popup.NoAutoClose
+        padding: 0
+        width:  Platform.isMobile ? Math.min(root.width - 16, 480) : 480
+        height: pcCol.implicitHeight + Platform.spacingXl * 2
+        x: parent ? Math.max(8, (parent.width - width) / 2) : 8
+        y: parent ? Math.max(Platform.safeAreaTop + 8, (parent.height - height) / 2) : 8
+        background: Rectangle { color: Platform.surface; radius: Platform.radiusLarge; border.color: Platform.border; border.width: 1 }
+
+        ColumnLayout {
+            id: pcCol
+            width: parent.width
+            anchors.centerIn: parent
+            spacing: Platform.spacingLg
+
+            Text {
+                Layout.fillWidth: true
+                Layout.margins: Platform.spacingXl
+                Layout.bottomMargin: 0
+                text: qsTr("A parent's help is needed")
+                color: Platform.textPrimary
+                font.pixelSize: Platform.fontTitle
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+            }
+            Text {
+                Layout.fillWidth: true
+                Layout.leftMargin: Platform.spacingXl
+                Layout.rightMargin: Platform.spacingXl
+                text: qsTr("Because this account is for someone under 13, a parent or guardian needs to give permission before any data can sync or leave the device. Until then, Tenjin works fully on this device — all your words, decks, and reviews are saved here.")
+                color: Platform.textMuted
+                font.pixelSize: Platform.fontBase
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+            }
+            Button {
+                id: pcContinue
+                Layout.fillWidth: true
+                Layout.margins: Platform.spacingXl
+                Layout.topMargin: 0
+                implicitHeight: Platform.touchTarget + 8
+                text: qsTr("Continue on this device")
+                onClicked: {
+                    parentalConsentNotice.close()
+                    if (!appVM.welcomeAcknowledged)
+                        welcomePopup.open()
+                    else
+                        root._showNextNewsPopup()
+                }
+                background: Rectangle { radius: Platform.radius; color: Platform.accent }
+                contentItem: Text { text: pcContinue.text; color: Platform.textOnDark; font.pixelSize: Platform.fontBase; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
         }
     }
 
@@ -476,8 +653,8 @@ ApplicationWindow {
                         height: 8
                         radius: 4
                         color: index === welcomePopup.step ? Platform.accent : Platform.border
-                        Behavior on width { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
-                        Behavior on color { ColorAnimation  { duration: Platform.durationFast } }
+                        Behavior on width { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
+                        Behavior on color { ColorAnimation  { duration: Platform.effDurationFast } }
                     }
                 }
             }
@@ -492,7 +669,7 @@ ApplicationWindow {
                     Layout.preferredWidth: skipLabel.implicitWidth + 24
                     radius: Platform.radius
                     color: skipArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     visible: welcomePopup.step < welcomePopup.stepCount - 1
                     Text { id: skipLabel; anchors.centerIn: parent; text: qsTr("Skip"); color: Platform.textMuted; font.pixelSize: Platform.fontBase }
                     MouseArea { id: skipArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: welcomePopup.finish() }
@@ -504,7 +681,7 @@ ApplicationWindow {
                     radius: Platform.radius
                     color: backArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     border.color: Platform.border; border.width: Platform.borderWidth
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     visible: welcomePopup.step > 0
                     Text { id: backLabel; anchors.centerIn: parent; text: qsTr("Back"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
                     MouseArea { id: backArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (welcomePopup.step > 0) welcomePopup.step-- }
@@ -514,9 +691,9 @@ ApplicationWindow {
                     Layout.preferredWidth: nextLabel.implicitWidth + 32
                     radius: Platform.radius
                     color: nextArea.containsMouse ? Platform.accentDark : Platform.accent
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     scale: nextArea.pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                    Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                     Text { id: nextLabel; anchors.centerIn: parent; text: welcomePopup.step < welcomePopup.stepCount - 1 ? "Next" : "Got it"; color: Platform.bg; font.pixelSize: Platform.fontBase; font.bold: true }
                     MouseArea {
                         id: nextArea
@@ -535,14 +712,14 @@ ApplicationWindow {
         }
         enter: Transition {
             ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.durationMed }
-                NumberAnimation { property: "scale";   from: 0.94; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.effDurationMed }
+                NumberAnimation { property: "scale";   from: 0.94; to: 1; duration: Platform.effDurationMed; easing.type: Easing.OutCubic }
             }
         }
         exit: Transition {
             ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 1; to: 0;    duration: Platform.durationFast }
-                NumberAnimation { property: "scale";   from: 1; to: 0.96; duration: Platform.durationFast }
+                NumberAnimation { property: "opacity"; from: 1; to: 0;    duration: Platform.effDurationFast }
+                NumberAnimation { property: "scale";   from: 1; to: 0.96; duration: Platform.effDurationFast }
             }
         }
     }
@@ -625,7 +802,7 @@ ApplicationWindow {
                     Layout.preferredWidth: seeAllLabel.implicitWidth + 24
                     radius: Platform.radius
                     color: seeAllArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     Text { id: seeAllLabel; anchors.centerIn: parent; text: qsTr("See all news"); color: Platform.textMuted; font.pixelSize: Platform.fontBase }
                     MouseArea {
                         id: seeAllArea
@@ -641,9 +818,9 @@ ApplicationWindow {
                     Layout.preferredWidth: gotItLabel.implicitWidth + 32
                     radius: Platform.radius
                     color: gotItArea.containsMouse ? Platform.accentDark : Platform.accent
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     scale: gotItArea.pressed ? 0.97 : 1.0
-                    Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                    Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                     Text { id: gotItLabel; anchors.centerIn: parent; text: qsTr("Got it"); color: Platform.bg; font.pixelSize: Platform.fontBase; font.bold: true }
                     MouseArea {
                         id: gotItArea
@@ -657,14 +834,14 @@ ApplicationWindow {
         }
         enter: Transition {
             ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.durationMed }
-                NumberAnimation { property: "scale";   from: 0.94; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.effDurationMed }
+                NumberAnimation { property: "scale";   from: 0.94; to: 1; duration: Platform.effDurationMed; easing.type: Easing.OutCubic }
             }
         }
         exit: Transition {
             ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 1; to: 0;    duration: Platform.durationFast }
-                NumberAnimation { property: "scale";   from: 1; to: 0.96; duration: Platform.durationFast }
+                NumberAnimation { property: "opacity"; from: 1; to: 0;    duration: Platform.effDurationFast }
+                NumberAnimation { property: "scale";   from: 1; to: 0.96; duration: Platform.effDurationFast }
             }
         }
     }
@@ -688,23 +865,61 @@ ApplicationWindow {
             color: Platform.border
         }
 
-        StackLayout {
+        // Page area with a directional slide + fade on page change. The whole
+        // StackLayout is offset/faded so individual pages need no changes. The
+        // animation fires only on currentPage change (no idle cost) and is
+        // disabled under Platform.reducedMotion (offset/duration collapse to 0).
+        Item {
+            id: pageArea
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: appVM.currentPage
-            EntryPage    {}
-            DeckListPage {}
-            TagsPage     {
-                onAddTagRequested: addTagDialog.open()
-                onBackRequested:   appVM.currentPage = root._pageWords
+            clip: true
+
+            property int _prevPage: appVM.currentPage
+
+            Connections {
+                target: appVM
+                function onCurrentPageChanged() {
+                    var dir = appVM.currentPage >= pageArea._prevPage ? 1 : -1
+                    pageArea._prevPage = appVM.currentPage
+                    if (Platform.reducedMotion) {
+                        pageStack.x = 0; pageStack.opacity = 1
+                        return
+                    }
+                    pageStack.opacity = 0
+                    pageStack.x = dir * Platform.pageSlideDistance
+                    pageSlide.restart()
+                    pageFade.restart()
+                }
             }
-            HelpPage     { onBackRequested: appVM.currentPage = root._pageWords }
-            NewsPage     { onBackRequested: appVM.currentPage = root._pageWords }
-            SettingsPage {
-                applicationRoot: root
-                onBackRequested: appVM.currentPage = root._pageWords
+
+            NumberAnimation {
+                id: pageSlide; target: pageStack; property: "x"; to: 0
+                duration: Platform.effDurationMed; easing.type: Easing.OutCubic
             }
-            StatsPage    { onBackRequested: appVM.currentPage = root._pageWords }
+            NumberAnimation {
+                id: pageFade; target: pageStack; property: "opacity"; to: 1
+                duration: Platform.effDurationMed; easing.type: Easing.OutCubic
+            }
+
+            StackLayout {
+                id: pageStack
+                anchors.fill: parent
+                currentIndex: appVM.currentPage
+                EntryPage    {}
+                DeckListPage {}
+                TagsPage     {
+                    onAddTagRequested: addTagDialog.open()
+                    onBackRequested:   appVM.currentPage = root._pageWords
+                }
+                HelpPage     { onBackRequested: appVM.currentPage = root._pageWords }
+                NewsPage     { onBackRequested: appVM.currentPage = root._pageWords }
+                SettingsPage {
+                    applicationRoot: root
+                    onBackRequested: appVM.currentPage = root._pageWords
+                }
+                StatsPage    { onBackRequested: appVM.currentPage = root._pageWords }
+            }
         }
     }
 
@@ -777,6 +992,7 @@ ApplicationWindow {
     // Error toast
     Connections { target: appVM.entryVM; function onErrorOccurred(msg) { toast.show(msg) } }
     Connections { target: appVM.deckVM;  function onErrorOccurred(msg) { toast.show(msg) } }
+    Connections { target: appVM.reviewVM; function onErrorOccurred(msg) { toast.show(msg) } }
     Connections {
         target: notifService
         function onToastRequested(message, level) { toast.show(message) }
@@ -849,7 +1065,7 @@ ApplicationWindow {
                         radius: Platform.radius
                         color: debugDrawer.tab === index ? Platform.accent : Platform.bg
                         border.color: Platform.border; border.width: 1
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         Text { id: dbgTabText; anchors.centerIn: parent; text: modelData; color: debugDrawer.tab === index ? Platform.bg : Platform.textPrimary; font.pixelSize: 12; font.bold: true }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: debugDrawer.tab = index }
                     }
@@ -857,7 +1073,7 @@ ApplicationWindow {
                 Rectangle {
                     implicitWidth: 26; implicitHeight: 26; radius: Platform.radius
                     color: dbgCloseArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     Text { anchors.centerIn: parent; text: TenjinIcons.close; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
                     MouseArea { id: dbgCloseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: debugDrawer.visible = false }
                 }
@@ -909,7 +1125,7 @@ ApplicationWindow {
                         implicitWidth: clearText.implicitWidth + 16; implicitHeight: 24; radius: Platform.radius
                         color: clearArea.containsMouse ? Platform.surfaceAlt : Platform.bg
                         border.color: Platform.border; border.width: 1
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         Text { id: clearText; anchors.centerIn: parent; text: qsTr("Clear"); color: Platform.textPrimary; font.pixelSize: Platform.fontSmall }
                         MouseArea { id: clearArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: logModel.clear() }
                     }
@@ -953,7 +1169,7 @@ ApplicationWindow {
                     implicitHeight: 30
                     radius: Platform.radius
                     color: runArea.containsMouse ? Platform.accentDark : Platform.accent
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     Text { anchors.centerIn: parent; text: qsTr("Run"); color: Platform.bg; font.pixelSize: 12; font.bold: true }
                     MouseArea {
                         id: runArea

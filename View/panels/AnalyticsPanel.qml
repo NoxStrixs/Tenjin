@@ -121,11 +121,21 @@ Item {
         contentWidth: availableWidth
         clip: true
         // When embedded, the panel is sized to its content and the OUTER page
-        // scrolls, so hide this scrollbar and stop the inner flickable from
-        // stealing drags. ScrollView has no `interactive` property — that lives
-        // on the internal Flickable, reached via contentItem.
+        // scrolls. We hide the scrollbar AND fully neutralise the inner
+        // Flickable so it neither drags nor consumes wheel events — otherwise
+        // the mouse wheel "dies" over the lower (analytics) half of the stats
+        // page because the inner view swallows the scroll. Setting interactive
+        // false stops drags; setting the flick deceleration/maximum velocity to
+        // zero and bounds to stop makes wheel a no-op so it bubbles to the page.
         ScrollBar.vertical.policy: root.embedded ? ScrollBar.AlwaysOff : ScrollBar.AsNeeded
-        Component.onCompleted: if (root.embedded && contentItem) contentItem.interactive = false
+        Component.onCompleted: {
+            if (root.embedded && contentItem) {
+                contentItem.interactive = false
+                contentItem.boundsBehavior = Flickable.StopAtBounds
+                contentItem.maximumFlickVelocity = 0
+                contentItem.flickDeceleration = 0
+            }
+        }
 
         ColumnLayout {
             id: _content
@@ -174,12 +184,12 @@ Item {
                         border.color: cardHover.hovered ? Platform.accent : Platform.border
                         border.width: 1
 
-                        Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
-                        Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color        { ColorAnimation { duration: Platform.effDurationFast } }
+                        Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
 
                         transform: Translate {
                             y: cardHover.hovered ? -2 : 0
-                            Behavior on y { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                            Behavior on y { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                         }
                         HoverHandler { id: cardHover }
 
@@ -388,7 +398,7 @@ Item {
                                 readonly property real _ratio: heatmap.windowMax > 0 ? _count / heatmap.windowMax : 0
                                 implicitWidth: 14
                                 implicitHeight: 14
-                                radius: Platform.radiusSmall
+                                radius: 2
                                 color: _count === 0
                                     ? Platform.surfaceAlt
                                     : Qt.rgba(
@@ -398,7 +408,7 @@ Item {
                                         1
                                     )
                                 opacity: 0.2 + 0.8 * root._chartProgress
-                                Behavior on opacity { NumberAnimation { duration: Platform.durationFast } }
+                                Behavior on opacity { NumberAnimation { duration: Platform.effDurationFast } }
 
                                 ToolTip.visible: cellHover.hovered
                                 ToolTip.text: modelData.key + "  •  " + _count + (_count === 1 ? qsTr(" review") : qsTr(" reviews"))

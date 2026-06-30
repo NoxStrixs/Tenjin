@@ -112,7 +112,7 @@ Item {
                 color: tagsBackArea.containsMouse ? Platform.surfaceAlt : "transparent"
                 border.color: Platform.border
                 border.width: 1
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 Text {
                     anchors.centerIn: parent
                     text: TenjinIcons.chevronLeft
@@ -142,9 +142,9 @@ Item {
                 Layout.preferredWidth: addTagLabel.implicitWidth + 28
                 radius: Platform.radius
                 color: addTagArea.containsMouse ? Platform.accentDark : Platform.accent
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 scale: addTagArea.pressed ? 0.97 : 1.0
-                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                 Text { id: addTagLabel; anchors.centerIn: parent; text: qsTr("+ Tag"); color: Platform.bg; font.pixelSize: Platform.fontBase; font.bold: true }
                 MouseArea {
                     id: addTagArea
@@ -164,7 +164,7 @@ Item {
             radius: Platform.radius
             border.color: filterInput.activeFocus ? Platform.accent : Platform.border
             border.width: 1
-            Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+            Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
             RowLayout {
                 anchors { fill: parent; leftMargin: 10; rightMargin: 6 }
                 spacing: 6
@@ -186,7 +186,7 @@ Item {
                     font.family: TenjinIcons.family
                     color: clearArea.containsMouse ? Platform.textPrimary : Platform.textMuted
                     font.pixelSize: Platform.fontBase
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     MouseArea {
                         id: clearArea
                         anchors.fill: parent
@@ -231,14 +231,14 @@ Item {
                                                  : Platform.border
                 border.width: _pulsing ? 2 : 1
 
-                Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
-                Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
-                Behavior on border.width { NumberAnimation { duration: Platform.durationFast } }
+                Behavior on color        { ColorAnimation { duration: Platform.effDurationFast } }
+                Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
+                Behavior on border.width { NumberAnimation { duration: Platform.effDurationFast } }
 
                 // Subtle hover lift on desktop.
                 transform: Translate {
                     y: rowHover.hovered ? -1 : 0
-                    Behavior on y { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                    Behavior on y { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                 }
                 HoverHandler { id: rowHover }
 
@@ -292,7 +292,7 @@ Item {
                         color: viewArea.containsMouse ? Platform.surfaceAlt : "transparent"
                         border.color: Platform.border
                         border.width: 1
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         Text { id: viewLabel; anchors.centerIn: parent; text: qsTr("View"); color: Platform.accentDark; font.pixelSize: Platform.fontBase - 1; font.bold: true }
                         MouseArea {
                             id: viewArea
@@ -315,7 +315,7 @@ Item {
                         color: renameArea.containsMouse ? Platform.surfaceAlt : "transparent"
                         border.color: Platform.border
                         border.width: 1
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         Text { id: renameLabel; anchors.centerIn: parent; text: qsTr("Rename"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase - 1 }
                         MouseArea {
                             id: renameArea
@@ -335,13 +335,13 @@ Item {
                         color: delArea.containsMouse ? Platform.danger : "transparent"
                         border.color: Platform.danger
                         border.width: 1
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         Text {
                             id: delLabel
                             anchors.centerIn: parent
                             text: qsTr("Delete")
                             color: delArea.containsMouse ? Platform.textOnDark : Platform.danger
-                            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                            Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                             font.pixelSize: Platform.fontBase - 1
                             font.bold: true
                         }

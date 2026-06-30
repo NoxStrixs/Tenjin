@@ -266,19 +266,19 @@ Item {
                                 : wd.hovered  ? Platform.accent
                                                  : Platform.border
                     border.width: wd._selected ? 2 : 1
-                    Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
-                    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
-                    Behavior on border.width { NumberAnimation { duration: Platform.durationFast } }
+                    Behavior on color        { ColorAnimation { duration: Platform.effDurationFast } }
+                    Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
+                    Behavior on border.width { NumberAnimation { duration: Platform.effDurationFast } }
                 }
 
                 // Subtle hover lift on desktop.
                 transform: Translate {
                     y: wd.hovered ? -1 : 0
-                    Behavior on y { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                    Behavior on y { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                 }
 
                 scale: wd.pressed ? 0.99 : 1.0
-                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
 
                 contentItem: RowLayout {
                     spacing: 10
@@ -290,11 +290,11 @@ Item {
                         Layout.leftMargin: 8
                         implicitWidth: 28
                         implicitHeight: 22
-                        radius: height / 2
+                        radius: 11
                         color: wd._selected ? Platform.accent : Platform.surfaceAlt
                         border.color: Platform.border
                         border.width: 1
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         Text {
                             anchors.centerIn: parent
                             text: (wd.index + 1) + ""
@@ -324,7 +324,7 @@ Item {
                         font.pixelSize: Platform.fontTitle
                         rightPadding: 4
                         opacity: wd.hovered ? 1.0 : 0.45
-                        Behavior on opacity { NumberAnimation { duration: Platform.durationFast } }
+                        Behavior on opacity { NumberAnimation { duration: Platform.effDurationFast } }
                     }
 
                     // Remove control — manual decks only. Compact circular
@@ -336,12 +336,12 @@ Item {
                         visible: !appVM.deckVM.selectedDeckIsSmart
                         implicitWidth: 30
                         implicitHeight: 30
-                        radius: height / 2
+                        radius: 15
                         color: rmArea.containsMouse ? Platform.danger : "transparent"
                         border.color: rmArea.containsMouse ? Platform.danger : Platform.border
                         border.width: 1
-                        Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
-                        Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color        { ColorAnimation { duration: Platform.effDurationFast } }
+                        Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                         Text {
                             anchors.centerIn: parent
                             text: TenjinIcons.close
@@ -349,7 +349,7 @@ Item {
                             color: rmArea.containsMouse ? Platform.textOnDark : Platform.textMuted
                             font.pixelSize: Platform.fontBase
                             font.weight: Font.Normal
-                            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                            Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         }
                         MouseArea {
                             id: rmArea
@@ -376,7 +376,7 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: appVM.deckVM.selectedDeckIsSmart ? TenjinIcons.autoAwesome : TenjinIcons.words
                     font.family: TenjinIcons.family
-                    font.pixelSize: Platform.iconSizeHero
+                    font.pixelSize: 52
                     color: Platform.textMuted
                 }
                 Text {

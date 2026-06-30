@@ -121,7 +121,7 @@ Item {
                     color: helpBackArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     border.color: Platform.border
                     border.width: 1
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                     Accessible.role: Accessible.Button
                     Accessible.name: qsTr("Back")

@@ -134,6 +134,11 @@ Result_t<std::vector<Entry_t>> EntryService::GetEntriesForTag(ID_t tagId) const
     return m_db->GetEntriesForTag(tagId);
 }
 
+Result_t<std::vector<Entry_t>> EntryService::GetUntaggedEntries() const
+{
+    return m_db->GetUntaggedEntries();
+}
+
 Result_t<EntryRelation_t>
 EntryService::AddRelation(ID_t wordId, ID_t relatedId, const std::string& type)
 {

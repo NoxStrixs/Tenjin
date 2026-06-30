@@ -32,12 +32,12 @@ Rectangle {
     border.color: active ? Platform.accent : Platform.border
     border.width: Platform.borderWidth
 
-    Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
-    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+    Behavior on color        { ColorAnimation { duration: Platform.effDurationFast } }
+    Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
 
     // Subtle press feedback for tappable chips. No-op when non-interactive.
     scale: chip.interactive && bodyArea.pressed ? 0.96 : 1.0
-    Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+    Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
 
     // bodyArea is declared FIRST so it sits behind the row's children.
     MouseArea {
@@ -60,7 +60,7 @@ Rectangle {
                                : (chip._hovered ? Platform.textPrimary : Platform.accentDark)
             font.pixelSize: chip._fontPx
             font.bold: chip.active
-            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+            Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
         }
 
         // ✕ button — only when removable/editable.

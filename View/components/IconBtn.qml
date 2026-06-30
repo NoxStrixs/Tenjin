@@ -26,12 +26,12 @@ Rectangle {
     border.color: active ? Platform.accent : "transparent"
     border.width: 1
 
-    Behavior on color        { ColorAnimation { duration: Platform.durationFast } }
-    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+    Behavior on color        { ColorAnimation { duration: Platform.effDurationFast } }
+    Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
 
     // Slight press feedback. Falls back to 1.0 when not pressed.
     scale: ibArea.pressed ? 0.94 : 1.0
-    Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+    Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
 
     Text {
         anchors.centerIn: parent
@@ -39,7 +39,7 @@ Rectangle {
         font.family: TenjinIcons.family
         color: ib.active ? Platform.accent : Platform.textMuted
         font.pixelSize: Platform.fontLarge
-        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
     }
     MouseArea {
         id: ibArea

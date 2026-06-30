@@ -73,6 +73,7 @@ public:
     Result_t<bool>                 RemoveTagFromEntry(ID_t wordId, ID_t tagId);
     Result_t<std::vector<Tag_t>>   GetTagsForEntry(ID_t wordId) const;
     Result_t<std::vector<Entry_t>> GetEntriesForTag(ID_t tagId) const;
+    Result_t<std::vector<Entry_t>> GetUntaggedEntries() const;
 
     // Relations
     Result_t<EntryRelation_t> AddRelation(ID_t wordId, ID_t relatedId, const std::string& type);

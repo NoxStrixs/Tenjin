@@ -26,6 +26,11 @@ void CloudService::setSyncBusy(bool v)
     emit syncBusyChanged();
 }
 
+void CloudService::setDataCollectionAllowed(bool allowed)
+{
+    m_dataCollectionAllowed = allowed;
+}
+
 void CloudService::fetchNews()
 {
     if (!available()) return;
@@ -57,6 +62,13 @@ void CloudService::fetchNews()
 void CloudService::postReport(const QVariantMap& details, const QStringList& logSnapshot)
 {
     if (!available()) return;
+    // COPPA gate: a report transmits device info + logs (collection). Suppress
+    // it entirely without consent.
+    if (!m_dataCollectionAllowed) {
+        emit networkError(QStringLiteral(
+            "Reporting is disabled until age and consent are confirmed."));
+        return;
+    }
 
     QNetworkRequest req(QUrl(m_baseUrl + QStringLiteral("/api/v1/report")));
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
@@ -75,6 +87,11 @@ void CloudService::postReport(const QVariantMap& details, const QStringList& log
 
 void CloudService::syncDecks(const QString& /*authToken*/)
 {
+    if (!m_dataCollectionAllowed) {
+        emit syncResult(QStringLiteral("blocked"),
+                        QStringLiteral("Sync is disabled until age and consent are confirmed."));
+        return;
+    }
     emit syncResult(QStringLiteral("coming_soon"),
                     QStringLiteral("Deck sync is not yet available. Stay tuned for updates."));
 }

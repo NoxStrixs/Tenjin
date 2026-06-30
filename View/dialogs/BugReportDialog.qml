@@ -82,7 +82,7 @@ ThemedDialog {
             color: Platform.bg
             border.color: descInput.activeFocus ? Platform.accent : Platform.border
             border.width: 1
-            Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+            Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
 
             ScrollView {
                 anchors.fill: parent

@@ -97,6 +97,11 @@ qt_add_qml_module(TenjinView
         components/ActionButton.qml
         components/StyledComboBox.qml
         components/LanguageFlagRow.qml
+        components/LoadingState.qml
+        components/ErrorState.qml
+        components/PressScale.qml
+        components/ToggleSwitch.qml
+        components/AgeGateDialog.qml
         components/ChartCard.qml
         components/ContentBlock.qml
         components/EmptyState.qml

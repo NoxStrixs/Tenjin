@@ -18,13 +18,13 @@ Rectangle {
     border.color: cardHover.hovered ? Platform.accent : Platform.border
     border.width: 1
 
-    Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+    Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
 
     // Subtle hover lift on desktop. No-op on mobile (HoverHandler.hovered
     // stays false without a pointing device).
     transform: Translate {
         y: cardHover.hovered ? -1 : 0
-        Behavior on y { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+        Behavior on y { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
     }
     HoverHandler { id: cardHover }
 
@@ -92,7 +92,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             opacity: card.emptyText.length > 0 ? 0.6 : 1.0
-            Behavior on opacity { NumberAnimation { duration: Platform.durationMed } }
+            Behavior on opacity { NumberAnimation { duration: Platform.effDurationMed } }
 
             Text {
                 anchors.centerIn: parent

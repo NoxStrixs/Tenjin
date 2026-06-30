@@ -13,7 +13,7 @@ bool EntryViewModel::addContentBlock(int type, const QString& content)
 
     Service::ContentBlock_t block{.id      = 0,
                                   .wordId  = m_selectedWordId,
-                                  .type    = static_cast<Service::ContentType_t>(type),
+                                  .type    = Service::ValidContentType(type),
                                   .content = content.toStdString(),
                                   .row     = 0, // set by append/DB
                                   .col     = 0,
@@ -50,7 +50,7 @@ bool EntryViewModel::updateContentBlock(
 {
     Service::ContentBlock_t block{.id      = id,
                                   .wordId  = m_selectedWordId,
-                                  .type    = static_cast<Service::ContentType_t>(type),
+                                  .type    = Service::ValidContentType(type),
                                   .content = content.toStdString(),
                                   .row     = row,
                                   .col     = col,

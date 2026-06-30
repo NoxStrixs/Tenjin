@@ -24,6 +24,7 @@ public:
     Result_t<Deck_t> GetDeck(ID_t deckId) const;
     Result_t<std::vector<Deck_t>> GetAllDecks() const;
     Result_t<bool>                DeleteDeck(ID_t deckId);
+    Result_t<bool>                SetNewCardsPerDay(ID_t deckId, int perDay);
 
     // Bulk wipe + tag-impact query. Used by the Settings danger zone and
     // by the tag-delete confirmation popup (which warns the user when

@@ -9,8 +9,8 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QQmlApplicationEngine>
-#include <QQmlContext>
 #include <QQmlError>
+#include <QQmlContext>
 #include <QQuickStyle>
 #include <QSqlDatabase>
 #include <QStandardPaths>
@@ -22,7 +22,12 @@
 #    include <QtWebView/QtWebView>
 #endif
 
-#if defined(QT_STATIC) || defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+// Static plugin imports are needed ONLY when Qt itself is built statically
+// (iOS always; Android/desktop only with a static Qt). Guarding on the OS is
+// wrong: Android here uses a SHARED Qt, where these qt_static_plugin_* symbols
+// do not exist and the link fails. QT_STATIC is defined by Qt exactly when the
+// static plugin machinery is present, so it is the correct discriminator.
+#ifdef QT_STATIC
 #    include <QtPlugin>
 Q_IMPORT_PLUGIN(QSQLiteDriverPlugin)
 Q_IMPORT_PLUGIN(QJpegPlugin)
@@ -37,8 +42,8 @@ Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 #include <TenjinConfig.h>
 #include <ViewModels/AppViewModel.h>
 #include <ViewModels/CloudService.h>
-#include <ViewModels/HapticsService.h>
 #include <ViewModels/LogViewModel.h>
+#include <ViewModels/HapticsService.h>
 #include <ViewModels/NotificationService.h>
 
 static LogViewModel*    g_logModel        = nullptr;
@@ -54,8 +59,8 @@ static void writeFatal(const QString& what)
     QDir().mkpath(appDataDir());
     QFile log(appDataDir() + QStringLiteral("/fatal.log"));
     if (log.open(QIODevice::Append | QIODevice::Text))
-        QTextStream(&log) << QDateTime::currentDateTimeUtc().toString(Qt::ISODate) << ' ' << what
-                          << '\n';
+        QTextStream(&log) << QDateTime::currentDateTimeUtc().toString(Qt::ISODate)
+                          << ' ' << what << '\n';
 }
 
 static void tenjinMessageHandler(QtMsgType type, const QMessageLogContext& ctx, const QString& msg)
@@ -68,28 +73,18 @@ static void tenjinMessageHandler(QtMsgType type, const QMessageLogContext& ctx, 
 
     QLatin1StringView level;
     switch (type) {
-    case QtDebugMsg:
-        level = QLatin1StringView("debug");
-        break;
-    case QtInfoMsg:
-        level = QLatin1StringView("info");
-        break;
-    case QtWarningMsg:
-        level = QLatin1StringView("warning");
-        break;
-    case QtCriticalMsg:
-        level = QLatin1StringView("critical");
-        break;
-    case QtFatalMsg:
-        level = QLatin1StringView("fatal");
-        break;
+    case QtDebugMsg:    level = QLatin1StringView("debug");    break;
+    case QtInfoMsg:     level = QLatin1StringView("info");     break;
+    case QtWarningMsg:  level = QLatin1StringView("warning");  break;
+    case QtCriticalMsg: level = QLatin1StringView("critical"); break;
+    case QtFatalMsg:    level = QLatin1StringView("fatal");    break;
     }
 
-    QMetaObject::invokeMethod(g_logModel,
-                              "append",
-                              Qt::QueuedConnection,
-                              Q_ARG(QString, QString(level)),
-                              Q_ARG(QString, msg));
+    QMetaObject::invokeMethod(
+        g_logModel, "append",
+        Qt::QueuedConnection,
+        Q_ARG(QString, QString(level)),
+        Q_ARG(QString, msg));
 }
 
 static QIcon makeAppIcon()
@@ -106,8 +101,6 @@ static QIcon makeAppIcon()
         const qreal r = size * 0.20;
         p.drawRoundedRect(QRectF(0, 0, size, size), r, r);
         QFont f = p.font();
-        f.setFamily(QStringLiteral("Arial"));
-        f.setStyleHint(QFont::SansSerif, QFont::PreferOutline);
         f.setPixelSize(static_cast<int>(size * 0.66));
         f.setBold(true);
         p.setFont(f);
@@ -146,7 +139,8 @@ int main(int argc, char* argv[])
         for (const QString& f : monoFiles) {
             const int id = QFontDatabase::addApplicationFont(f);
             if (id < 0)
-                qWarning("Tenjin: failed to load bundled mono font %s", qUtf8Printable(f));
+                qWarning("Tenjin: failed to load bundled mono font %s",
+                         qUtf8Printable(f));
         }
     }
 
@@ -179,15 +173,13 @@ int main(int argc, char* argv[])
     try {
         appVMPtr = std::make_unique<AppViewModel>();
     } catch (const std::exception& e) {
-        const QString msg =
-            QStringLiteral("FATAL: AppViewModel init: ") + QString::fromUtf8(e.what());
+        const QString msg = QStringLiteral("FATAL: AppViewModel init: ") + QString::fromUtf8(e.what());
         qCritical().noquote() << msg;
         qCritical() << "Available SQL drivers:" << QSqlDatabase::drivers();
         writeFatal(msg);
         if (!QSqlDatabase::drivers().contains(QStringLiteral("QSQLITE")))
-            writeFatal(
-                QStringLiteral("QSQLITE not registered — Q_IMPORT_PLUGIN(QSQLiteDriverPlugin) "
-                               "required on static builds."));
+            writeFatal(QStringLiteral("QSQLITE not registered — Q_IMPORT_PLUGIN(QSQLiteDriverPlugin) "
+                                      "required on static builds."));
         return -1;
     } catch (...) {
         writeFatal(QStringLiteral("FATAL: unknown exception during AppViewModel creation."));
@@ -200,6 +192,16 @@ int main(int argc, char* argv[])
     CloudService        cloudService;
     HapticsService      haptics;
 
+    // Children's-privacy gate: keep CloudService's data-collection flag in sync
+    // with the app's age/consent state. Fail-closed by default (CloudService
+    // initialises to false), and updated whenever consent changes. This is the
+    // single point that authorises any off-device data transmission.
+    cloudService.setDataCollectionAllowed(appVM.dataCollectionAllowed());
+    QObject::connect(&appVM, &AppViewModel::consentChanged, &cloudService,
+                     [&appVM, &cloudService]() {
+                         cloudService.setDataCollectionAllowed(appVM.dataCollectionAllowed());
+                     });
+
     // ── Log model + message handler ──────────────────────────────────────────
     LogViewModel logModel;
     g_logModel        = &logModel;
@@ -210,17 +212,17 @@ int main(int argc, char* argv[])
     appVM.setQmlEngine(&engine);
 
     // Context properties — all services accessible from any QML file.
-    engine.rootContext()->setContextProperty(QStringLiteral("appVM"), &appVM);
-    engine.rootContext()->setContextProperty(QStringLiteral("reviewVm"), appVM.reviewVM());
-    engine.rootContext()->setContextProperty(QStringLiteral("logModel"), &logModel);
+    engine.rootContext()->setContextProperty(QStringLiteral("appVM"),        &appVM);
+    engine.rootContext()->setContextProperty(QStringLiteral("logModel"),     &logModel);
     engine.rootContext()->setContextProperty(QStringLiteral("notifService"), &notifService);
     engine.rootContext()->setContextProperty(QStringLiteral("cloudService"), &cloudService);
-    engine.rootContext()->setContextProperty(QStringLiteral("haptics"), &haptics);
+    engine.rootContext()->setContextProperty(QStringLiteral("haptics"),      &haptics);
 
     // Capture QML warnings/errors so a load failure writes the real cause to
     // fatal.log instead of crashing silently before the window appears.
     QObject::connect(
-        &engine, &QQmlApplicationEngine::warnings, &app, [](const QList<QQmlError>& warnings) {
+        &engine, &QQmlApplicationEngine::warnings, &app,
+        [](const QList<QQmlError>& warnings) {
             for (const QQmlError& e : warnings) {
                 const QString msg = QStringLiteral("QML: ") + e.toString();
                 qWarning().noquote() << msg;
@@ -244,8 +246,7 @@ int main(int argc, char* argv[])
     engine.load(rootUrl);
 
     if (engine.rootObjects().isEmpty()) {
-        writeFatal(QStringLiteral("FATAL: no root QML objects — load failed: ") +
-                   rootUrl.toString());
+        writeFatal(QStringLiteral("FATAL: no root QML objects — load failed: ") + rootUrl.toString());
         return -1;
     }
 

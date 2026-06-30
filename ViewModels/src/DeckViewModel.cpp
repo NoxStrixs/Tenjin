@@ -107,6 +107,7 @@ QVariantMap DeckViewModel::globalStats()
         out["currentStreakDays"] = 0;
         out["longestStreakDays"] = 0;
         out["reviewsToday"]      = 0;
+        out["leechCount"]        = 0;
         out["daily"]             = QVariantList{};
         return out;
     }
@@ -118,6 +119,7 @@ QVariantMap DeckViewModel::globalStats()
     out["currentStreakDays"] = result->currentStreakDays;
     out["longestStreakDays"] = result->longestStreakDays;
     out["reviewsToday"]      = result->reviewsToday;
+    out["leechCount"]        = result->leechCount;
     out["firstReviewDate"]   = QString::fromStdString(result->firstReviewDate);
     QVariantList daily;
     for (const auto& d : result->daily) {
@@ -181,6 +183,17 @@ bool DeckViewModel::deleteDeck(qint64 deckId)
     }
     if (m_selectedDeckId == deckId)
         clearSelection();
+    reloadDecks();
+    return true;
+}
+
+bool DeckViewModel::setNewCardsPerDay(qint64 deckId, int perDay)
+{
+    auto result = m_deckService->SetNewCardsPerDay(static_cast<Service::ID_t>(deckId), perDay);
+    if (!result) {
+        emit errorOccurred(QString::fromStdString(result.error()));
+        return false;
+    }
     reloadDecks();
     return true;
 }

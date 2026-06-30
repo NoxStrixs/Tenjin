@@ -80,9 +80,9 @@ Item {
             color: ctaArea.pressed ? Qt.darker(Platform.accent, 1.15)
                  : ctaArea.containsMouse ? Qt.lighter(Platform.accent, 1.05)
                  : Platform.accent
-            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+            Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
             scale: ctaArea.pressed ? 0.97 : 1.0
-            Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
 
             Accessible.role: Accessible.Button
             Accessible.name: root.ctaText

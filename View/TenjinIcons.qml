@@ -55,12 +55,12 @@ QtObject {
     readonly property string moreVert:     "\ue5d4"   // more_vert
 
     // ── App sections ──────────────────────────────────────────────────────────
-    readonly property string words:    "\uec1a"        // book_2
-    readonly property string decks:    "\ue865"        // menu_book
-    readonly property string tags:     "\ue892"        // label
+    readonly property string words:    "\uf53e"        // book_2
+    readonly property string decks:    "\uea19"        // menu_book
+    readonly property string tags:     "\ue893"        // label
     readonly property string news:     "\ueb81"        // newspaper
     readonly property string settings: "\ue8b8"        // settings
-    readonly property string help:     "\ue887"        // help
+    readonly property string help:     "\ue8fd"        // help
     readonly property string info:     "\ue88e"        // info
 
     // ── Theme ─────────────────────────────────────────────────────────────────
@@ -69,22 +69,22 @@ QtObject {
 
     // ── Actions ───────────────────────────────────────────────────────────────
     readonly property string add:      "\ue145"        // add
-    readonly property string edit:     "\ue3c9"        // edit
-    readonly property string del:      "\ue872"        // delete
-    readonly property string search:   "\ue8b6"        // search
+    readonly property string edit:     "\uf097"        // edit
+    readonly property string del:      "\ue92e"        // delete
+    readonly property string search:   "\uef7a"        // search
     readonly property string refresh:  "\ue5d5"        // refresh
     readonly property string copy:     "\ue14d"        // content_copy
     readonly property string keyboard: "\ue312"        // keyboard
-    readonly property string check:    "\ue5ca"        // check
+    readonly property string check:    "\ue668"        // check
     readonly property string drag:     "\ue945"        // drag_indicator
-    readonly property string pin:      "\uf10d"        // pin
-    readonly property string link:     "\ue157"        // link
+    readonly property string pin:      "\uf045"        // pin
+    readonly property string link:     "\ue250"        // link
 
     // ── Import / Export / Sync ────────────────────────────────────────────────
-    readonly property string upload:   "\ue2c3"        // upload
-    readonly property string download: "\ue2c4"        // download
+    readonly property string upload:   "\uf09b"        // upload
+    readonly property string download: "\uf090"        // download
     readonly property string sync:     "\ue627"        // sync
-    readonly property string mail:     "\ue158"        // mail
+    readonly property string mail:     "\ue159"        // mail
 
     // ── Media ─────────────────────────────────────────────────────────────────
     readonly property string play:       "\ue037"      // play_arrow
@@ -106,10 +106,10 @@ QtObject {
     readonly property string underline: "\ue249"       // format_underlined
     readonly property string strike:    "\ue257"       // strikethrough_s
     readonly property string bullet:    "\ue241"       // format_list_bulleted
-    readonly property string formula:   "\ue661"       // formula
+    readonly property string formula:   "\ue661"       // functions
 
     // ── Status ────────────────────────────────────────────────────────────────
-    readonly property string warning:     "\ue002"     // warning
+    readonly property string warning:     "\uf083"     // warning
     readonly property string bugReport:   "\ue868"     // bug_report
     readonly property string autoAwesome: "\ue65f"     // auto_awesome
     readonly property string tag:         "\ue9ef"     // tag

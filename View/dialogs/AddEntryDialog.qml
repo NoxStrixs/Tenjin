@@ -55,8 +55,8 @@ ThemedDialog {
             color: Platform.bg
             border.color: wordInput.activeFocus ? Platform.accent : Platform.border
             border.width: wordInput.activeFocus ? 2 : 1
-            Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
-            Behavior on border.width { NumberAnimation { duration: Platform.durationFast } }
+            Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
+            Behavior on border.width { NumberAnimation { duration: Platform.effDurationFast } }
 
             TextField {
                 id: wordInput

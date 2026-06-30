@@ -53,7 +53,7 @@ Rectangle {
                             anchors.centerIn: parent
                             text: "\u5929" // 天
                             color: Platform.bg
-                            font.pixelSize: Platform.brandMark
+                            font.pixelSize: 22
                             font.bold: true
                         }
                     }
@@ -82,13 +82,13 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: Platform.touchTarget + 10
                     color: navArea.containsMouse || current ? Platform.surfaceAlt : "transparent"
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                     Rectangle {
                         anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                         width: 3
                         color: navItem.current ? Platform.accent : "transparent"
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     }
 
                     RowLayout {
@@ -136,13 +136,13 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: Platform.touchTarget + 10
                     color: utilArea.containsMouse || current ? Platform.surfaceAlt : "transparent"
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                     Rectangle {
                         anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                         width: 3
                         color: utilItem.current ? Platform.accent : "transparent"
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     }
 
                     RowLayout {
@@ -179,7 +179,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 10
                 color: themeArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 RowLayout {
                     anchors { fill: parent; leftMargin: 20; rightMargin: 16 }
                     spacing: 14
@@ -216,9 +216,9 @@ Rectangle {
                         color: ieArea.containsMouse ? Platform.surfaceAlt : Platform.bg
                         border.color: Platform.border
                         border.width: 1
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         scale: ieArea.pressed ? 0.97 : 1.0
-                        Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                         Text { anchors.centerIn: parent; text: ieItem.modelData.label; color: Platform.accentDark; font.pixelSize: Platform.fontBase; font.bold: true }
                         MouseArea {
                             id: ieArea
@@ -251,7 +251,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Platform.touchTarget + 6 + Platform.safeAreaBottom
                 color: aboutArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: Platform.border }
                 RowLayout {
                     anchors { fill: parent; leftMargin: 20; rightMargin: 16; bottomMargin: Platform.safeAreaBottom }

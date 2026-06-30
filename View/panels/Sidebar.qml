@@ -36,20 +36,20 @@ Rectangle {
                         height: 38
                         color: tabHover.containsMouse && !active ? Platform.surfaceAlt : "transparent"
                         property bool active: sidebarMode === index
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         Text {
                             anchors.centerIn: parent
                             text: modelData
-                            font.pixelSize: Platform.fontSmall
+                            font.pixelSize: 12
                             font.bold: parent.active
                             color: parent.active ? Platform.accent : Platform.textMuted
-                            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                            Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         }
                         Rectangle {
                             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
                             height: 2
                             color: parent.active ? Platform.accent : "transparent"
-                            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                            Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                         }
                         MouseArea {
                             id: tabHover
@@ -87,14 +87,14 @@ Rectangle {
                 height: 28
                 radius: Platform.radius
                 color: addBtnArea.containsMouse ? Platform.accentDark : Platform.accent
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 scale: addBtnArea.pressed ? 0.97 : 1.0
-                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                 Text {
                     anchors.centerIn: parent
                     text: sidebarMode === 0 ? qsTr("+ Word") : qsTr("+ Deck")
                     color: Platform.bg
-                    font.pixelSize: Platform.fontSmall
+                    font.pixelSize: 12
                     font.bold: true
                 }
                 MouseArea {
@@ -181,7 +181,7 @@ Rectangle {
                     color: _selected ? Platform.surfaceAlt
                          : wordRowArea.containsMouse ? Qt.rgba(Platform.surfaceAlt.r, Platform.surfaceAlt.g, Platform.surfaceAlt.b, 0.5)
                                                       : "transparent"
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                     Rectangle {
                         anchors { left: parent.left; bottom: parent.bottom }
@@ -278,7 +278,7 @@ Rectangle {
                         }
                         Text {
                             text: "✦"
-                            font.pixelSize: Platform.fontTiny
+                            font.pixelSize: 9
                             color: Platform.textMuted
                             visible: model.isSmart
                         }
@@ -289,7 +289,7 @@ Rectangle {
                             visible: stats.total > 0
                             implicitWidth: dueText.implicitWidth + 12
                             implicitHeight: 18
-                            radius: height / 2
+                            radius: 9
                             color: stats.due > 0 ? Platform.accent : "transparent"
                             border.color: stats.due > 0 ? Platform.accent : Platform.border
                             border.width: 1
@@ -347,14 +347,14 @@ Rectangle {
             Rectangle {
                 anchors.fill: parent
                 color: tagsShortcutArea.containsMouse || parent._active ? Platform.surfaceAlt : "transparent"
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
             }
             // Active-indicator bar on the left when the Tags page is open.
             Rectangle {
                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                 width: 3
                 color: parent._active ? Platform.accent : "transparent"
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
             }
             RowLayout {
                 anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
@@ -362,15 +362,15 @@ Rectangle {
                 Text {
                     text: TenjinIcons.tags
                     font.family: TenjinIcons.family
-                    font.pixelSize: Platform.iconSize
+                    font.pixelSize: 14
                 }
                 Text {
                     Layout.fillWidth: true
                     text: qsTr("Manage tags")
                     color: parent.parent._active ? Platform.accent : Platform.textPrimary
-                    font.pixelSize: Platform.fontSmall
+                    font.pixelSize: 12
                     font.bold: parent.parent._active
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 }
                 Text {
                     text: TenjinIcons.chevronRight
@@ -414,7 +414,7 @@ Rectangle {
                             anchors.centerIn: parent
                             text: parent.modelData.label
                             color: Platform.accentDark
-                            font.pixelSize: Platform.fontSmall
+                            font.pixelSize: 12
                             font.bold: true
                         }
                         MouseArea {

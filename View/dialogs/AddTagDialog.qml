@@ -94,8 +94,8 @@ ThemedDialog {
             color: Platform.surface
             border.color: tagNameInput.activeFocus ? Platform.accent : Platform.border
             border.width: tagNameInput.activeFocus ? 2 : 1
-            Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
-            Behavior on border.width { NumberAnimation { duration: Platform.durationFast } }
+            Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
+            Behavior on border.width { NumberAnimation { duration: Platform.effDurationFast } }
 
             TextField {
                 id: tagNameInput
@@ -157,7 +157,7 @@ ThemedDialog {
                     height: Platform.touchTarget * 0.85
                     radius: Platform.radius - 2
                     color: matchHover.containsMouse ? Platform.surfaceAlt : "transparent"
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                     RowLayout {
                         anchors { fill: parent; leftMargin: 10; rightMargin: 10 }

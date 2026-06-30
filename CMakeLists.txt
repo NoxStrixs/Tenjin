@@ -32,6 +32,10 @@ option(MEDIA_SUPPORT    "Enable audio/video playback (QtMultimedia)" ON)
 option(WEBVIEW_SUPPORT  "Enable web/YouTube embeds (QtWebView)"      OFF)
 option(TENJIN_DEBUG_UI  "Include debug console drawer in the build"  OFF)
 option(TENJIN_BUILD_TESTS "Build the unit test suite"                 OFF)
+# Build the GUI (View + App + bundled UI assets). Turn OFF for a tests-only
+# configure so the logic suite builds without requiring the icon/mono fonts or
+# flag SVGs (the tests link only the Service/ libraries).
+option(TENJIN_BUILD_GUI   "Build the QML GUI application"            ON)
 
 # SANITIZERS: comma-separated list (asan,lsan,tsan,ubsan,msan). Empty = off.
 set(SANITIZERS "" CACHE STRING "Sanitizers to enable")
@@ -40,13 +44,19 @@ include(cmake/Sanitizers.cmake)
 include(cmake/Warnings.cmake)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS
-    Core Gui Qml Quick QuickControls2 Sql Network Svg
+    Core Gui Qml Network Sql
 )
 
-if(MEDIA_SUPPORT)
+if(TENJIN_BUILD_GUI)
+    find_package(Qt6 6.8 REQUIRED COMPONENTS
+        Quick QuickControls2 Svg QmlImportScanner
+    )
+endif()
+
+if(TENJIN_BUILD_GUI AND MEDIA_SUPPORT)
     find_package(Qt6 6.8 REQUIRED COMPONENTS Multimedia)
 endif()
-if(WEBVIEW_SUPPORT)
+if(TENJIN_BUILD_GUI AND WEBVIEW_SUPPORT)
     find_package(Qt6 6.8 REQUIRED COMPONENTS WebView)
 endif()
 
@@ -60,11 +70,13 @@ qt_standard_project_setup(REQUIRES 6.8)
 # resolves include paths and link order transitively.
 include(cmake/Miniz.cmake)
 
-# Ensure the icon font is present (downloads at configure time if missing).
-include(cmake/IconFont.cmake)
-
-# Fetch bundled UI assets (mono font, language-flag SVGs) at configure time.
-include(cmake/Assets.cmake)
+# Validate vendored UI assets — only when building the GUI. A tests-only
+# configure (TENJIN_BUILD_GUI=OFF) skips these, so the logic suite never
+# requires the icon/mono fonts or flag SVGs.
+if(TENJIN_BUILD_GUI)
+    include(cmake/IconFont.cmake)
+    include(cmake/Assets.cmake)
+endif()
 
 # Feature compile definitions propagated to all targets
 set(TENJIN_FEATURE_DEFINITIONS "")
@@ -100,13 +112,16 @@ include_directories("${CMAKE_BINARY_DIR}/generated")
 
 add_subdirectory(Service)
 add_subdirectory(ViewModels)
-add_subdirectory(View)
-# Translations.cmake defines the tenjin_configure_translations macro.
-# It must be included before add_subdirectory(App) which calls the macro,
-# but after View/ViewModels/Service so all targets are visible when the macro runs.
-include(cmake/Translations.cmake)
 
-add_subdirectory(App)
+if(TENJIN_BUILD_GUI)
+    add_subdirectory(View)
+    # Translations.cmake defines the tenjin_configure_translations macro.
+    # It must be included before add_subdirectory(App) which calls the macro,
+    # but after View/ViewModels/Service so all targets are visible when the macro runs.
+    include(cmake/Translations.cmake)
+
+    add_subdirectory(App)
+endif()
 
 if(TENJIN_BUILD_TESTS)
     enable_testing()

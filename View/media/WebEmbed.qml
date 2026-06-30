@@ -109,8 +109,8 @@ Item {
             anchors.fill: parent
             visible: thumb.visible
             gradient: Gradient {
-                GradientStop { position: 0.0; color: Platform.mediaScrimLight }
-                GradientStop { position: 1.0; color: Platform.mediaScrimHeavy }
+                GradientStop { position: 0.0; color: "#00000000" }
+                GradientStop { position: 1.0; color: "#66000000" }
             }
         }
 
@@ -145,11 +145,11 @@ Item {
             width:  Platform.touchTarget * 1.75
             height: width
             radius: width / 2
-            color: playArea.containsMouse ? Platform.accent : Platform.mediaControlBg
+            color: playArea.containsMouse ? Platform.accent : "#cc1e1b16"
             border.color: Platform.textOnDark
             border.width: Platform.borderWidth
 
-            Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+            Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
             Text {
                 // Off-centre the glyph slightly so the triangle reads centred.
@@ -287,7 +287,7 @@ Item {
         width:  Math.round(Platform.touchTarget * 0.7)
         height: width
         radius: width / 2
-        color: closeArea.containsMouse ? Platform.danger : Platform.mediaCloseBg
+        color: closeArea.containsMouse ? Platform.danger : "#aa000000"
         border.color: Platform.textOnDark
         border.width: Platform.borderWidth
         z: 10

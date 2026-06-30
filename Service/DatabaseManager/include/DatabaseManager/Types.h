@@ -63,6 +63,25 @@ inline ContentType_t FromKindString(std::string_view s)
     return ContentType_t::Note;
 }
 
+// Convert an untrusted integer (e.g. from an imported file) into a valid
+// ContentType_t, clamping anything out of the known 0..6 range to Note. Using
+// static_cast<ContentType_t> directly on external data would store an invalid
+// enum value that later switch statements don't handle.
+inline ContentType_t ValidContentType(int raw)
+{
+    switch (static_cast<ContentType_t>(raw)) {
+    case ContentType_t::Definition:
+    case ContentType_t::Media:
+    case ContentType_t::Note:
+    case ContentType_t::Divider:
+    case ContentType_t::Formula:
+    case ContentType_t::Header:
+    case ContentType_t::Tense:
+        return static_cast<ContentType_t>(raw);
+    }
+    return ContentType_t::Note;
+}
+
 enum class FilterMode_t {
     And,
     Or,
@@ -110,6 +129,7 @@ struct Deck_t {
     bool         bIsSmart   = false;
     FilterMode_t filterMode = FilterMode_t::And;
     std::string  createdAt;
+    int          newCardsPerDay = 20;
 };
 
 // SM-2 scheduling state for one (deck, word) pair.
@@ -120,6 +140,8 @@ struct Review_t {
     float         easeFactor   = 2.5f;
     std::uint16_t intervalDays = 1;
     std::uint16_t repetitions  = 0;
+    std::uint16_t lapses       = 0;
+    bool          isLeech      = false;
     std::string   nextReviewDate;
     std::string   lastReviewDate;
 };
@@ -155,6 +177,7 @@ struct GlobalStats_t {
     int    currentStreakDays = 0;            // consecutive days with >=1 review, ending today/yesterday
     int    longestStreakDays = 0;            // best consecutive-day run ever
     int    reviewsToday      = 0;            // reviews logged today
+    int    leechCount        = 0;            // cards currently flagged as leeches
     std::string firstReviewDate;            // ISO date of earliest review, "" if none
 };
 

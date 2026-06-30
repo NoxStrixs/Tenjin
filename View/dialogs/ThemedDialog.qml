@@ -47,14 +47,14 @@ Dialog {
     // automatically — every Add*/Confirm/Rename dialog now lands the same way.
     enter: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.durationMed }
-            NumberAnimation { property: "scale";   from: 0.96; to: 1; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "opacity"; from: 0;    to: 1; duration: Platform.effDurationMed }
+            NumberAnimation { property: "scale";   from: 0.96; to: 1; duration: Platform.effDurationMed; easing.type: Easing.OutCubic }
         }
     }
     exit: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 1; to: 0;    duration: Platform.durationFast }
-            NumberAnimation { property: "scale";   from: 1; to: 0.97; duration: Platform.durationFast }
+            NumberAnimation { property: "opacity"; from: 1; to: 0;    duration: Platform.effDurationFast }
+            NumberAnimation { property: "scale";   from: 1; to: 0.97; duration: Platform.effDurationFast }
         }
     }
 
@@ -97,7 +97,7 @@ Dialog {
             implicitWidth: Math.max(88, _btnText.implicitWidth + 28)
             padding: 10
             scale: _btn.down ? 0.97 : 1.0
-            Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
             contentItem: Text {
                 id: _btnText
                 text: _btn.text
@@ -113,7 +113,7 @@ Dialog {
                      : _btn.hovered ? Platform.surfaceAlt : Platform.surface
                 border.color: Platform.border
                 border.width: 1
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
             }
         }
     }

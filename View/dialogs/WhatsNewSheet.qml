@@ -67,7 +67,7 @@ ThemedDialog {
                         anchors.centerIn: parent
                         text: modelData.icon
                         font.family: TenjinIcons.family
-                        font.pixelSize: Platform.iconSizeLg
+                        font.pixelSize: 22
                         color: Platform.accent
                     }
                 }

@@ -63,6 +63,7 @@ public:
     Result_t<bool>                 RemoveTagFromEntry(ID_t wordId, ID_t tagId);
     Result_t<std::vector<Tag_t>>   GetTagsForEntry(ID_t wordId);
     Result_t<std::vector<Entry_t>> GetEntriesForTag(ID_t tagId);
+    Result_t<std::vector<Entry_t>> GetUntaggedEntries();
 
     // Content blocks
     Result_t<ContentBlock_t>              AddContentBlock(const ContentBlock_t& block);
@@ -95,6 +96,7 @@ public:
     Result_t<Deck_t>              GetDeck(ID_t id);
     Result_t<std::vector<Deck_t>> GetAllDecks();
     Result_t<bool>                DeleteDeck(ID_t id);
+    Result_t<bool>                SetDeckNewCardsPerDay(ID_t id, int perDay);
 
     Result_t<bool> AddEntryToDeck(ID_t deckId, ID_t wordId);
     Result_t<bool> RemoveEntryFromDeck(ID_t deckId, ID_t wordId);

@@ -6,6 +6,21 @@
 
 #include <limits>
 
+namespace tenjin {
+// Platform-specific delivery hook. Returns true if it scheduled/posted a real
+// OS notification; false to fall back to an in-app toast. Implemented by the
+// per-platform TU (NotificationService_ios.mm / _android.cpp); a weak default
+// in NotificationService_default.cpp returns false on desktop.
+bool platformDeliverLocalPush(const QString& title, const QString& body,
+                              const QVariantMap& payload);
+
+// Platform-specific permission request. On Android 13+ this triggers the
+// runtime POST_NOTIFICATIONS prompt; on iOS the .mm requests authorization at
+// first delivery, so this is a no-op returning true. Desktop returns true
+// (no permission needed).
+bool platformRequestNotificationPermission();
+}
+
 NotificationService::NotificationService(QObject* parent) : QObject(parent)
 {
     loadSettings();
@@ -45,11 +60,14 @@ void NotificationService::localPush(const QString& title, const QString& body)
 // ── Permission ────────────────────────────────────────────────────────────────
 void NotificationService::requestPermission()
 {
-    // The desktop/no-op backend grants immediately. Platform backends
-    // (iOS UNUserNotificationCenter / Android runtime permission) override
-    // deliverLocalPush + this method to perform a real request.
-    m_permissionGranted = true;
-    emit permissionResult(true);
+    // Platform backend performs the real request (Android 13+ runtime prompt;
+    // iOS authorization is requested at first delivery). Desktop grants
+    // immediately. The granted flag is optimistic on Android because the prompt
+    // is async; actual denial simply means notifications won't appear, which the
+    // app already tolerates (it falls back to in-app toasts while focused).
+    const bool ok = tenjin::platformRequestNotificationPermission();
+    m_permissionGranted = ok;
+    emit permissionResult(ok);
 }
 
 // ── Ad-hoc scheduled reminders ────────────────────────────────────────────────
@@ -196,10 +214,12 @@ void NotificationService::saveSettings()
 // ── Delivery (no-op default; platform backends override) ──────────────────────
 void NotificationService::deliverLocalPush(const QString& title,
                                            const QString& body,
-                                           const QVariantMap& /*payload*/)
+                                           const QVariantMap& payload)
 {
-    // Default backend: surface as an in-app toast. On iOS/Android a native
-    // translation unit overrides this with a real OS notification so it fires
-    // even when the app is backgrounded.
+    // Try the platform backend first (real OS notification that fires even when
+    // backgrounded). On iOS/Android the platform TU implements this; elsewhere
+    // the weak default returns false and we fall back to an in-app toast.
+    if (tenjin::platformDeliverLocalPush(title, body, payload))
+        return;
     emit toastRequested(title + QStringLiteral(": ") + body, 0);
 }

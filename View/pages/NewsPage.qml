@@ -35,7 +35,7 @@ Item {
                 color: newsBackArea.containsMouse ? Platform.surfaceAlt : "transparent"
                 border.color: Platform.border
                 border.width: 1
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 Text {
                     anchors.centerIn: parent
                     text: TenjinIcons.chevronLeft
@@ -67,9 +67,9 @@ Item {
                 color: refreshArea.containsMouse ? Platform.surfaceAlt : Platform.surface
                 border.color: Platform.border
                 border.width: 1
-                Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 scale: refreshArea.pressed ? 0.97 : 1.0
-                Behavior on scale { NumberAnimation { duration: Platform.durationFast; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
                 Text {
                     id: refreshLabel
                     anchors.centerIn: parent
@@ -103,7 +103,7 @@ Item {
                     color: mRefreshArea.pressed ? Platform.accentDark : Platform.surfaceAlt
                     border.color: Platform.border
                     border.width: 1
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     Text {
                         id: mRefreshLabel
                         anchors.centerIn: parent
@@ -144,7 +144,7 @@ Item {
                 color: Platform.surface
                 border.color: cardHover.hovered ? Platform.accent : Platform.border
                 border.width: 1
-                Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                 HoverHandler { id: cardHover }
 
                 ColumnLayout {

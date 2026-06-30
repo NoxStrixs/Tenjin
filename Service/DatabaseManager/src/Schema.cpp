@@ -15,6 +15,9 @@ namespace {
 // to version N.
 using Step = std::vector<const char*>;
 
+// Single consolidated schema (version 1). Pre-release: there are no databases
+// in the wild to migrate from, so the former kV2 (language) and kV3 (leech)
+// migrations are folded directly into the base table definitions below.
 const Step kV1 = {
     "CREATE TABLE IF NOT EXISTS entry ("
     "id INTEGER PRIMARY KEY,"
@@ -22,9 +25,11 @@ const Step kV1 = {
     "kind TEXT NOT NULL DEFAULT 'word',"
     "created_at TEXT DEFAULT (datetime('now')),"
     "guid TEXT DEFAULT '',"
-    "updated_at INTEGER DEFAULT 0);",
+    "updated_at INTEGER DEFAULT 0,"
+    "language TEXT NOT NULL DEFAULT '');",
 
     "CREATE INDEX IF NOT EXISTS idx_entry_kind ON entry(kind);",
+    "CREATE INDEX IF NOT EXISTS idx_entry_language ON entry(language);",
 
     "CREATE TABLE IF NOT EXISTS tag ("
     "id INTEGER PRIMARY KEY,"
@@ -86,7 +91,8 @@ const Step kV1 = {
     "filter_mode TEXT DEFAULT 'AND',"
     "created_at  TEXT DEFAULT (datetime('now')),"
     "guid TEXT DEFAULT '',"
-    "updated_at INTEGER DEFAULT 0);",
+    "updated_at INTEGER DEFAULT 0,"
+    "new_cards_per_day INTEGER NOT NULL DEFAULT 20);",
 
     "CREATE TABLE IF NOT EXISTS deck_entry ("
     "deck_id  INTEGER REFERENCES deck(id)  ON DELETE CASCADE,"
@@ -105,6 +111,8 @@ const Step kV1 = {
     "ease_factor      REAL DEFAULT 2.5,"
     "interval_days    INTEGER DEFAULT 1,"
     "repetitions      INTEGER DEFAULT 0,"
+    "lapses           INTEGER NOT NULL DEFAULT 0,"
+    "is_leech         INTEGER NOT NULL DEFAULT 0,"
     "next_review_date TEXT,"
     "last_review_date TEXT,"
     "UNIQUE (deck_id, entry_id));",
@@ -119,19 +127,10 @@ const Step kV1 = {
     "reviewed_at   INTEGER NOT NULL);",
 };
 
-// Ordered: index i upgrades to version i+1.
-// Append a new Step here and bump kSchemaVersion to evolve the schema.
-
-// kV2 — multi-language support, lightweight path. Adds a per-entry
-// language code column (ISO 639-1 like "en", "es", "ja"; empty string
-// means "unspecified"). Existing rows default to ''. The index speeds
-// up the language filter applied by EntryViewModel::currentLanguageFilter.
-const Step kV2 = {
-    "ALTER TABLE entry ADD COLUMN language TEXT NOT NULL DEFAULT '';",
-    "CREATE INDEX IF NOT EXISTS idx_entry_language ON entry(language);",
-};
-
-const std::vector<const Step*> kSteps = {&kV1, &kV2};
+// Single-version schema: everything is created by kV1. New schema changes
+// pre-release should edit the kV1 tables directly; post-release, reintroduce
+// an ordered migration step here and bump kSchemaVersion.
+const std::vector<const Step*> kSteps = {&kV1};
 
 int currentVersion(QSqlDatabase& db)
 {
@@ -147,21 +146,6 @@ void setVersion(QSqlDatabase& db, int v)
     if (!q.exec(QStringLiteral("PRAGMA user_version = %1;").arg(v)))
         throw std::runtime_error("Failed to set user_version: " +
                                  q.lastError().text().toStdString());
-}
-
-// True when the given table has a column with this name. Used by
-// Migrate() to detect partial migrations (user_version was bumped but
-// the ALTER TABLE never actually landed) and re-run them.
-bool columnExists(QSqlDatabase& db, const char* table, const char* column)
-{
-    QSqlQuery q(db);
-    if (!q.exec(QStringLiteral("PRAGMA table_info(%1);").arg(table)))
-        return false;
-    while (q.next()) {
-        if (q.value(1).toString() == QLatin1String(column))
-            return true;
-    }
-    return false;
 }
 
 void exec(QSqlDatabase& db, const char* sql)
@@ -184,43 +168,60 @@ void exec(QSqlDatabase& db, const char* sql)
 
 } // namespace
 
+// Drop every user table so the consolidated schema can be recreated from
+// scratch. PRE-RELEASE ONLY: there is no migration path from older dev
+// databases (the kV2/kV3 migrations were folded into the base schema), so a DB
+// whose user_version doesn't match the current schema is simply rebuilt. This
+// is safe before launch; once shipped, replace this with real migrations.
+void dropAllTables(QSqlDatabase& db)
+{
+    QSqlQuery q(db);
+    QStringList tables;
+    if (q.exec("SELECT name FROM sqlite_master WHERE type='table' "
+               "AND name NOT LIKE 'sqlite_%';")) {
+        while (q.next())
+            tables << q.value(0).toString();
+    }
+    exec(db, "PRAGMA foreign_keys = OFF;");
+    for (const QString& t : tables)
+        exec(db, QStringLiteral("DROP TABLE IF EXISTS %1;").arg(t).toUtf8().constData());
+    exec(db, "PRAGMA foreign_keys = ON;");
+}
+
 void Migrate(QSqlDatabase& db)
 {
     exec(db, "PRAGMA foreign_keys = ON;");
 
-    int       from = currentVersion(db);
+    const int from = currentVersion(db);
     const int to   = kSchemaVersion;
 
-    // Self-heal: if user_version claims we have kV2 schema but the
-    // language column is actually missing (a partial migration left the
-    // DB in a wedge state), step back one version so kV2 re-runs. The
-    // duplicate-column guard in exec() makes the re-run safe even if
-    // the column actually IS there. Without this check, all SELECTs
-    // that read "language" silently fail and the UI looks empty even
-    // though entries exist.
-    if (from >= 2 && !columnExists(db, "entry", "language")) {
-        from = 1;
-    }
-
-    if (from >= to)
+    // Already current.
+    if (from == to)
         return;
 
+    // Pre-release policy: any non-empty database whose version does not match
+    // the current consolidated schema is wiped and recreated, because no forward
+    // migration path exists from the pre-consolidation layouts. A brand-new DB
+    // reports version 0 and simply has the schema created below.
+    if (from != 0 && from != to) {
+        dropAllTables(db);
+    }
+
     if (!db.transaction())
-        throw std::runtime_error("Failed to begin migration transaction.");
+        throw std::runtime_error("Failed to begin schema-build transaction.");
 
     try {
-        for (int v = from; v < to; v++)
-            for (const char* sql : *kSteps[v])
-                exec(db, sql);
+        // Single consolidated schema (kV1) recreates every table.
+        for (const char* sql : *kSteps[0])
+            exec(db, sql);
+        setVersion(db, to);
     } catch (...) {
         db.rollback();
         throw;
     }
 
     if (!db.commit())
-        throw std::runtime_error("Failed to commit migrations.");
-
-    setVersion(db, to);
+        throw std::runtime_error("Failed to commit schema build.");
 }
 
 } // namespace Service::Schema

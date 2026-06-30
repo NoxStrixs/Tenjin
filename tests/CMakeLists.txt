@@ -6,6 +6,7 @@ qt_add_executable(tenjin_tests
     test_main.cpp
     test_anki_importer.cpp
     test_database_roundtrip.cpp
+    test_scheduling.cpp
 )
 
 target_link_libraries(tenjin_tests PRIVATE

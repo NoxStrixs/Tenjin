@@ -36,7 +36,7 @@ Item {
                            : Platform.surface
         border.color: _hasFilters ? Platform.accent : Platform.border
         border.width: Platform.borderWidth
-        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
         Row {
             id: triggerRow
@@ -110,8 +110,8 @@ Item {
         // Subtle open/close transition.
         enter: Transition {
             ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: Platform.durationMed; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale";   from: 0.96; to: 1.0; duration: Platform.durationMed; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: Platform.effDurationMed; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "scale";   from: 0.96; to: 1.0; duration: Platform.effDurationMed; easing.type: Easing.OutCubic }
             }
         }
 
@@ -128,7 +128,7 @@ Item {
                 color: Platform.bg
                 border.color: searchField.activeFocus ? Platform.accent : Platform.border
                 border.width: Platform.borderWidth
-                Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+                Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
 
                 TextField {
                     id: searchField
@@ -185,7 +185,7 @@ Item {
                     color: clearArea.containsMouse ? Platform.danger : Platform.accentDark
                     font.pixelSize: Platform.fontSmall
                     font.bold: true
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     MouseArea {
                         id: clearArea
                         anchors.fill: parent
@@ -245,7 +245,7 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: TenjinIcons.tags
                         font.family: TenjinIcons.family
-                        font.pixelSize: Platform.iconSizeXl
+                        font.pixelSize: 32
                         color: Platform.textMuted
                     }
                     Text {

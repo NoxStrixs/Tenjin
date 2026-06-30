@@ -82,7 +82,7 @@ ThemedDialog {
                     color: _selected ? Platform.accent
                          : fileHover.containsMouse ? Platform.surfaceAlt
                                                      : "transparent"
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                     RowLayout {
                         anchors { fill: parent; leftMargin: 10; rightMargin: 10 }

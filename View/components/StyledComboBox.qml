@@ -15,7 +15,7 @@ ComboBox {
         color: Platform.surface
         border.color: control.activeFocus ? Platform.accent : Platform.border
         border.width: control.activeFocus ? 2 : 1
-        Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
+        Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
     }
 
     contentItem: Text {

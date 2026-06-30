@@ -90,8 +90,8 @@ ThemedDialog {
             color: Platform.bg
             border.color: wordSearch.activeFocus ? Platform.accent : Platform.border
             border.width: wordSearch.activeFocus ? 2 : 1
-            Behavior on border.color { ColorAnimation { duration: Platform.durationFast } }
-            Behavior on border.width { NumberAnimation { duration: Platform.durationFast } }
+            Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
+            Behavior on border.width { NumberAnimation { duration: Platform.effDurationFast } }
 
             RowLayout {
                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
@@ -145,7 +145,7 @@ ThemedDialog {
                     height: Platform.touchTarget * 0.85
                     radius: Platform.radius - 2
                     color: matchHover.containsMouse ? Platform.surfaceAlt : "transparent"
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                     Text {
                         anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
@@ -194,7 +194,7 @@ ThemedDialog {
                     color: _active ? Platform.accent : kindArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     border.color: _active ? Platform.accent : Platform.border
                     border.width: 1
-                    Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                     Text {
                         id: kindLbl
@@ -203,7 +203,7 @@ ThemedDialog {
                         color: parent._active ? Platform.textOnDark : Platform.textPrimary
                         font.pixelSize: Platform.fontSmall
                         font.bold: parent._active
-                        Behavior on color { ColorAnimation { duration: Platform.durationFast } }
+                        Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     }
                     MouseArea {
                         id: kindArea
