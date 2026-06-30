@@ -49,7 +49,9 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
 
 if(TENJIN_BUILD_GUI)
     find_package(Qt6 6.8 REQUIRED COMPONENTS
-        Quick QuickControls2 Svg QmlImportScanner
+        Quick
+        QuickControls2
+        Svg
     )
 endif()
 
