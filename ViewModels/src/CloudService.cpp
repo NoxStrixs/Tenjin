@@ -65,8 +65,7 @@ void CloudService::postReport(const QVariantMap& details, const QStringList& log
     // COPPA gate: a report transmits device info + logs (collection). Suppress
     // it entirely without consent.
     if (!m_dataCollectionAllowed) {
-        emit networkError(QStringLiteral(
-            "Reporting is disabled until age and consent are confirmed."));
+        emit networkError(tr("Reporting is disabled until age and consent are confirmed."));
         return;
     }
 
@@ -89,7 +88,7 @@ void CloudService::syncDecks(const QString& /*authToken*/)
 {
     if (!m_dataCollectionAllowed) {
         emit syncResult(QStringLiteral("blocked"),
-                        QStringLiteral("Sync is disabled until age and consent are confirmed."));
+                        tr("Sync is disabled until age and consent are confirmed."));
         return;
     }
     emit syncResult(QStringLiteral("coming_soon"),

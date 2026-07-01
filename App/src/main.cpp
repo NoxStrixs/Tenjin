@@ -9,9 +9,15 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QQmlApplicationEngine>
-#include <QQmlContext>
 #include <QQmlError>
+#include <QQmlContext>
 #include <QQuickStyle>
+#include <QQuickWindow>
+
+#if defined(Q_OS_WIN)
+#include <windows.h>
+#include <dwmapi.h>
+#endif
 #include <QSqlDatabase>
 #include <QStandardPaths>
 #include <QTextStream>
@@ -39,11 +45,20 @@ Q_IMPORT_PLUGIN(QICOPlugin)
 #include <QtQml/qqmlextensionplugin.h>
 Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 
+// On a static Qt (iOS) the QML module plugins must be force-linked or the engine
+// reports "module ... is not installed" and shows a black screen. This is
+// handled by qt_import_qml_plugins() in App/CMakeLists.txt, which runs
+// qmlimportscanner and links the correct plugin targets automatically (their
+// symbol names vary by Qt version, so we deliberately do NOT hand-name them
+// here). The Controls style is pinned to Basic via the module IMPORTS list and
+// QQuickStyle::setStyle("Basic") below, so the scanner bundles the Basic style
+// rather than the unbuilt QtQuick.Controls.iOS platform style.
+
 #include <TenjinConfig.h>
 #include <ViewModels/AppViewModel.h>
 #include <ViewModels/CloudService.h>
-#include <ViewModels/HapticsService.h>
 #include <ViewModels/LogViewModel.h>
+#include <ViewModels/HapticsService.h>
 #include <ViewModels/NotificationService.h>
 
 static LogViewModel*    g_logModel        = nullptr;
@@ -59,8 +74,8 @@ static void writeFatal(const QString& what)
     QDir().mkpath(appDataDir());
     QFile log(appDataDir() + QStringLiteral("/fatal.log"));
     if (log.open(QIODevice::Append | QIODevice::Text))
-        QTextStream(&log) << QDateTime::currentDateTimeUtc().toString(Qt::ISODate) << ' ' << what
-                          << '\n';
+        QTextStream(&log) << QDateTime::currentDateTimeUtc().toString(Qt::ISODate)
+                          << ' ' << what << '\n';
 }
 
 static void tenjinMessageHandler(QtMsgType type, const QMessageLogContext& ctx, const QString& msg)
@@ -73,28 +88,18 @@ static void tenjinMessageHandler(QtMsgType type, const QMessageLogContext& ctx, 
 
     QLatin1StringView level;
     switch (type) {
-    case QtDebugMsg:
-        level = QLatin1StringView("debug");
-        break;
-    case QtInfoMsg:
-        level = QLatin1StringView("info");
-        break;
-    case QtWarningMsg:
-        level = QLatin1StringView("warning");
-        break;
-    case QtCriticalMsg:
-        level = QLatin1StringView("critical");
-        break;
-    case QtFatalMsg:
-        level = QLatin1StringView("fatal");
-        break;
+    case QtDebugMsg:    level = QLatin1StringView("debug");    break;
+    case QtInfoMsg:     level = QLatin1StringView("info");     break;
+    case QtWarningMsg:  level = QLatin1StringView("warning");  break;
+    case QtCriticalMsg: level = QLatin1StringView("critical"); break;
+    case QtFatalMsg:    level = QLatin1StringView("fatal");    break;
     }
 
-    QMetaObject::invokeMethod(g_logModel,
-                              "append",
-                              Qt::QueuedConnection,
-                              Q_ARG(QString, QString(level)),
-                              Q_ARG(QString, msg));
+    QMetaObject::invokeMethod(
+        g_logModel, "append",
+        Qt::QueuedConnection,
+        Q_ARG(QString, QString(level)),
+        Q_ARG(QString, msg));
 }
 
 static QIcon makeAppIcon()
@@ -126,6 +131,18 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
 
+#if defined(Q_OS_WIN)
+    // Windows' DirectWrite backend logs CreateFontFaceFromHDC() failures when
+    // Qt's QFontDatabase probes legacy raster aliases (8514oem, Fixedsys) that
+    // have no scalable face. Redirect those aliases to a real UI family so the
+    // probe resolves cleanly and the log spam stops. Harmless on any Windows
+    // install that has Segoe UI (Vista+).
+    QFont::insertSubstitution(QStringLiteral("8514oem"), QStringLiteral("Segoe UI"));
+    QFont::insertSubstitution(QStringLiteral("Fixedsys"), QStringLiteral("Consolas"));
+    QFont::insertSubstitution(QStringLiteral("System"),   QStringLiteral("Segoe UI"));
+    QFont::insertSubstitution(QStringLiteral("MS Sans Serif"), QStringLiteral("Segoe UI"));
+#endif
+
 #ifdef TENJIN_WEBVIEW
     QtWebView::initialize();
 #endif
@@ -149,7 +166,8 @@ int main(int argc, char* argv[])
         for (const QString& f : monoFiles) {
             const int id = QFontDatabase::addApplicationFont(f);
             if (id < 0)
-                qWarning("Tenjin: failed to load bundled mono font %s", qUtf8Printable(f));
+                qWarning("Tenjin: failed to load bundled mono font %s",
+                         qUtf8Printable(f));
         }
     }
 
@@ -173,7 +191,7 @@ int main(int argc, char* argv[])
 
     // "Basic" is the correct style for pure QtQuick apps on all platforms.
     // Fusion is a QtWidgets style and must not be set here.
-    // QQuickStyle::setStyle(QStringLiteral("Basic"));
+    QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QDir().mkpath(appDataDir());
 
@@ -182,15 +200,13 @@ int main(int argc, char* argv[])
     try {
         appVMPtr = std::make_unique<AppViewModel>();
     } catch (const std::exception& e) {
-        const QString msg =
-            QStringLiteral("FATAL: AppViewModel init: ") + QString::fromUtf8(e.what());
+        const QString msg = QStringLiteral("FATAL: AppViewModel init: ") + QString::fromUtf8(e.what());
         qCritical().noquote() << msg;
         qCritical() << "Available SQL drivers:" << QSqlDatabase::drivers();
         writeFatal(msg);
         if (!QSqlDatabase::drivers().contains(QStringLiteral("QSQLITE")))
-            writeFatal(
-                QStringLiteral("QSQLITE not registered — Q_IMPORT_PLUGIN(QSQLiteDriverPlugin) "
-                               "required on static builds."));
+            writeFatal(QStringLiteral("QSQLITE not registered — Q_IMPORT_PLUGIN(QSQLiteDriverPlugin) "
+                                      "required on static builds."));
         return -1;
     } catch (...) {
         writeFatal(QStringLiteral("FATAL: unknown exception during AppViewModel creation."));
@@ -208,10 +224,10 @@ int main(int argc, char* argv[])
     // initialises to false), and updated whenever consent changes. This is the
     // single point that authorises any off-device data transmission.
     cloudService.setDataCollectionAllowed(appVM.dataCollectionAllowed());
-    QObject::connect(
-        &appVM, &AppViewModel::consentChanged, &cloudService, [&appVM, &cloudService]() {
-            cloudService.setDataCollectionAllowed(appVM.dataCollectionAllowed());
-        });
+    QObject::connect(&appVM, &AppViewModel::consentChanged, &cloudService,
+                     [&appVM, &cloudService]() {
+                         cloudService.setDataCollectionAllowed(appVM.dataCollectionAllowed());
+                     });
 
     // ── Log model + message handler ──────────────────────────────────────────
     LogViewModel logModel;
@@ -223,16 +239,17 @@ int main(int argc, char* argv[])
     appVM.setQmlEngine(&engine);
 
     // Context properties — all services accessible from any QML file.
-    engine.rootContext()->setContextProperty(QStringLiteral("appVM"), &appVM);
-    engine.rootContext()->setContextProperty(QStringLiteral("logModel"), &logModel);
+    engine.rootContext()->setContextProperty(QStringLiteral("appVM"),        &appVM);
+    engine.rootContext()->setContextProperty(QStringLiteral("logModel"),     &logModel);
     engine.rootContext()->setContextProperty(QStringLiteral("notifService"), &notifService);
     engine.rootContext()->setContextProperty(QStringLiteral("cloudService"), &cloudService);
-    engine.rootContext()->setContextProperty(QStringLiteral("haptics"), &haptics);
+    engine.rootContext()->setContextProperty(QStringLiteral("haptics"),      &haptics);
 
     // Capture QML warnings/errors so a load failure writes the real cause to
     // fatal.log instead of crashing silently before the window appears.
     QObject::connect(
-        &engine, &QQmlApplicationEngine::warnings, &app, [](const QList<QQmlError>& warnings) {
+        &engine, &QQmlApplicationEngine::warnings, &app,
+        [](const QList<QQmlError>& warnings) {
             for (const QQmlError& e : warnings) {
                 const QString msg = QStringLiteral("QML: ") + e.toString();
                 qWarning().noquote() << msg;
@@ -256,10 +273,45 @@ int main(int argc, char* argv[])
     engine.load(rootUrl);
 
     if (engine.rootObjects().isEmpty()) {
-        writeFatal(QStringLiteral("FATAL: no root QML objects — load failed: ") +
-                   rootUrl.toString());
+        writeFatal(QStringLiteral("FATAL: no root QML objects — load failed: ") + rootUrl.toString());
         return -1;
     }
+
+#if defined(Q_OS_WIN)
+    // Match the Windows title bar (the OS-drawn caption) to the app's light/dark
+    // theme via the DWM immersive-dark-mode attribute. Qt does not do this
+    // automatically. Re-applied whenever the theme changes. This is a Win32-only
+    // path; the attribute value 20 (DWMWA_USE_IMMERSIVE_DARK_MODE) is stable on
+    // Windows 10 2004+ and Windows 11.
+    {
+        auto applyDarkTitleBar = [&engine](bool dark) {
+            const auto roots = engine.rootObjects();
+            if (roots.isEmpty())
+                return;
+            auto* win = qobject_cast<QQuickWindow*>(roots.first());
+            if (!win)
+                return;
+            const HWND hwnd = reinterpret_cast<HWND>(win->winId());
+            if (!hwnd)
+                return;
+            const BOOL value = dark ? TRUE : FALSE;
+            // DWMWA_USE_IMMERSIVE_DARK_MODE == 20.
+            DwmSetWindowAttribute(hwnd, 20, &value, sizeof(value));
+        };
+        applyDarkTitleBar(appVM.theme() == 1
+                          || (appVM.theme() == 2 && appVM.customIsDark()));
+        QObject::connect(&appVM, &AppViewModel::themeChanged, &app,
+                         [&appVM, applyDarkTitleBar]() {
+                             applyDarkTitleBar(appVM.theme() == 1
+                                               || (appVM.theme() == 2 && appVM.customIsDark()));
+                         });
+        QObject::connect(&appVM, &AppViewModel::customThemeChanged, &app,
+                         [&appVM, applyDarkTitleBar]() {
+                             applyDarkTitleBar(appVM.theme() == 1
+                                               || (appVM.theme() == 2 && appVM.customIsDark()));
+                         });
+    }
+#endif
 
     return app.exec();
 }

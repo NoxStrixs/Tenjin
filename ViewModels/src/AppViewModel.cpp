@@ -16,6 +16,7 @@
 #include <QGuiApplication>
 #include <QLocale>
 #include <QQmlEngine>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QStringList>
@@ -69,6 +70,14 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
     m_theme               = settings.value("appearance/theme", 0).toInt();
     m_reducedMotion       = settings.value("appearance/reducedMotion", false).toBool();
     m_systemReducedMotion = tenjin::platformPrefersReducedMotion();
+    m_customAccent  = settings.value("appearance/customAccent", m_customAccent).toString();
+    m_customBg      = settings.value("appearance/customBg", m_customBg).toString();
+    m_customSurface = settings.value("appearance/customSurface", m_customSurface).toString();
+    m_customText    = settings.value("appearance/customText", m_customText).toString();
+    m_customDanger  = settings.value("appearance/customDanger", m_customDanger).toString();
+    m_customSuccess = settings.value("appearance/customSuccess", m_customSuccess).toString();
+    m_customBorder  = settings.value("appearance/customBorder", m_customBorder).toString();
+    m_customIsDark  = settings.value("appearance/customIsDark", false).toBool();
     m_ageBand             = settings.value("privacy/ageBand", AgeUnknown).toInt();
     m_consentStatus       = settings.value("privacy/consentStatus", ConsentNotRequired).toInt();
     m_welcomeAcknowledged = settings.value("onboarding/welcomeAcknowledged", false).toBool();
@@ -100,6 +109,18 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
     }
 
     loadBundledNews();
+}
+
+QString AppViewModel::languageDisplayName(const QString& code) const
+{
+    if (code.isEmpty())
+        return {};
+    const QLocale loc(code);
+    // nativeLanguageName gives the endonym (e.g. "español", "日本語"). Empty for
+    // codes QLocale can't parse — fall back to the raw code so nothing renders
+    // blank.
+    const QString native = loc.nativeLanguageName();
+    return native.isEmpty() ? code : native;
 }
 
 void AppViewModel::setUiLanguage(const QString& code)
@@ -212,6 +233,57 @@ void AppViewModel::setTheme(int theme)
     QSettings settings;
     settings.setValue("appearance/theme", theme);
     emit themeChanged();
+}
+
+void AppViewModel::setCustomColor(const QString& key, const QString& hex)
+{
+    // Validate a #rrggbb (or #rgb) hex string before storing, so a bad value
+    // from QML can't poison the palette.
+    static const QRegularExpression re(QStringLiteral("^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"));
+    if (!re.match(hex).hasMatch())
+        return;
+
+    QString* slot = nullptr;
+    const char* settingKey = nullptr;
+    if (key == QLatin1String("accent")) {
+        slot = &m_customAccent;
+        settingKey = "appearance/customAccent";
+    } else if (key == QLatin1String("bg")) {
+        slot = &m_customBg;
+        settingKey = "appearance/customBg";
+    } else if (key == QLatin1String("surface")) {
+        slot = &m_customSurface;
+        settingKey = "appearance/customSurface";
+    } else if (key == QLatin1String("text")) {
+        slot = &m_customText;
+        settingKey = "appearance/customText";
+    } else if (key == QLatin1String("danger")) {
+        slot = &m_customDanger;
+        settingKey = "appearance/customDanger";
+    } else if (key == QLatin1String("success")) {
+        slot = &m_customSuccess;
+        settingKey = "appearance/customSuccess";
+    } else if (key == QLatin1String("border")) {
+        slot = &m_customBorder;
+        settingKey = "appearance/customBorder";
+    } else {
+        return; // unknown key
+    }
+
+    if (*slot == hex)
+        return;
+    *slot = hex;
+    QSettings().setValue(QLatin1String(settingKey), hex);
+    emit customThemeChanged();
+}
+
+void AppViewModel::setCustomIsDark(bool dark)
+{
+    if (m_customIsDark == dark)
+        return;
+    m_customIsDark = dark;
+    QSettings().setValue("appearance/customIsDark", dark);
+    emit customThemeChanged();
 }
 
 void AppViewModel::setReducedMotion(bool on)
@@ -407,9 +479,9 @@ void AppViewModel::autoBackupBeforeDestructive(const QString& reason)
     const QString stamp = QDateTime::currentDateTime().toString("yyyy-MM-dd-HHmmss");
     const QString path  = dir + "/tenjin-backup-" + reason + "-" + stamp + ".json";
     if (exportData(QUrl::fromLocalFile(path).toString()))
-        setStatusMessage(QStringLiteral("Backup saved before deleting: ") + path);
+        setStatusMessage(tr("Backup saved before deleting: %1").arg(path));
     else
-        setStatusMessage(QStringLiteral("Warning: automatic backup failed before delete."));
+        setStatusMessage(tr("Warning: automatic backup failed before delete."));
 }
 
 QString AppViewModel::exportToDocuments()
@@ -658,7 +730,7 @@ bool AppViewModel::deleteEverything()
         QDir(mediaDirPath).removeRecursively();
     }
 
-    setStatusMessage(ok ? "All data deleted." : "Some deletes failed — see logs.");
+    setStatusMessage(ok ? tr("All data deleted.") : tr("Some deletes failed — see logs."));
     return ok;
 }
 

@@ -1,7 +1,7 @@
 import QtQuick.Window
 import TenjinView
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQuick.Dialogs
 
@@ -55,7 +55,7 @@ ApplicationWindow {
     Shortcut { sequence: "Ctrl+D"; onActivated: Platform.toggleTheme() }
     Shortcut {
         sequences: [StandardKey.HelpContents]
-        onActivated: appVM.currentPage = root._pageHelp
+        onActivated: helpPopup.open()
     }
     Shortcut {
         sequence: StandardKey.Cancel  // Esc
@@ -120,6 +120,7 @@ ApplicationWindow {
             Platform.safeAreaRight  = SafeArea.margins.right
         }
         Platform.theme = appVM.theme
+        root._pushCustomTheme()
         Platform.reducedMotionUser = appVM.reducedMotion
         Platform.reducedMotionSystem = appVM.systemReducedMotion
         // Belt and suspenders for mobile fullscreen: after Qt's iOS bootstrap
@@ -152,6 +153,21 @@ ApplicationWindow {
         target: appVM
         function onThemeChanged() { Platform.theme = appVM.theme }
         function onReducedMotionChanged() { Platform.reducedMotionUser = appVM.reducedMotion }
+        function onCustomThemeChanged() { root._pushCustomTheme() }
+    }
+
+    // Copy the persisted custom-theme anchors from AppViewModel into the
+    // Platform singleton so the derived palette updates live. Called at startup
+    // and whenever the user edits a custom color.
+    function _pushCustomTheme() {
+        Platform.customAccent  = appVM.customAccent
+        Platform.customBg      = appVM.customBg
+        Platform.customSurface = appVM.customSurface
+        Platform.customText    = appVM.customText
+        Platform.customDanger  = appVM.customDanger
+        Platform.customSuccess = appVM.customSuccess
+        Platform.customBorder  = appVM.customBorder
+        Platform.customIsDark  = appVM.customIsDark
     }
 
     // ── Header ─────────────────────────────────────────────────────────────
@@ -230,8 +246,7 @@ ApplicationWindow {
                 id: aboutBtn
                 glyph: TenjinIcons.info
                 accessibleName: qsTr("Help")
-                onActivated: aboutPopup.open()
-                onHoveredChanged: hovered ? aboutPopup.open() : aboutPopup.close()
+                onActivated: aboutPopup.opened ? aboutPopup.close() : aboutPopup.open()
             }
             // Tags page is reached via the Sidebar's "Manage tags" footer
             // (the canonical entry-point). The previous header "#" IconBtn
@@ -239,15 +254,16 @@ ApplicationWindow {
             IconBtn {
                 id: helpBtn
                 glyph: "?"
-                active: appVM.currentPage === root._pageHelp
-                onActivated: appVM.currentPage = root._pageHelp
+                accessibleName: qsTr("Help")
+                active: helpPopup.opened
+                onActivated: helpPopup.open()
             }
             IconBtn {
                 id: newsBtn
                 glyph: TenjinIcons.news
                 accessibleName: qsTr("News")
-                active: appVM.currentPage === root._pageNews
-                onActivated: appVM.currentPage = root._pageNews
+                active: newsPopup.opened
+                onActivated: newsPopup.open()
             }
             IconBtn {
                 id: settingsBtn
@@ -357,22 +373,30 @@ ApplicationWindow {
         }
     }
 
-    // ── About popup (hover) ────────────────────────────────────────────────
+    // ── About popup ─────────────────────────────────────────────────────────
     Popup {
         id: aboutPopup
         parent: aboutBtn
+        // Anchor just below/left of the button; not modal and not hover-driven
+        // so it cannot flicker (hover-open fought the modal overlay stealing the
+        // hover). Opened by click; closes on outside-press or Escape.
         x: aboutBtn.width - width
         y: aboutBtn.height + Platform.spacingXs
         width: Platform.popupWidthSm
         padding: Platform.spacingLg
-        closePolicy: Popup.NoAutoClose
+        modal: false
+        dim: false
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         background: Rectangle {
+            implicitWidth: Platform.popupWidthSm
+            implicitHeight: aboutCol.implicitHeight + Platform.spacingLg * 2
             color: Platform.surface
             radius: Platform.radiusLarge
             border.color: Platform.border
             border.width: Platform.borderWidth
         }
         contentItem: ColumnLayout {
+            id: aboutCol
             spacing: Platform.spacingSm
             Text { text: qsTr("Tenjin"); color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
             Text { text: qsTr("Vocabulary & spaced-repetition study"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall; wrapMode: Text.WordWrap; Layout.fillWidth: true }
@@ -389,6 +413,115 @@ ApplicationWindow {
         }
         exit: Transition {
             NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Platform.effDurationFast }
+        }
+    }
+
+    // ── News & Help pop-outs (formerly full pages) ──────────────────────────
+    SheetPopup {
+        id: newsPopup
+        title: qsTr("News")
+        NewsPage {
+            anchors.fill: parent
+            onBackRequested: newsPopup.close()
+        }
+    }
+    SheetPopup {
+        id: helpPopup
+        title: qsTr("Help")
+        HelpPage {
+            anchors.fill: parent
+            onBackRequested: helpPopup.close()
+        }
+    }
+
+    // ── Language FILTER menu (sidebar globe button) ─────────────────────────
+    // Distinct from the interface-language menu: this narrows the visible
+    // words/decks to a single language via EntryViewModel.currentLanguageFilter.
+    // An empty string means "all languages".
+    Popup {
+        id: languageFilterMenu
+        parent: Overlay.overlay
+        modal: true
+        dim: true
+        padding: 0
+        width: Platform.isMobile ? Math.min(root.width - 32, 360) : 360
+        height: Math.min(root.height - Platform.safeAreaTop - Platform.safeAreaBottom - 80, 520)
+        anchors.centerIn: Overlay.overlay
+        background: Rectangle {
+            implicitWidth: languageFilterMenu.width
+            implicitHeight: languageFilterMenu.height
+            color: Platform.surface; radius: Platform.radiusLarge
+            border.color: Platform.border; border.width: Platform.borderWidth
+        }
+
+        contentItem: ColumnLayout {
+            anchors.margins: Platform.spacingLg
+            spacing: Platform.spacingMd
+
+            Text {
+                text: qsTr("Filter by language")
+                color: Platform.textPrimary
+                font.pixelSize: Platform.fontLarge
+                font.bold: true
+            }
+
+            ListView {
+                id: filterList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 2
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                // "All languages" sentinel (empty code) followed by the codes
+                // actually present in the collection.
+                model: [""].concat(appVM.availableLanguages)
+
+                delegate: Rectangle {
+                    required property var modelData
+                    width: filterList.width
+                    height: Platform.touchTarget
+                    radius: Platform.radius
+                    readonly property bool isAll: modelData === ""
+                    readonly property bool isCurrent: appVM.entryVM.currentLanguageFilter === modelData
+                    color: filterArea.containsMouse || isCurrent ? Platform.surfaceAlt : "transparent"
+
+                    RowLayout {
+                        anchors { fill: parent; leftMargin: Platform.spacingMd; rightMargin: Platform.spacingMd }
+                        spacing: Platform.spacingMd
+
+                        LanguageFlagRow {
+                            visible: !parent.parent.isAll
+                            codes: parent.parent.isAll ? [] : LanguageFlags.flags(modelData)
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: parent.parent.isAll ? qsTr("All languages")
+                                                      : appVM.languageDisplayName(modelData)
+                            color: Platform.textPrimary
+                            font.pixelSize: Platform.fontBase
+                            font.bold: parent.parent.isCurrent
+                        }
+                        Text {
+                            visible: parent.parent.isCurrent
+                            text: TenjinIcons.check
+                            font.family: TenjinIcons.family
+                            color: Platform.accent
+                            font.pixelSize: Platform.fontLarge
+                        }
+                    }
+                    MouseArea {
+                        id: filterArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            appVM.entryVM.currentLanguageFilter = modelData
+                            languageFilterMenu.close()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -809,7 +942,7 @@ ApplicationWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: { newsLaunchPopup.close(); appVM.currentPage = root._pageNews }
+                        onClicked: { newsLaunchPopup.close(); newsPopup.open() }
                     }
                 }
                 Item { Layout.fillWidth: true }
@@ -852,15 +985,21 @@ ApplicationWindow {
         spacing: 0
 
         Sidebar {
-            visible: Platform.useWideLayout && !appVM.sidebarVM.collapsed && appVM.currentPage <= root._pageTags
+            // Persist across all pages: previously hidden once you navigated
+            // past Tags (Help/News/Settings/Stats), which meant the word list
+            // vanished. Now it stays available on every page; only the collapse
+            // toggle hides it.
+            visible: Platform.useWideLayout && !appVM.sidebarVM.collapsed
             Layout.preferredWidth: Platform.sidebarWidth
             Layout.fillHeight: true
             onAddEntryRequested: addEntryDialog.open()
             onAddDeckRequested: addDeckDialog.open()
             onAddTagRequested: addTagDialog.open()
+            onLanguageRequested: languageFilterMenu.open()
+            onSyncRequested: cloudService.syncDecks("")
         }
         Rectangle {
-            visible: Platform.useWideLayout && !appVM.sidebarVM.collapsed && appVM.currentPage <= root._pageTags
+            visible: Platform.useWideLayout && !appVM.sidebarVM.collapsed
             Layout.preferredWidth: 1; Layout.fillHeight: true
             color: Platform.border
         }
@@ -912,8 +1051,12 @@ ApplicationWindow {
                     onAddTagRequested: addTagDialog.open()
                     onBackRequested:   appVM.currentPage = root._pageWords
                 }
-                HelpPage     { onBackRequested: appVM.currentPage = root._pageWords }
-                NewsPage     { onBackRequested: appVM.currentPage = root._pageWords }
+                // Help and News are now pop-outs (see helpPopup / newsPopup
+                // below), but their StackLayout slots are kept as empty items so
+                // the positional page indices (Settings=5, Stats=6, …) stay
+                // stable. Navigating to these indices is no longer wired.
+                Item {}
+                Item {}
                 SettingsPage {
                     applicationRoot: root
                     onBackRequested: appVM.currentPage = root._pageWords
@@ -993,6 +1136,14 @@ ApplicationWindow {
     Connections { target: appVM.entryVM; function onErrorOccurred(msg) { toast.show(msg) } }
     Connections { target: appVM.deckVM;  function onErrorOccurred(msg) { toast.show(msg) } }
     Connections { target: appVM.reviewVM; function onErrorOccurred(msg) { toast.show(msg) } }
+    // Cloud sync feedback — surfaces the result/message (including the consent
+    // block and the current "coming soon" stub) so the Sync button gives the
+    // user a response rather than failing silently.
+    Connections {
+        target: cloudService
+        function onSyncResult(status, message) { if (message && message.length > 0) toast.show(message) }
+        function onNetworkError(message) { if (message && message.length > 0) toast.show(message) }
+    }
     Connections {
         target: notifService
         function onToastRequested(message, level) { toast.show(message) }

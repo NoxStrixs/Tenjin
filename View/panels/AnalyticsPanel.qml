@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import TenjinView
 
@@ -115,27 +115,22 @@ Item {
 
     implicitHeight: root.embedded ? _content.implicitHeight : 0
 
-    ScrollView {
-        id: _scroll
+    // Scroll container. Standalone, this Flickable scrolls the content. Embedded
+    // inside the stats page's own ScrollView, a nested scroller would swallow
+    // wheel events (the "dead zone" on the lower half), so when embedded we make
+    // this Flickable inert AND zero-height-contributing: interactive off, and
+    // contentHeight clamped to the viewport so it never scrolls or grabs wheel.
+    // The content's real height is exposed through the panel's implicitHeight
+    // (above) so the OUTER page scrolls everything as one surface.
+    Flickable {
+        id: _flick
         anchors.fill: parent
-        contentWidth: availableWidth
-        clip: true
-        // When embedded, the panel is sized to its content and the OUTER page
-        // scrolls. We hide the scrollbar AND fully neutralise the inner
-        // Flickable so it neither drags nor consumes wheel events — otherwise
-        // the mouse wheel "dies" over the lower (analytics) half of the stats
-        // page because the inner view swallows the scroll. Setting interactive
-        // false stops drags; setting the flick deceleration/maximum velocity to
-        // zero and bounds to stop makes wheel a no-op so it bubbles to the page.
-        ScrollBar.vertical.policy: root.embedded ? ScrollBar.AlwaysOff : ScrollBar.AsNeeded
-        Component.onCompleted: {
-            if (root.embedded && contentItem) {
-                contentItem.interactive = false
-                contentItem.boundsBehavior = Flickable.StopAtBounds
-                contentItem.maximumFlickVelocity = 0
-                contentItem.flickDeceleration = 0
-            }
-        }
+        clip: !root.embedded
+        contentWidth: width
+        contentHeight: root.embedded ? height : _content.implicitHeight
+        interactive: !root.embedded
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: root.embedded ? ScrollBar.AlwaysOff : ScrollBar.AsNeeded }
 
         ColumnLayout {
             id: _content
@@ -342,7 +337,7 @@ Item {
                 Layout.leftMargin: Platform.pagePadding
                 Layout.rightMargin: Platform.pagePadding
                 title: qsTr("Activity (last 13 weeks)")
-                subtitle: "Color intensity = reviews that day"
+                subtitle: qsTr("Color intensity = reviews that day")
                 emptyText: root.analytics.daily.length === 0 ? "No reviews yet." : ""
 
                 chart: Item {
@@ -399,6 +394,12 @@ Item {
                                 implicitWidth: 14
                                 implicitHeight: 14
                                 radius: 2
+                                // A faint border keeps the grid visible even when
+                                // a cell is empty and its fill matches the card
+                                // background (notably in light mode, where
+                                // surfaceAlt ≈ surface).
+                                border.width: 1
+                                border.color: Platform.border
                                 color: _count === 0
                                     ? Platform.surfaceAlt
                                     : Qt.rgba(
@@ -427,7 +428,7 @@ Item {
                 Layout.rightMargin: Platform.pagePadding
                 Layout.bottomMargin: Platform.pagePadding
                 title: qsTr("Retention curve")
-                subtitle: "Running average of daily grade; trending up = improving recall"
+                subtitle: qsTr("Running average of daily grade; trending up = improving recall")
                 emptyText: root.analytics.daily.length < 2 ? "Not enough data yet." : ""
 
                 chart: Canvas {

@@ -20,7 +20,8 @@ endif()
 set(_TENJIN_QML_IMPORTS
     QtQuick
     QtQuick.Window
-    QtQuick.Controls
+    QtQuick.Controls.Basic
+    QtQuick.Templates
     QtQuick.Layouts
     QtQuick.Dialogs
     QtQml
@@ -87,12 +88,6 @@ qt_add_qml_module(TenjinView
         ${_TENJIN_QML_IMPORTS}
     RESOURCES
         ${_TENJIN_BUNDLED_RESOURCES}
-    DEPENDENCIES
-        QtQuick
-        QtQuick.Window
-        QtQuick.Controls
-        QtQuick.Layouts
-        QtQuick.Dialogs
     QML_FILES
         # ── root ──
         Main.qml
@@ -107,7 +102,11 @@ qt_add_qml_module(TenjinView
         components/ErrorState.qml
         components/PressScale.qml
         components/ToggleSwitch.qml
+        components/ThemePicker.qml
+        components/SheetPopup.qml
         components/AgeGateDialog.qml
+        components/ColorPickerPopup.qml
+        components/Stepper.qml
         components/ChartCard.qml
         components/ContentBlock.qml
         components/EmptyState.qml
@@ -155,8 +154,6 @@ target_link_libraries(TenjinView
     PRIVATE  TenjinViewModels
              Qt6::Quick
              Qt6::QuickControls2
-             Qt6::QuickLayouts
-             Qt6::QuickDialogs2
              Qt6::Svg
              ${TENJIN_MEDIA_COMPONENTS}
              tenjin_warnings

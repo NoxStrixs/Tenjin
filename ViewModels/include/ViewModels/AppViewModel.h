@@ -23,6 +23,17 @@ class AppViewModel : public QObject
     Q_PROPERTY(
         QString statusMessage READ statusMessage WRITE setStatusMessage NOTIFY statusMessageChanged)
     Q_PROPERTY(int theme READ theme WRITE setTheme NOTIFY themeChanged)
+    // Custom-theme anchor colors (hex strings like "#rrggbb"). Persisted; pushed
+    // into Platform when theme == 2 (custom). A single setter updates one anchor
+    // by key so the QML picker stays simple.
+    Q_PROPERTY(QString customAccent READ customAccent NOTIFY customThemeChanged)
+    Q_PROPERTY(QString customBg READ customBg NOTIFY customThemeChanged)
+    Q_PROPERTY(QString customSurface READ customSurface NOTIFY customThemeChanged)
+    Q_PROPERTY(QString customText READ customText NOTIFY customThemeChanged)
+    Q_PROPERTY(QString customDanger READ customDanger NOTIFY customThemeChanged)
+    Q_PROPERTY(QString customSuccess READ customSuccess NOTIFY customThemeChanged)
+    Q_PROPERTY(QString customBorder READ customBorder NOTIFY customThemeChanged)
+    Q_PROPERTY(bool customIsDark READ customIsDark NOTIFY customThemeChanged)
     Q_PROPERTY(bool reducedMotion READ reducedMotion WRITE setReducedMotion NOTIFY reducedMotionChanged)
     // Read-only: whether the OS "reduce motion" accessibility setting is on.
     // Probed once at construction via a per-platform backend (iOS/Android);
@@ -100,6 +111,42 @@ public:
     {
         return m_theme;
     }
+    QString customAccent() const
+    {
+        return m_customAccent;
+    }
+    QString customBg() const
+    {
+        return m_customBg;
+    }
+    QString customSurface() const
+    {
+        return m_customSurface;
+    }
+    QString customText() const
+    {
+        return m_customText;
+    }
+    QString customDanger() const
+    {
+        return m_customDanger;
+    }
+    QString customSuccess() const
+    {
+        return m_customSuccess;
+    }
+    QString customBorder() const
+    {
+        return m_customBorder;
+    }
+    bool customIsDark() const
+    {
+        return m_customIsDark;
+    }
+    // Update one custom-theme anchor by key ("accent"/"bg"/"surface"/"text").
+    // Persists and notifies; the QML layer pushes the values into Platform.
+    Q_INVOKABLE void setCustomColor(const QString& key, const QString& hex);
+    Q_INVOKABLE void setCustomIsDark(bool dark);
     bool reducedMotion() const
     {
         return m_reducedMotion;
@@ -316,7 +363,11 @@ public:
     {
         return m_uiLanguage;
     }
-    void        setUiLanguage(const QString& code);
+    Q_INVOKABLE void setUiLanguage(const QString& code);
+    // Human-readable, native display name for an ISO 639-1 code (e.g. "es" ->
+    // "español"). Backed by QLocale so it stays correct without a hand-kept
+    // table. Falls back to the code itself for unrecognised inputs.
+    Q_INVOKABLE QString languageDisplayName(const QString& code) const;
     QStringList supportedUiLanguages() const;
 
     // Wired from main.cpp after engine construction so the VM can call
@@ -332,6 +383,7 @@ signals:
     void availableLanguagesChanged();
     void uiLanguageChanged();
     void themeChanged();
+    void customThemeChanged();
     void reducedMotionChanged();
     void consentChanged();
     void welcomeAcknowledgedChanged();
@@ -345,6 +397,14 @@ private:
     int           m_currentPage = PageWords;
     QString       m_statusMessage;
     int           m_theme               = 0;
+    QString       m_customAccent        = QStringLiteral("#d4a373");
+    QString       m_customBg            = QStringLiteral("#fefae0");
+    QString       m_customSurface       = QStringLiteral("#faedcd");
+    QString       m_customText          = QStringLiteral("#3d2c1e");
+    QString       m_customDanger        = QStringLiteral("#c0392b");
+    QString       m_customSuccess       = QStringLiteral("#6a8f5a");
+    QString       m_customBorder        = QStringLiteral("#e0d4b8");
+    bool          m_customIsDark        = false;
     bool          m_reducedMotion       = false;
     bool          m_systemReducedMotion = false;
     int           m_ageBand             = AgeUnknown;

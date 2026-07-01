@@ -91,16 +91,19 @@ Rectangle {
             id: plotArea
             Layout.fillWidth: true
             Layout.fillHeight: true
-            opacity: card.emptyText.length > 0 ? 0.6 : 1.0
+            // Full opacity when showing the empty-state message so it stays
+            // readable; the dim only applied to faded-in chart content.
+            opacity: 1.0
             Behavior on opacity { NumberAnimation { duration: Platform.effDurationMed } }
 
             Text {
                 anchors.centerIn: parent
                 visible: card.emptyText.length > 0
                 text: card.emptyText
-                color: Platform.textMuted
-                font.pixelSize: Platform.fontBase - 1
+                color: Platform.textPrimary
+                font.pixelSize: Platform.fontBase
                 font.italic: true
+                opacity: 1.0
             }
         }
     }

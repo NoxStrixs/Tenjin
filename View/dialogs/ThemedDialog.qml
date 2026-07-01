@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import TenjinView
 
 // A themed Dialog base:
@@ -59,6 +59,8 @@ Dialog {
     }
 
     background: Rectangle {
+        implicitWidth: 320
+        implicitHeight: 120
         color: Platform.bg
         radius: Platform.radiusLarge
         border.color: Platform.border

@@ -1,6 +1,6 @@
 import TenjinView
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 Rectangle {
@@ -10,6 +10,8 @@ Rectangle {
     signal addEntryRequested()
     signal addDeckRequested()
     signal addTagRequested()
+    signal languageRequested()
+    signal syncRequested()
 
     ColumnLayout {
         anchors.fill: parent
@@ -333,6 +335,52 @@ Rectangle {
         }
 
         // Tags shortcut — leads to the Tags page (the canonical tag UI).
+        // Language shortcut — opens the language menu. Sits just above Manage
+        // tags so the two "manage" affordances are grouped above the footer.
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 38
+            color: Platform.surface
+            Rectangle {
+                anchors { left: parent.left; right: parent.right; top: parent.top }
+                height: 1; color: Platform.border
+            }
+            Rectangle {
+                anchors.fill: parent
+                color: langShortcutArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
+            }
+            RowLayout {
+                anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
+                spacing: 10
+                Text {
+                    text: TenjinIcons.globe
+                    font.family: TenjinIcons.family
+                    font.pixelSize: 14
+                    color: Platform.textPrimary
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Language")
+                    color: Platform.textPrimary
+                    font.pixelSize: 12
+                }
+                Text {
+                    text: TenjinIcons.chevronRight
+                    font.family: TenjinIcons.family
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontLarge
+                }
+            }
+            MouseArea {
+                id: langShortcutArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: sidebarRoot.languageRequested()
+            }
+        }
+
         // Lives above Import/Export so the most-used navigation control is
         // closer to the lists.
         Rectangle {
@@ -439,6 +487,53 @@ Rectangle {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Sync footer — appears below Import/Export when a cloud endpoint is
+        // configured. Disabled/greyed while a sync is in flight. Gated by the
+        // same consent rules as the rest of the network layer (the button still
+        // shows, but the service refuses without consent and reports why).
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 40
+            visible: cloudService.available
+            color: Platform.surface
+            Rectangle {
+                anchors { left: parent.left; right: parent.right; top: parent.top }
+                height: 1; color: Platform.border
+            }
+            Rectangle {
+                anchors { fill: parent; margins: 8 }
+                radius: Platform.radius
+                color: syncArea.containsMouse ? Platform.surfaceAlt : Platform.bg
+                border.color: Platform.border
+                border.width: 1
+                opacity: cloudService.syncBusy ? 0.6 : 1.0
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
+                    Text {
+                        text: TenjinIcons.sync
+                        font.family: TenjinIcons.family
+                        color: Platform.accentDark
+                        font.pixelSize: 14
+                    }
+                    Text {
+                        text: cloudService.syncBusy ? qsTr("Syncing…") : qsTr("Sync now")
+                        color: Platform.accentDark
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+                }
+                MouseArea {
+                    id: syncArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: !cloudService.syncBusy
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: sidebarRoot.syncRequested()
                 }
             }
         }

@@ -1,6 +1,6 @@
 import TenjinView
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // Top-level Settings destination. Replaces the previous inline settingsPopup
@@ -94,7 +94,9 @@ Item {
         clip: true
 
         ColumnLayout {
-            width: settingsRoot.width
+            // Cap content to a readable measure, left-aligned against the
+            // sidebar (not centred) so it sits next to the navigation.
+            width: Math.min(settingsRoot.width, 720)
             spacing: 0
 
             // Desktop title row with back arrow — mobile shows the title
@@ -144,32 +146,18 @@ Item {
             // ── Appearance ──────────────────────────────────────────────────
             SectionHeader { text: qsTr("Appearance") }
 
+            // Theme picker — Light / Dark / Custom with a custom color editor.
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Platform.touchTarget + 16
-                color: themeRowArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
-                RowLayout {
-                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
-                    spacing: Platform.spacingMd
-                    Text { text: Platform.isDark ? TenjinIcons.lightMode : TenjinIcons.darkMode; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 1
-                        Text { text: qsTr("Theme"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
-                        Text { text: Platform.isDark ? qsTr("Dark") : qsTr("Light"); color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                Layout.preferredHeight: themePicker.implicitHeight + Platform.spacingLg * 2
+                color: "transparent"
+                ThemePicker {
+                    id: themePicker
+                    anchors {
+                        left: parent.left; right: parent.right; top: parent.top
+                        leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg
+                        topMargin: Platform.spacingMd
                     }
-                    ToggleSwitch {
-                        checked: Platform.isDark
-                        onToggled: appVM.setTheme(Platform.isDark ? 0 : 1)
-                    }
-                }
-                MouseArea {
-                    id: themeRowArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: appVM.setTheme(Platform.isDark ? 0 : 1)
                 }
             }
 
@@ -372,18 +360,24 @@ Item {
                         spacing: 8
 
                         function buildOptions() {
-                            const opts = [{ code: "", label: qsTr("(All languages)") }]
+                            // Unified { code, name, flags } shape shared with the
+                            // interface + assign-language pickers.
+                            const opts = [{ code: "", name: qsTr("(All languages)"), flags: [] }]
                             const builtin = appVM.builtinLanguages
                             const seen = {}
                             for (let i = 0; i < builtin.length; i++) {
                                 const b = builtin[i]
-                                opts.push({ code: b.code, label: b.code + "  --  " + b.name })
+                                opts.push({ code: b.code,
+                                            name: LanguageFlags.name(b.code) || b.name,
+                                            flags: LanguageFlags.flags(b.code) })
                                 seen[b.code] = true
                             }
                             const custom = appVM.availableLanguages
                             for (let j = 0; j < custom.length; j++) {
                                 if (!seen[custom[j]])
-                                    opts.push({ code: custom[j], label: custom[j] + "  (custom)" })
+                                    opts.push({ code: custom[j],
+                                                name: custom[j] + "  " + qsTr("(custom)"),
+                                                flags: LanguageFlags.flags(custom[j]) })
                             }
                             return opts
                         }
@@ -404,7 +398,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: Platform.touchTarget
                             model: langComboRow.options
-                            textRole: "label"
+                            textRole: "name"
                             valueRole: "code"
 
                             // Keep the displayed selection synced with the
@@ -431,6 +425,30 @@ Item {
                             onActivated: (idx) => {
                                 const sel = langComboRow.options[idx]
                                 if (sel) appVM.entryVM.currentLanguageFilter = sel.code
+                            }
+                            // Flag(s) + name, matching the interface picker.
+                            delegate: ItemDelegate {
+                                id: filterDel
+                                required property var modelData
+                                required property int index
+                                width: langCombo.width
+                                height: 32
+                                highlighted: langCombo.highlightedIndex === index
+                                contentItem: RowLayout {
+                                    spacing: Platform.spacingMd
+                                    LanguageFlagRow { codes: filterDel.modelData.flags }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: filterDel.modelData.name
+                                        color: Platform.textPrimary
+                                        font.pixelSize: Platform.fontBase
+                                        verticalAlignment: Text.AlignVCenter
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                                background: Rectangle {
+                                    color: filterDel.highlighted ? Platform.surfaceAlt : "transparent"
+                                }
                             }
                         }
 
@@ -552,28 +570,23 @@ Item {
                 RowLayout {
                     anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: Platform.spacingMd
-                    Text { text: TenjinIcons.refresh; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.news; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     Text {
                         Layout.fillWidth: true
                         text: qsTr("Remind me at")
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontBase
                     }
-                    // Hour spinner
-                    SpinBox {
+                    Stepper {
                         from: 0; to: 23
                         value: notifService.reminderHour
-                        onValueModified: notifService.reminderHour = value
-                        textFromValue: function(v) { return (v < 10 ? "0" : "") + v }
-                        implicitWidth: 72
+                        onValueModified: (newValue) => notifService.reminderHour = newValue
                     }
                     Text { text: ":"; color: Platform.textPrimary; font.pixelSize: Platform.fontLarge }
-                    SpinBox {
+                    Stepper {
                         from: 0; to: 59
                         value: notifService.reminderMinute
-                        onValueModified: notifService.reminderMinute = value
-                        textFromValue: function(v) { return (v < 10 ? "0" : "") + v }
-                        implicitWidth: 72
+                        onValueModified: (newValue) => notifService.reminderMinute = newValue
                     }
                 }
             }
@@ -790,7 +803,6 @@ Item {
                     spacing: Platform.spacingMd
                     Text { text: TenjinIcons.autoAwesome; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     Text {
-                        Layout.fillWidth: true
                         text: qsTr("Version")
                         color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true
                     }
@@ -798,6 +810,7 @@ Item {
                         text: Qt.application.version
                         color: Platform.textMuted; font.pixelSize: Platform.fontBase
                     }
+                    Item { Layout.fillWidth: true }
                 }
             }
 
@@ -869,7 +882,7 @@ Item {
 
                     ColumnLayout {
                         id: dzRow
-                        anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: Platform.spacingLg + 4; rightMargin: Platform.spacingLg }
+                        anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                         spacing: 1
                         Text {
                             text: dz.modelData.label

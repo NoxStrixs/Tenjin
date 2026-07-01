@@ -1,6 +1,6 @@
 import TenjinView
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // Top-level News destination. Driven by appVM.currentPage === PageNews (=4).

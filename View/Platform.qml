@@ -15,22 +15,51 @@ QtObject {
     readonly property int wideLayoutThreshold: 760
     readonly property bool useWideLayout: currentWidth >= wideLayoutThreshold
 
+    // Theme: 0 = light, 1 = dark, 2 = custom.
     property int theme: 0
-    readonly property bool isDark: theme === 1
+    readonly property bool isDark: theme === 1 || (theme === 2 && customIsDark)
+    readonly property bool isCustom: theme === 2
     function toggleTheme() { theme = isDark ? 0 : 1 }
 
+    // ── Custom-theme overrides ────────────────────────────────────────────────
+    // Four user-chosen anchor colors; the rest derive from them so the picker
+    // stays simple. customIsDark tells derived tints which way to go. Written by
+    // AppViewModel from persisted settings; ignored unless theme === 2.
+    property color customAccent:  "#d4a373"
+    property color customBg:      "#fefae0"
+    property color customSurface: "#faedcd"
+    property color customText:    "#3d2c1e"
+    property color customDanger:  "#c0392b"
+    property color customSuccess: "#6a8f5a"
+    property color customBorder:  "#e0d4b8"
+    property bool  customIsDark:  false
+
+    function _mix(a, b, t) {
+        return Qt.rgba(a.r + (b.r - a.r) * t,
+                       a.g + (b.g - a.g) * t,
+                       a.b + (b.b - a.b) * t, 1)
+    }
+
     // ── Color tokens ──────────────────────────────────────────────────────────
-    readonly property color bg:          isDark ? "#1e1b16" : "#fefae0"
-    readonly property color surface:     isDark ? "#2a251d" : "#faedcd"
-    readonly property color surfaceAlt:  isDark ? "#332d23" : "#e9edc9"
-    readonly property color border:      isDark ? "#4a4234" : "#ccd5ae"
-    readonly property color accent:      "#d4a373"
-    readonly property color accentDark:  isDark ? "#e0b487" : "#b5835a"
-    readonly property color textPrimary: isDark ? "#ede4d3" : "#3d2c1e"
-    readonly property color textMuted:   isDark ? "#a89a85" : "#8a7560"
-    readonly property color danger:      isDark ? "#e05a4c" : "#c0392b"
-    readonly property color success:     isDark ? "#8fbf7a" : "#6a8f5a"
-    readonly property color reviewBg:    isDark ? "#252017" : "#f4f1de"
+    readonly property color bg:          isCustom ? customBg
+                                                  : (isDark ? "#1e1b16" : "#fefae0")
+    readonly property color surface:     isCustom ? customSurface
+                                                  : (isDark ? "#2a251d" : "#faedcd")
+    readonly property color surfaceAlt:  isCustom ? _mix(customSurface, customText, 0.08)
+                                                  : (isDark ? "#332d23" : "#e9edc9")
+    readonly property color border:      isCustom ? customBorder
+                                                  : (isDark ? "#4a4234" : "#ccd5ae")
+    readonly property color accent:      isCustom ? customAccent : "#d4a373"
+    readonly property color accentDark:  isCustom ? _mix(customAccent, customText, 0.25)
+                                                  : (isDark ? "#e0b487" : "#b5835a")
+    readonly property color textPrimary: isCustom ? customText
+                                                  : (isDark ? "#ede4d3" : "#3d2c1e")
+    readonly property color textMuted:   isCustom ? _mix(customText, customBg, 0.4)
+                                                  : (isDark ? "#a89a85" : "#8a7560")
+    readonly property color danger:      isCustom ? customDanger : (isDark ? "#e05a4c" : "#c0392b")
+    readonly property color success:     isCustom ? customSuccess : (isDark ? "#8fbf7a" : "#6a8f5a")
+    readonly property color reviewBg:    isCustom ? _mix(customBg, customSurface, 0.5)
+                                                  : (isDark ? "#252017" : "#f4f1de")
     readonly property color textOnDark:  "#ffffff"
     readonly property color overlayDim:  "#80000000"
 

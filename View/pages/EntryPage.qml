@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import TenjinView
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // Router for the Words page.

@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import TenjinView
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQml
 import QtQml.Models
@@ -176,9 +176,12 @@ Item {
                     onClicked: appVM.entryVM.beginEdit()
                 }
 
-                // Desktop: Save/Cancel/Delete inline with the title.
-                Row {
+                // Desktop: Save/Cancel/Delete inline with the title. Use a
+                // RowLayout so the parent reserves its width and the fillWidth
+                // title cannot overlap it on wide displays.
+                RowLayout {
                     visible: appVM.entryVM.editMode && !Platform.isMobile
+                    Layout.alignment: Qt.AlignRight
                     spacing: 8
                     ActionButton { text: qsTr("Save");        variant: "success"; onClicked: appVM.entryVM.saveEdit() }
                     ActionButton { text: qsTr("Cancel");      variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
@@ -369,18 +372,25 @@ Item {
             readonly property bool   hasLang: langRow.currentCode.length > 0
 
             function buildOptions() {
-                const opts = [{ code: "", label: qsTr("(none)") }]
+                // Unified shape with the interface + filter pickers:
+                // { code, name, flags }. name uses the LanguageFlags catalogue
+                // (single source of truth); flags drives LanguageFlagRow.
+                const opts = [{ code: "", name: qsTr("(none)"), flags: [] }]
                 const builtin = appVM.builtinLanguages
                 const seen = {}
                 for (let i = 0; i < builtin.length; i++) {
                     const b = builtin[i]
-                    opts.push({ code: b.code, label: b.code + "  --  " + b.name })
+                    opts.push({ code: b.code,
+                                name: LanguageFlags.name(b.code) || b.name,
+                                flags: LanguageFlags.flags(b.code) })
                     seen[b.code] = true
                 }
                 const custom = appVM.availableLanguages
                 for (let j = 0; j < custom.length; j++) {
                     if (!seen[custom[j]])
-                        opts.push({ code: custom[j], label: custom[j] + "  (custom)" })
+                        opts.push({ code: custom[j],
+                                    name: custom[j] + "  " + qsTr("(custom)"),
+                                    flags: LanguageFlags.flags(custom[j]) })
                 }
                 return opts
             }
@@ -431,7 +441,7 @@ Item {
                 Layout.preferredHeight: Platform.touchTarget
                 font.pixelSize: Platform.fontBase
                 model: langRow.options
-                textRole: "label"
+                textRole: "name"
                 valueRole: "code"
 
                 function _syncToEntry() {
@@ -467,14 +477,23 @@ Item {
                     border.width: entryLangCombo.activeFocus ? 2 : 1
                     Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                 }
-                contentItem: Text {
-                    leftPadding: 12
-                    rightPadding: entryLangCombo.indicator.width + 6
-                    text: entryLangCombo.displayText
-                    color: Platform.textPrimary
-                    font: entryLangCombo.font
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
+                contentItem: RowLayout {
+                    id: entryLangContent
+                    spacing: Platform.spacingMd
+                    property var _cur: langRow.options[entryLangCombo.currentIndex] || ({ flags: [], name: "" })
+                    LanguageFlagRow {
+                        Layout.leftMargin: 12
+                        codes: entryLangContent._cur.flags
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        rightPadding: entryLangCombo.indicator.width + 6
+                        text: entryLangContent._cur.name
+                        color: Platform.textPrimary
+                        font: entryLangCombo.font
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
                 }
                 indicator: Text {
                     anchors {
@@ -513,13 +532,18 @@ Item {
                     width: entryLangCombo.width
                     height: 32
                     highlighted: entryLangCombo.highlightedIndex === index
-                    contentItem: Text {
-                        leftPadding: 10
-                        text: entryLangDelegate.modelData.label
-                        color: Platform.textPrimary
-                        font.pixelSize: Platform.fontBase
-                        verticalAlignment: Text.AlignVCenter
-                        elide: Text.ElideRight
+                    contentItem: RowLayout {
+                        spacing: Platform.spacingMd
+                        LanguageFlagRow { codes: entryLangDelegate.modelData.flags }
+                        Text {
+                            Layout.fillWidth: true
+                            leftPadding: 2
+                            text: entryLangDelegate.modelData.name
+                            color: Platform.textPrimary
+                            font.pixelSize: Platform.fontBase
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
                     }
                     background: Rectangle {
                         color: entryLangDelegate.highlighted ? Platform.surfaceAlt : "transparent"

@@ -1,6 +1,6 @@
 import TenjinView
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // "Add Word" dialog. On accept, the new entry is created and the dialog

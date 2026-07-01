@@ -52,6 +52,12 @@ if(MEDIA_SUPPORT)
     target_link_libraries(Tenjin PRIVATE Qt6::Multimedia)
 endif()
 
+if(WIN32)
+    # DwmSetWindowAttribute (dark title bar). Also needs Qt6::GuiPrivate? No —
+    # winId() is public on QQuickWindow; only dwmapi is required.
+    target_link_libraries(Tenjin PRIVATE dwmapi)
+endif()
+
 if(ANDROID)
     set_target_properties(Tenjin PROPERTIES
         QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
@@ -64,7 +70,7 @@ if(ANDROID)
 endif()
 
 # Force-link the static QML-module plugins (QtQuick, QtQuick.Layouts,
-# QtQuick.Dialogs, TenjinView, …). qt_import_qml_plugins
+# QtQuick.Dialogs, QtQuick.Controls.Basic, TenjinView, …). qt_import_qml_plugins
 # runs qmlimportscanner at configure time, links every imported module's static
 # plugin recursively, and is a NO-OP on a shared Qt — so it is safe to call
 # unconditionally. Without it, a static build loads its QML, fails to resolve

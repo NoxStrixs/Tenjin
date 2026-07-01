@@ -69,6 +69,7 @@ QtObject {
 
     // ── Actions ───────────────────────────────────────────────────────────────
     readonly property string add:      "\ue145"        // add
+    readonly property string remove:   "\ue15b"        // remove
     readonly property string edit:     "\uf097"        // edit
     readonly property string del:      "\ue92e"        // delete
     readonly property string search:   "\uef7a"        // search

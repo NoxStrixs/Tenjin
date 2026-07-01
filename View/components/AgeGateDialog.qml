@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import TenjinView
 
 // Neutral age screen (COPPA / GDPR-K). Shown once on first launch, before any

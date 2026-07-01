@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import TenjinView
 
 // App-consistent ComboBox skin. Extracted from the language-filter combo so
