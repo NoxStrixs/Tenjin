@@ -88,7 +88,17 @@ Flickable {
     }
 
     property var bandData: []
-    function refresh() { bandData = buildBands() }
+    property bool _refreshing: false
+    function refresh() {
+        // Guard against re-entrancy: building the bands can, on some Qt
+        // versions, cause a child to emit a model signal mid-layout, which would
+        // re-enter refresh() and trip a "Binding loop for model" warning.
+        if (_refreshing)
+            return
+        _refreshing = true
+        bandData = buildBands()
+        _refreshing = false
+    }
     Component.onCompleted: refresh()
 
     // Rebuild whenever the model changes.

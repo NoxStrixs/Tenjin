@@ -3,7 +3,6 @@ import TenjinView
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import QtQuick.Dialogs
 
 ApplicationWindow {
     id: root
@@ -71,15 +70,15 @@ ApplicationWindow {
     function openWhatsNew() { whatsNewSheet.open() }
     function openImportDialog() {
         if (Platform.isMobile) importPickerDialog.open()
-        else if (importDialog) importDialog.open()
+        else if (desktopFileDialogsLoader.item) desktopFileDialogsLoader.item.openImport()
     }
     function openExportDialog() {
         if (Platform.isMobile) {
             const path = appVM.exportToDocuments()
             if (path.length > 0)
                 notifService.toast(qsTr("Exported to: ") + path)
-        } else if (exportDialog) {
-            exportDialog.open()
+        } else if (desktopFileDialogsLoader.item) {
+            desktopFileDialogsLoader.item.openExport()
         }
     }
 
@@ -383,6 +382,7 @@ ApplicationWindow {
         x: aboutBtn.width - width
         y: aboutBtn.height + Platform.spacingXs
         width: Platform.popupWidthSm
+        height: aboutCol.implicitHeight + Platform.spacingLg * 2
         padding: Platform.spacingLg
         modal: false
         dim: false
@@ -1087,41 +1087,26 @@ ApplicationWindow {
     }
 
     // File pickers
-    // FileDialogs: functional on desktop, unavailable on iOS (no native picker).
+    // FileDialogs live in a desktop-only component so Main.qml never imports
+    // QtQuick.Dialogs (absent on iOS, where importing it fails the whole file).
     // On mobile, import/export uses the custom picker and exportToDocuments().
     Loader {
-        id: importDialogLoader
+        id: desktopFileDialogsLoader
         active: !Platform.isMobile
-        sourceComponent: FileDialog {
-            title: qsTr("Import collection")
-            fileMode: FileDialog.OpenFile
-            nameFilters: [qsTr("Tenjin or Anki (*.json *.apkg)"),
-                          qsTr("Tenjin export (*.json)"),
-                          qsTr("Anki package (*.apkg)"),
-                          qsTr("All files (*)")]
-            onAccepted: {
-                const f = selectedFile.toString().toLowerCase()
-                if (f.endsWith(".apkg")) appVM.importAnki(selectedFile)
-                else appVM.importData(selectedFile)
-            }
-        }
-    }
-    Loader {
-        id: exportDialogLoader
-        active: !Platform.isMobile
-        sourceComponent: FileDialog {
-            title: qsTr("Export collection")
-            fileMode: FileDialog.SaveFile
-            nameFilters: [qsTr("Tenjin export (*.json)")]
-            defaultSuffix: "json"
-            onAccepted: appVM.exportData(selectedFile)
+        source: "components/DesktopFileDialogs.qml"
+        onLoaded: {
+            item.importAccepted.connect(function(f) {
+                const s = f.toString().toLowerCase()
+                if (s.endsWith(".apkg")) appVM.importAnki(f)
+                else appVM.importData(f)
+            })
+            item.exportAccepted.connect(function(f) { appVM.exportData(f) })
         }
     }
 
-    // importDialog / exportDialog are used by SettingsPage via openImportDialog() etc.
-    // Route to the loader's item on desktop, or to the picker on mobile.
-    property var importDialog: importDialogLoader.item
-    property var exportDialog: exportDialogLoader.item
+    // Desktop routes to the loaded dialogs; mobile uses the custom picker.
+    property var importDialog: desktopFileDialogsLoader.item
+    property var exportDialog: desktopFileDialogsLoader.item
 
     // Import picker for mobile (FileDialog unavailable on iOS)
     ImportPickerDialog { id: importPickerDialog }

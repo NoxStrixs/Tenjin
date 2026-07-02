@@ -80,6 +80,16 @@ static void writeFatal(const QString& what)
 
 static void tenjinMessageHandler(QtMsgType type, const QMessageLogContext& ctx, const QString& msg)
 {
+    // Suppress benign Windows DirectWrite noise: Qt's font database probes the
+    // legacy raster aliases 8514oem / Fixedsys, which have no scalable face, so
+    // DirectWrite logs CreateFontFaceFromHDC() failures. These are harmless and
+    // cannot be prevented from the app side (they fire during font-db init), so
+    // we drop them here rather than spam the log.
+    if (msg.contains(QLatin1String("CreateFontFaceFromHDC"))
+        && (msg.contains(QLatin1String("8514oem")) || msg.contains(QLatin1String("Fixedsys")))) {
+        return;
+    }
+
     if (g_previousHandler)
         g_previousHandler(type, ctx, msg);
 

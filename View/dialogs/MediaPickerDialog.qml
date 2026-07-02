@@ -78,10 +78,11 @@ ThemedDialog {
         // as the iOS path. On macOS/Windows/Linux this is the way
         // users actually expect to pick a file -- not "drop into
         // Documents then come back here".
-        Button {
+        ActionButton {
             Layout.fillWidth: true
             visible: !Platform.isMobile
             text: qsTr("Browse filesystem\u2026")
+            variant: "primary"
             onClicked: nativePicker.open()
         }
 

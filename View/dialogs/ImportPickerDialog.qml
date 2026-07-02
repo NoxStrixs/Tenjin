@@ -74,6 +74,7 @@ ThemedDialog {
                 model: root._files
 
                 delegate: Rectangle {
+                    id: fileDelegate
                     required property var modelData
                     readonly property bool _selected: root._selectedPath === modelData.path
                     width: filesList.width
@@ -92,23 +93,23 @@ ThemedDialog {
                             text: TenjinIcons.document
                             font.family: TenjinIcons.family
                             font.pixelSize: Platform.fontLarge
-                            color: parent.parent._selected ? Platform.bg : Platform.textMuted
+                            color: fileDelegate._selected ? Platform.bg : Platform.textMuted
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 1
                             Text {
-                                text: parent.parent.parent.modelData.name
-                                color: parent.parent.parent.parent._selected ? Platform.textOnDark : Platform.textPrimary
+                                text: fileDelegate.modelData.name
+                                color: fileDelegate._selected ? Platform.textOnDark : Platform.textPrimary
                                 font.pixelSize: Platform.fontBase
-                                font.bold: parent.parent.parent.parent._selected
+                                font.bold: fileDelegate._selected
                                 elide: Text.ElideMiddle
                                 Layout.fillWidth: true
                             }
                             Text {
-                                text: parent.parent.parent.modelData.modified +
-                                      "  ·  " + parent.parent.parent.modelData.sizeStr
-                                color: parent.parent.parent.parent._selected ? Platform.textOnDark : Platform.textMuted
+                                text: fileDelegate.modelData.modified +
+                                      "  ·  " + fileDelegate.modelData.sizeStr
+                                color: fileDelegate._selected ? Platform.textOnDark : Platform.textMuted
                                 font.pixelSize: Platform.fontSmall
                             }
                         }
