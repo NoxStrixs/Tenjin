@@ -5,19 +5,23 @@
 namespace Service {
 
 // Owns schema creation and forward migrations for a single connection.
-//
+
 // Versioning uses SQLite's `PRAGMA user_version`. Each migration step upgrades
 // the DB by exactly one version; `Migrate` runs every step from the DB's
 // current version up to kSchemaVersion, inside one transaction.
 //
-// To evolve the schema: bump kSchemaVersion and append a step to the migration
-// table in Schema.cpp. NEVER edit or reorder existing steps — they have already
-// run on real databases.
+// NEVER edit or reorder existing steps to prevent backward compatibility issues.
 namespace Schema {
 
 // The version the application code expects. A freshly created DB jumps straight
 // to this; an older DB is migrated up to it.
-inline constexpr int kSchemaVersion = 3;
+// Pre-release schema epoch. Because the kV2/kV3 migrations were folded into the
+// single consolidated base schema, there is no forward-migration path from older
+// dev databases. Bumping this number forces any database created under a
+// previous layout to be wiped and rebuilt (see Migrate). Start high (100) to
+// stay clear of the old 1/2/3 sequence, and bump again on any pre-release schema
+// change. Replace this wipe-on-mismatch policy with real migrations at launch.
+inline constexpr int kSchemaVersion = 100;
 
 // Brings `db` from its current user_version up to kSchemaVersion. Throws
 // std::runtime_error on failure (transaction is rolled back first).

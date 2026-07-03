@@ -8,10 +8,12 @@ add_library(DatabaseManager STATIC
     src/DatabaseManager_Deck.cpp
     src/DatabaseManager_Review.cpp
     src/DatabaseManager_ImportExport.cpp
+    src/AnkiImporter.cpp
     src/Schema.cpp
     include/DatabaseManager/DatabaseManager.h
     include/DatabaseManager/Types.h
     include/DatabaseManager/Schema.h
+    include/DatabaseManager/AnkiImporter.h
 )
 
 target_include_directories(DatabaseManager PUBLIC
@@ -24,8 +26,5 @@ target_link_libraries(DatabaseManager
             Qt6::Sql
     PRIVATE tenjin_warnings
             tenjin_sanitizers
+            miniz
 )
-
-if(BUILD_TESTS)
-    add_subdirectory(tests)
-endif()

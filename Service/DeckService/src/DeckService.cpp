@@ -26,14 +26,19 @@ Result_t<bool> DeckService::DeleteDeck(ID_t deckId)
     return m_db->DeleteDeck(deckId);
 }
 
-Result_t<bool> DeckService::AddWordToDeck(ID_t deckId, ID_t wordId)
+Result_t<bool> DeckService::SetNewCardsPerDay(ID_t deckId, int perDay)
 {
-    return m_db->AddWordToDeck(deckId, wordId);
+    return m_db->SetDeckNewCardsPerDay(deckId, perDay);
 }
 
-Result_t<bool> DeckService::RemoveWordFromDeck(ID_t deckId, ID_t wordId)
+Result_t<bool> DeckService::AddEntryToDeck(ID_t deckId, ID_t wordId)
 {
-    return m_db->RemoveWordFromDeck(deckId, wordId);
+    return m_db->AddEntryToDeck(deckId, wordId);
+}
+
+Result_t<bool> DeckService::RemoveEntryFromDeck(ID_t deckId, ID_t wordId)
+{
+    return m_db->RemoveEntryFromDeck(deckId, wordId);
 }
 
 Result_t<bool> DeckService::AddTagFilter(ID_t deckId, ID_t tagId)
@@ -51,9 +56,9 @@ Result_t<std::vector<Tag_t>> DeckService::GetTagFilters(ID_t deckId) const
     return m_db->GetTagFiltersForDeck(deckId);
 }
 
-Result_t<std::vector<Word_t>> DeckService::GetWordsForDeck(ID_t deckId) const
+Result_t<std::vector<Entry_t>> DeckService::GetEntriesForDeck(ID_t deckId) const
 {
-    return m_db->GetWordsForDeck(deckId);
+    return m_db->GetEntriesForDeck(deckId);
 }
 
 Result_t<DeckStats_t> DeckService::GetDeckStats(ID_t deckId) const
@@ -66,14 +71,20 @@ Result_t<DeckAnalytics_t> DeckService::GetDeckAnalytics(ID_t deckId) const
     return m_db->GetDeckAnalytics(deckId);
 }
 
-Result_t<std::vector<WordReviewEvent_t>> DeckService::GetWordHistory(ID_t deckId, ID_t wordId) const
+Result_t<GlobalStats_t> DeckService::GetGlobalStats() const
 {
-    return m_db->GetWordHistory(deckId, wordId);
+    return m_db->GetGlobalStats();
+}
+
+Result_t<std::vector<EntryReviewEvent_t>> DeckService::GetEntryHistory(ID_t deckId,
+                                                                       ID_t wordId) const
+{
+    return m_db->GetEntryHistory(deckId, wordId);
 }
 
 Result_t<ReviewSession_t> DeckService::StartSession(ID_t deckId)
 {
-    auto wordsResult = m_db->GetWordsForDeck(deckId);
+    auto wordsResult = m_db->GetEntriesForDeck(deckId);
     if (!wordsResult)
         return std::unexpected(wordsResult.error());
 
@@ -113,6 +124,15 @@ const Review_t* DeckService::CurrentCard(const ReviewSession_t& session) const
     if (IsComplete(session))
         return nullptr;
     return &session.queue[session.currentIndex];
+}
+
+Result_t<int> DeckService::DeleteAllDecks()
+{
+    return m_db->DeleteAllDecks();
+}
+Result_t<std::vector<Deck_t>> DeckService::GetSmartDecksUsingTag(ID_t tagId)
+{
+    return m_db->GetSmartDecksUsingTag(tagId);
 }
 
 } // namespace Service

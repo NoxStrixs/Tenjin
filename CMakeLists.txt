@@ -1,83 +1,84 @@
 cmake_minimum_required(VERSION 3.22)
 
+include(cmake/DotEnv.cmake)
+tenjin_dotenv_load("${CMAKE_SOURCE_DIR}/.env")
+tenjin_dotenv_default(TENJIN_APP_NAME              "Tenjin")
+tenjin_dotenv_default(TENJIN_APP_DISPLAY_NAME      "Tenjin")
+tenjin_dotenv_default(TENJIN_APP_VERSION           "0.1.0")
+tenjin_dotenv_default(TENJIN_BUNDLE_ID             "app.tenjin.Tenjin")
+tenjin_dotenv_default(TENJIN_ORG_NAME              "Tenjin")
+tenjin_dotenv_default(TENJIN_ORG_DOMAIN            "tenjin.app")
+tenjin_dotenv_default(TENJIN_APP_DESCRIPTION       "Personal vocabulary and spaced-repetition app")
+tenjin_dotenv_default(TENJIN_APP_KEYWORDS          "vocabulary;flashcards;learning;languages")
+tenjin_dotenv_default(TENJIN_APP_CATEGORIES        "Education;Languages;")
+tenjin_dotenv_default(TENJIN_IOS_DEPLOYMENT_TARGET "16.0")
+tenjin_dotenv_default(TENJIN_CLOUD_URL             "")
+
 project(Tenjin
-    VERSION  0.1.0
-    LANGUAGES CXX
+    VERSION   ${TENJIN_APP_VERSION}
+    # C is required by miniz (Anki .apkg import). Declaring it here validates
+    # the C compiler up-front with the active (cross-)toolchain.
+    LANGUAGES CXX C
 )
 
-# ─── Project-wide settings ────────────────────────────────────────────────────
 set(CMAKE_CXX_STANDARD          23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        OFF)
-
-# Keep symbols visible only where annotated. Reduces binary size and avoids
-# accidental ABI exposure.
 set(CMAKE_CXX_VISIBILITY_PRESET     hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
-# Position-independent code — required for any object that might end up in a
-# shared library or a deployed Qt plugin.
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# ─── Build options ────────────────────────────────────────────────────────────
-option(BUILD_TESTS      "Build unit tests"        OFF)
-option(BUILD_BENCHMARKS "Build microbenchmarks"   OFF)
-option(SANITIZERS       "Sanitizers, comma-separated (asan,lsan,tsan,ubsan)" "")
-# Rich media: QtMultimedia (audio/video playback). Optional so a lean build can
-# omit the FFmpeg backend + codecs.
+# Build options
 option(MEDIA_SUPPORT    "Enable audio/video playback (QtMultimedia)" ON)
-# Web embeds (YouTube etc.) via QtWebEngine. Heavy (~100MB+); off by default.
-option(WEBVIEW_SUPPORT  "Enable web/YouTube embeds (QtWebEngine)" OFF)
-# Offline LaTeX formula rendering via QtWebView (the system WebView — WKWebView
-# on iOS/macOS, WebView2/WebKit elsewhere). Lightweight and, unlike QtWebEngine,
-# available on iOS. KaTeX assets are bundled into the binary (see View/katex).
-# ON by default; degrades to a monospaced LaTeX fallback if Qt6::WebView or the
-# bundled assets are missing.
-option(FORMULA_SUPPORT  "Enable offline LaTeX formula rendering (QtWebView)" ON)
+option(WEBVIEW_SUPPORT  "Enable web/YouTube embeds (QtWebView)"      OFF)
+option(TENJIN_DEBUG_UI  "Include debug console drawer in the build"  OFF)
+option(TENJIN_BUILD_TESTS "Build the unit test suite"                 OFF)
+# Build the GUI (View + App + bundled UI assets). Turn OFF for a tests-only
+# configure so the logic suite builds without requiring the icon/mono fonts or
+# flag SVGs (the tests link only the Service/ libraries).
+option(TENJIN_BUILD_GUI   "Build the QML GUI application"            ON)
+
+# SANITIZERS: comma-separated list (asan,lsan,tsan,ubsan,msan). Empty = off.
+set(SANITIZERS "" CACHE STRING "Sanitizers to enable")
 
 include(cmake/Sanitizers.cmake)
 include(cmake/Warnings.cmake)
 
-# ─── Qt ───────────────────────────────────────────────────────────────────────
 find_package(Qt6 6.8 REQUIRED COMPONENTS
-    Core
-    Gui
-    Qml
-    Quick
-    QuickControls2
-    Sql
+    Core Gui Qml Network Sql
 )
 
-# Optional media components.
-set(TENJIN_MEDIA_COMPONENTS "")
-if(MEDIA_SUPPORT)
+if(TENJIN_BUILD_GUI)
+    find_package(Qt6 6.8 REQUIRED COMPONENTS
+        Quick QuickControls2 Svg
+    )
+endif()
+
+if(TENJIN_BUILD_GUI AND MEDIA_SUPPORT)
     find_package(Qt6 6.8 REQUIRED COMPONENTS Multimedia)
-    list(APPEND TENJIN_MEDIA_COMPONENTS Qt6::Multimedia)
 endif()
-if(WEBVIEW_SUPPORT)
-    find_package(Qt6 6.8 REQUIRED COMPONENTS WebEngineQuick)
-    list(APPEND TENJIN_MEDIA_COMPONENTS Qt6::WebEngineQuick)
-endif()
-# QtWebView is optional: if the host Qt lacks it (some minimal Linux SDKs),
-# don't hard-fail — just disable formula rendering and use the text fallback.
-if(FORMULA_SUPPORT)
-    find_package(Qt6 6.8 QUIET COMPONENTS WebView)
-    if(Qt6WebView_FOUND)
-        list(APPEND TENJIN_MEDIA_COMPONENTS Qt6::WebView)
-    else()
-        message(WARNING
-            "FORMULA_SUPPORT=ON but Qt6::WebView was not found; "
-            "formula blocks will fall back to raw-LaTeX text. "
-            "Install the Qt WebView module or set -DFORMULA_SUPPORT=OFF.")
-        set(FORMULA_SUPPORT OFF)
-    endif()
+if(TENJIN_BUILD_GUI AND WEBVIEW_SUPPORT)
+    find_package(Qt6 6.8 REQUIRED COMPONENTS WebView)
 endif()
 
 qt_standard_project_setup(REQUIRES 6.8)
 
-# Feature macros + QML files for media, consumed by the View and App targets.
-# (The View/CMakeLists.txt links ${TENJIN_MEDIA_COMPONENTS} and adds the media
-#  QML files conditionally — see the snippet in the project README.)
+# ── miniz: ZIP reader for Anki .apkg import ───────────────────────────────────
+# MIT-licensed, no system dependencies. Works on every target including
+# iOS/Android static builds. See cmake/Miniz.cmake for the full rationale and
+# setup; it produces a `miniz` (and `miniz::miniz`) static target with complete
+# usage requirements, so consumers link it with target_link_libraries and CMake
+# resolves include paths and link order transitively.
+include(cmake/Miniz.cmake)
+
+# Validate vendored UI assets — only when building the GUI. A tests-only
+# configure (TENJIN_BUILD_GUI=OFF) skips these, so the logic suite never
+# requires the icon/mono fonts or flag SVGs.
+if(TENJIN_BUILD_GUI)
+    include(cmake/IconFont.cmake)
+    include(cmake/Assets.cmake)
+endif()
+
+# Feature compile definitions propagated to all targets
 set(TENJIN_FEATURE_DEFINITIONS "")
 if(MEDIA_SUPPORT)
     list(APPEND TENJIN_FEATURE_DEFINITIONS TENJIN_MEDIA)
@@ -85,25 +86,46 @@ endif()
 if(WEBVIEW_SUPPORT)
     list(APPEND TENJIN_FEATURE_DEFINITIONS TENJIN_WEBVIEW)
 endif()
-if(FORMULA_SUPPORT)
-    list(APPEND TENJIN_FEATURE_DEFINITIONS TENJIN_FORMULA)
+if(TENJIN_DEBUG_UI)
+    list(APPEND TENJIN_FEATURE_DEFINITIONS TENJIN_DEBUG_UI)
 endif()
 
-# ─── Subprojects ──────────────────────────────────────────────────────────────
-add_subdirectory(Service)
-add_subdirectory(View)
-add_subdirectory(App)
+# Media components list used by View and App
+set(TENJIN_MEDIA_COMPONENTS "")
+if(MEDIA_SUPPORT)
+    list(APPEND TENJIN_MEDIA_COMPONENTS Qt6::Multimedia)
+endif()
+if(WEBVIEW_SUPPORT)
+    list(APPEND TENJIN_MEDIA_COMPONENTS Qt6::WebView)
+    if(TARGET Qt6::WebViewQuick)
+        list(APPEND TENJIN_MEDIA_COMPONENTS Qt6::WebViewQuick)
+    endif()
+endif()
 
-if(BUILD_TESTS)
+# Generated config header
+configure_file(
+    "${CMAKE_SOURCE_DIR}/cmake/TenjinConfig.h.in"
+    "${CMAKE_BINARY_DIR}/generated/TenjinConfig.h"
+    @ONLY
+)
+include_directories("${CMAKE_BINARY_DIR}/generated")
+
+add_subdirectory(Service)
+add_subdirectory(ViewModels)
+
+if(TENJIN_BUILD_GUI)
+    add_subdirectory(View)
+    # Translations.cmake defines the tenjin_configure_translations macro.
+    # It must be included before add_subdirectory(App) which calls the macro,
+    # but after View/ViewModels/Service so all targets are visible when the macro runs.
+    include(cmake/Translations.cmake)
+
+    add_subdirectory(App)
+endif()
+
+if(TENJIN_BUILD_TESTS)
     enable_testing()
-    find_package(GTest CONFIG REQUIRED)
     add_subdirectory(tests)
 endif()
 
-if(BUILD_BENCHMARKS)
-    find_package(benchmark CONFIG REQUIRED)
-    add_subdirectory(benchmarks)
-endif()
-
-# ─── Packaging ────────────────────────────────────────────────────────────────
 include(cmake/Packaging.cmake)

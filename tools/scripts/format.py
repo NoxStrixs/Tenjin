@@ -7,14 +7,11 @@ logger = logging.getLogger(__name__)
 
 NAME = "format"
 
-# Formatting is source-level and target-agnostic. We always use the linux
-# image since clang-format lives there.
 _IMAGE      = TARGETS["linux"]["image"]
 _DOCKERFILE = TARGETS["linux"]["dockerfile"]
 
-# Source roots. Tests / benchmarks included so contributors don't get drift.
 _SOURCES = (
-    "find App Service View tests benchmarks "
+    "find App Service ViewModels View "
     "  \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.c' -o -name '*.h' \\) "
     "  -not -path '*/build/*'"
 )
@@ -39,3 +36,4 @@ def run_cmd(args) -> None:
     else:
         logger.warning("Formatting source files...")
         run(_IMAGE, ["bash", "-c", f"{_SOURCES} | xargs clang-format -i"])
+

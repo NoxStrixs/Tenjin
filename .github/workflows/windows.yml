@@ -1,0 +1,218 @@
+name: Windows build
+
+# Builds Tenjin for Windows on windows-2022, publishes a zipped runtime
+# directory as a Release asset.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    permissions:
+      contents: write
+
+    env:
+      TENJIN_APP_NAME: Tenjin
+      SCCACHE_DIR: ${{ github.workspace }}\.sccache
+      SCCACHE_CACHE_SIZE: 500M
+      CACHE_VERSION: v2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load .env into environment
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_APP_NAME=Tenjin"
+          if (Test-Path .env) {
+            Get-Content .env | ForEach-Object {
+              $line = $_.Trim()
+              if ($line -eq "" -or $line.StartsWith("#")) { return }
+              $eq = $line.IndexOf("=")
+              if ($eq -lt 1) { return }
+              $k = $line.Substring(0, $eq).Trim()
+              $v = $line.Substring($eq + 1).Trim()
+              if (($v.StartsWith('"') -and $v.EndsWith('"')) -or
+                  ($v.StartsWith("'") -and $v.EndsWith("'"))) {
+                $v = $v.Substring(1, $v.Length - 2)
+              }
+              Add-Content -Path $env:GITHUB_ENV -Value "$k=$v"
+            }
+          }
+
+      # Seed empty translations/*.ts files if missing. PowerShell here-
+      # string syntax for cross-platform parity with linux.yml.
+      - name: Seed translation .ts files if missing
+        shell: pwsh
+        run: |
+          $tsDir = "translations"
+          if (-not (Test-Path $tsDir)) { New-Item -ItemType Directory -Path $tsDir | Out-Null }
+          $langs = @("ja","es","fr","de","zh_CN","pt","ko","it","ru","ar")
+          foreach ($lang in $langs) {
+            $f = Join-Path $tsDir "tenjin_$lang.ts"
+            if (-not (Test-Path $f)) {
+              $content = "<?xml version=`"1.0`" encoding=`"utf-8`"?>`n<!DOCTYPE TS>`n<TS version=`"2.1`" language=`"$lang`">`n</TS>`n"
+              Set-Content -Path $f -Value $content -NoNewline -Encoding UTF8
+              Write-Host "  seeded empty $f"
+            }
+          }
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Ninja & sccache
+        shell: pwsh
+        run: choco install -y ninja sccache
+
+      - name: Set up Python (for aqtinstall)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: "windows"
+          target: "desktop"
+          arch: "win64_msvc2022_64"
+          modules: "qtmultimedia"
+          dir: ${{ github.workspace }}\Qt
+          cache: true
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-windows
+          setup-python: false
+
+      - name: Verify Qt Linguist tools (lupdate/lrelease)
+        shell: pwsh
+        run: |
+          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
+          foreach ($t in @("lupdate.exe","lrelease.exe")) {
+            $path = Join-Path "$QT_WIN\bin" $t
+            if (-not (Test-Path $path)) {
+              Write-Host "::error::$t missing at $path"
+              Get-ChildItem "$QT_WIN\bin" | Select-Object -First 50
+              exit 1
+            }
+          }
+          & "$QT_WIN\bin\lrelease.exe" -version
+          & "$QT_WIN\bin\lupdate.exe" -version
+
+      - name: Cache sccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: ${{ env.CACHE_VERSION }}-windows-sccache-${{ github.sha }}
+          restore-keys: |
+            ${{ env.CACHE_VERSION }}-windows-sccache-
+
+      - name: Cache icon font
+        uses: actions/cache@v4
+        with:
+          path: View/fonts/MaterialSymbolsOutlined.ttf
+          key: ${{ env.CACHE_VERSION }}-iconfont-v1
+
+      - name: Configure (CMake, Ninja)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
+          $env:PATH = "$QT_WIN\bin;$env:PATH"
+          cmake -G Ninja -S . -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache `
+            -DCMAKE_PREFIX_PATH="$QT_WIN" `
+            -DMEDIA_SUPPORT=OFF `
+            -DWEBVIEW_SUPPORT=OFF `
+            -DBUILD_TESTS=OFF `
+            -DBUILD_BENCHMARKS=OFF `
+            -DSANITIZERS="" `
+            -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::cmake configure failed ($LASTEXITCODE)"
+            exit $LASTEXITCODE
+          }
+
+      - name: List CMake targets
+        shell: pwsh
+        run: |
+          Write-Host "===== top-level targets configured by CMake ====="
+          cmake --build build --target help | Select-Object -First 80
+
+      - name: Build executable target
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          sccache --start-server
+          sccache --zero-stats
+          cmake --build build --config Release --target $env:TENJIN_APP_NAME --verbose
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::Build of target $env:TENJIN_APP_NAME failed with exit $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          Write-Host "===== sccache stats ====="
+          sccache --show-stats
+
+      - name: Locate built binary
+        shell: pwsh
+        run: |
+          Write-Host "===== all .exe files under build/ ====="
+          $allExe = Get-ChildItem -Path build -Recurse -Filter '*.exe' -File -ErrorAction SilentlyContinue
+          $allExe | ForEach-Object { Write-Host "  $($_.FullName)  ($([math]::Round($_.Length/1KB, 1)) KB)" }
+          $exe = $allExe `
+            | Where-Object { $_.FullName -notmatch 'CompilerId|CMakeFiles\\3' } `
+            | Where-Object { $_.BaseName -ieq $env:TENJIN_APP_NAME } `
+            | Select-Object -First 1
+          if (-not $exe) {
+            Write-Host "::error::No '$($env:TENJIN_APP_NAME).exe' found in build tree"
+            exit 1
+          }
+          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_EXE=$($exe.FullName)"
+
+      - name: windeployqt
+        shell: pwsh
+        run: |
+          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
+          $stage = "stage\$env:TENJIN_APP_NAME"
+          New-Item -ItemType Directory -Path $stage -Force | Out-Null
+          Copy-Item -Path $env:TENJIN_EXE -Destination $stage
+          # Drop --no-translations: we ship our own .qm files (in the qrc)
+          # AND want Qt's qtbase_<code>.qm so standard dialog buttons
+          # translate. windeployqt copies the matching Qt translations
+          # into a translations/ subdir of the stage.
+          & "$QT_WIN\bin\windeployqt.exe" --release `
+              --no-system-d3d-compiler --no-opengl-sw `
+              "$stage\$env:TENJIN_APP_NAME.exe"
+          Write-Host "===== staged ====="
+          Get-ChildItem -Path $stage | Select-Object -First 30
+          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_STAGE=$stage"
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $zip = "$env:TENJIN_APP_NAME-${{ github.run_number }}-windows-x64.zip"
+          Compress-Archive -Path "$env:TENJIN_STAGE\*" -DestinationPath $zip -Force
+          $size = (Get-Item $zip).Length / 1MB
+          Write-Host "Packaged: $zip  ($([math]::Round($size, 1)) MB)"
+          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_ZIP=$zip"
+
+      - name: Publish .zip to a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-build-${{ github.run_number }}
+          name: Windows build ${{ github.run_number }}
+          files: ${{ env.TENJIN_ZIP }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

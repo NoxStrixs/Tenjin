@@ -1,220 +1,210 @@
 qt_add_executable(Tenjin
     WIN32
+    MANUAL_FINALIZATION
     src/main.cpp
 )
 
+tenjin_configure_translations(${TENJIN_APP_NAME})
+
+if(NOT DEFINED TENJIN_BUILD_NUMBER)
+    set(TENJIN_BUILD_NUMBER "1")
+endif()
+
 set_target_properties(Tenjin PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    OUTPUT_NAME              "${TENJIN_APP_NAME}"
 )
 
 target_link_libraries(Tenjin
     PRIVATE
-        TenjinViewModels
         TenjinViewplugin
+        TenjinView
+        TenjinViewModels
         Qt6::Quick
         Qt6::QuickControls2
+        Qt6::Svg
+        Qt6::Sql
         tenjin_warnings
         tenjin_sanitizers
 )
 
 target_include_directories(Tenjin PRIVATE src)
 
-# On a STATIC Qt build (iOS) the QSQLITE driver is a plugin that must be
-# compiled into the binary; there is no runtime sqldrivers/ folder to load it
-# from. Qt's automatic static-plugin import does NOT reliably pick up the SQL
-# driver when Qt6::Sql reaches the executable only transitively (through the
-# DatabaseManager static lib), so link the plugin target explicitly. Linking a
-# Qt plugin target pulls in its *_init object, which emits Q_IMPORT_PLUGIN.
-# Guarded by TARGET so it's a harmless no-op on dynamic desktop builds where the
-# driver is loaded at runtime. Without this, addDatabase("QSQLITE") yields an
-# invalid driver, db.open() fails, the DatabaseManager ctor throws, and the
-# app terminates the instant it launches on iOS.
-if(TARGET Qt6::QSQLiteDriverPlugin)
-    target_link_libraries(Tenjin PRIVATE Qt6::QSQLiteDriverPlugin)
+# Static plugin linkage. On a STATIC Qt (iOS always; Android/desktop only when
+# Qt was built static) the image-format, SQL-driver and QML-module plugins must
+# be linked into the executable. On a SHARED Qt they load dynamically and
+# linking the static plugin targets would be a duplicate-symbol error.
+#
+# QT6_IS_SHARED_LIBS_BUILD is exported by find_package(Qt6) and is the
+# authoritative, OS-independent discriminator — unlike "IOS OR ANDROID", which
+# wrongly fired on Android's shared Qt and broke the link.
+if(NOT QT6_IS_SHARED_LIBS_BUILD)
+    target_link_libraries(Tenjin PRIVATE
+        Qt6::QSQLiteDriverPlugin
+        Qt6::QJpegPlugin
+        Qt6::QGifPlugin
+        Qt6::QSvgPlugin
+        Qt6::QICOPlugin
+    )
 endif()
 
-# QtWebView (offline formula rendering). Linked to the executable because
-# main.cpp calls QtWebView::initialize(). if(TARGET) keeps it a no-op when
-# FORMULA_SUPPORT is off or the module is absent.
-if(TARGET Qt6::WebView)
-    target_link_libraries(Tenjin PRIVATE Qt6::WebView)
+if(MEDIA_SUPPORT)
+    target_link_libraries(Tenjin PRIVATE Qt6::Multimedia)
 endif()
 
-# iOS static plugin imports.
-#
-# On a STATIC Qt build (always the case on iOS) the linker dead-strips any
-# plugin not referenced from the executable's compiled code. QML module plugins
-# are referenced only by name from QML source at runtime, so the linker drops
-# them; the app then launches, fails to load Main.qml ("module X is not
-# installed"), gets no root objects, and exits silently with a black flash and
-# no crash report.
-#
-# Two complementary mechanisms fix this:
-#   1. qt_import_qml_plugins(Tenjin) imports every QML module plugin that
-#      qmlimportscanner associated with the target (via the QML module's
-#      IMPORTS declaration in View/CMakeLists.txt). This is the canonical fix
-#      for "module ... is not installed" on static iOS and covers QtQuick,
-#      QtQuick.Layouts, QtQuick.Controls(.Basic), QtQuick.Dialogs, etc.
-#   2. qt_import_plugins(... INCLUDE_BY_TYPE ...) covers the non-QML C++ plugins
-#      QtGui needs at startup (platform integration, image formats, icon
-#      engines) which are keyed by type rather than by QML import.
-#
-# Reference: Qt Wiki "Qt for iOS known issues" (QTBUG-35195) and forum.qt.io
-# topics 153384 / 156448.
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    if(COMMAND qt_import_qml_plugins)
-        qt_import_qml_plugins(Tenjin)
+if(WIN32)
+    # DwmSetWindowAttribute (dark title bar). winId() is public on
+    # QQuickWindow; only dwmapi is required.
+    target_link_libraries(Tenjin PRIVATE dwmapi)
+
+    # Executable icon. Follows the vendored-binary policy (icons/fonts are
+    # committed, never downloaded); unlike the fonts this is cosmetic, so a
+    # missing .ico warns instead of failing the build.
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/windows/tenjin.ico")
+        target_sources(Tenjin PRIVATE windows/tenjin.rc)
+    else()
+        message(WARNING
+            "App/windows/tenjin.ico missing — the Windows executable will have "
+            "no icon. See App/windows/README.md to generate and commit it.")
     endif()
+endif()
+
+if(ANDROID)
+    set_target_properties(Tenjin PROPERTIES
+        QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
+        QT_ANDROID_VERSION_NAME       "${PROJECT_VERSION}"
+        QT_ANDROID_VERSION_CODE       "${TENJIN_BUILD_NUMBER}"
+        QT_ANDROID_MIN_SDK_VERSION    "26"
+        QT_ANDROID_TARGET_SDK_VERSION "34"
+        QT_ANDROID_PACKAGE_NAME       "${TENJIN_BUNDLE_ID}"
+    )
+endif()
+
+# Force-link the static QML-module plugins. Two mechanisms, belt-and-braces,
+# because on a static iOS build the scanner alone has proven unreliable when the
+# QML lives in a linked module (TenjinView) rather than the executable:
+#
+#   1. qt_import_qml_plugins runs qmlimportscanner and links what it finds.
+#   2. An EXPLICIT fallback list of the QtQuick module plugins the app imports,
+#      linked directly, so a scanner miss can never leave a module "not
+#      installed" at runtime. On a shared Qt these targets don't exist, so the
+#      block is gated on static-ness. Duplicate links are harmless (CMake dedups).
+if(COMMAND qt_import_qml_plugins)
+    qt_import_qml_plugins(Tenjin)
+    # Also scan the QML module target directly — its imports are what actually
+    # pull in QtQuick.*, and scanning only the executable can miss them.
+    if(TARGET TenjinView)
+        qt_import_qml_plugins(TenjinView)
+    endif()
+endif()
+
+if(NOT QT6_IS_SHARED_LIBS_BUILD)
+    # Explicit fallback: link the static plugin for every QML module the app
+    # imports. These target names are stable in Qt 6.8. If a module is added to
+    # a .qml import, add its plugin here too.
+    set(_TENJIN_QML_PLUGIN_TARGETS
+        Qt6::qtquick2plugin                 # QtQuick
+        Qt6::quicklayoutsplugin             # QtQuick.Layouts
+        Qt6::qquickwindowplugin             # QtQuick.Window
+        Qt6::qtquickcontrols2basicstyleplugin   # QtQuick.Controls.Basic
+        Qt6::qtquickcontrols2plugin         # QtQuick.Controls
+        Qt6::qtquicktemplates2plugin        # QtQuick.Templates
+        Qt6::qmlplugin                      # QtQml
+        Qt6::modelsplugin                   # QtQml.Models
+        Qt6::qtquickdialogsplugin           # QtQuick.Dialogs
+    )
+    foreach(_p IN LISTS _TENJIN_QML_PLUGIN_TARGETS)
+        if(TARGET ${_p})
+            target_link_libraries(Tenjin PRIVATE ${_p})
+        endif()
+    endforeach()
+endif()
+
+# Platform/iconengine/imageformat plugins are only needed (and only exist as
+# static targets) on a static Qt. Gate on static-ness, not OS.
+if(NOT QT6_IS_SHARED_LIBS_BUILD)
     qt_import_plugins(Tenjin
         INCLUDE_BY_TYPE platforms
         INCLUDE_BY_TYPE iconengines
         INCLUDE_BY_TYPE imageformats
     )
-    # Belt-and-suspenders: explicitly link the QML module plugin targets we know
-    # the UI imports. qt_import_qml_plugins relies on qmlimportscanner picking
-    # up the module's IMPORTS; if that under-reports (it did in practice for
-    # Layouts/Controls.Basic/Dialogs), these explicit links guarantee the
-    # plugins survive dead-stripping. if(TARGET) guards make missing ones a
-    # no-op. Target names follow Qt's convention (module dotted name → plugin
-    # target); covering the common spellings across Qt 6.8 kits.
-    foreach(_qmlplug
-        # QtQuick core
-        Qt6::qtquick2plugin
-        Qt6::quickplugin
-        # QtQuick.Layouts
-        Qt6::qquicklayoutsplugin
-        Qt6::qtquicklayoutsplugin
-        # QtQuick.Controls + Basic style
-        Qt6::qtquickcontrols2plugin
-        Qt6::qquickcontrols2plugin
-        Qt6::qtquickcontrols2basicstyleplugin
-        Qt6::qquickcontrols2basicstyleplugin
-        Qt6::QQuickControls2BasicStylePlugin
-        Qt6::qtquickcontrols2implplugin
-        Qt6::qtquicktemplates2plugin
-        Qt6::qquicktemplates2plugin
-        # QtQuick.Dialogs
-        Qt6::qtquickdialogs2plugin
-        Qt6::qtquickdialogs2quickimplplugin
-        Qt6::qquickdialogs2plugin
-        Qt6::qquickdialogs2quickimplplugin
-        Qt6::quickdialogs2plugin
-        Qt6::quickdialogs2quickimplplugin
-        Qt6::qtquickdialogsplugin
-        Qt6::qtlabsplatformplugin
-        Qt6::quicklabsplatformplugin
-        # QtQml / Models
-        Qt6::qmlplugin
-        Qt6::qmlmodelsplugin
-        Qt6::modelsplugin
-        Qt6::qtqmlmodelsplugin
-        # QtMultimedia (only present when MEDIA_SUPPORT linked it)
-        Qt6::quickmultimediaplugin
-        Qt6::multimediaquickplugin
-        # QtWebView (only present when FORMULA_SUPPORT linked it) — both the
-        # C++ module plugin and the QML import plugin spellings across kits.
-        Qt6::qtwebviewplugin
-        Qt6::webviewplugin
-        Qt6::qquickwebviewplugin
-        Qt6::quickwebviewplugin
-        Qt6::qtwebviewquickplugin
-    )
-        if(TARGET ${_qmlplug})
-            target_link_libraries(Tenjin PRIVATE ${_qmlplug})
-            message(STATUS "Tenjin iOS: linked QML plugin ${_qmlplug}")
-        endif()
-    endforeach()
-
-    # Diagnostic: list every QML-ish plugin target Qt actually defines in this
-    # kit, so if a needed plugin has a name we didn't guess, it shows up in the
-    # configure log and we can add it precisely.
-    get_property(_all_targets DIRECTORY "${CMAKE_SOURCE_DIR}" PROPERTY IMPORTED_TARGETS)
-    message(STATUS "Tenjin iOS: (see Qt plugin import scan results in build log)")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    # CFBundleVersion must be a monotonically increasing build number (Apple +
-    # AltStore reject re-installs whose build number didn't change). Default to
-    # 1; CI/local can override with -DTENJIN_BUILD_NUMBER=<n> (e.g. the run
-    # number) so each sideloaded build is distinct.
-    if(NOT DEFINED TENJIN_BUILD_NUMBER)
-        set(TENJIN_BUILD_NUMBER "1")
-    endif()
-
-    # The app icon asset catalog. Adding it to the target's sources lets Xcode
-    # compile it into the bundle (producing the real icon files); the matching
-    # name is set via XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME.
     target_sources(Tenjin PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets"
+        "${CMAKE_CURRENT_SOURCE_DIR}/ios/PrivacyInfo.xcprivacy"
     )
     set_source_files_properties(
         "${CMAKE_CURRENT_SOURCE_DIR}/ios/Assets.xcassets"
         PROPERTIES MACOSX_PACKAGE_LOCATION Resources
     )
-
-    set_target_properties(Tenjin PROPERTIES
-        MACOSX_BUNDLE                              TRUE
-        MACOSX_BUNDLE_INFO_PLIST                   "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist"
-        MACOSX_BUNDLE_BUNDLE_NAME                  "Tenjin"
-        MACOSX_BUNDLE_BUNDLE_VERSION               "${TENJIN_BUILD_NUMBER}"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING         "${PROJECT_VERSION}"
-        MACOSX_BUNDLE_GUI_IDENTIFIER               "app.tenjin.Tenjin"
-        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER  "app.tenjin.Tenjin"
-        XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "16.0"
-        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY     "1,2"
-        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
-        # Default to "no team / sign later" so an unsigned device build succeeds
-        # in CI; AltStore/Sideloadly/Xcode apply the real identity afterwards.
-        XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED      "NO"
-        XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED       "NO"
+    # PrivacyInfo.xcprivacy must sit at the bundle root (not Resources/).
+    set_source_files_properties(
+        "${CMAKE_CURRENT_SOURCE_DIR}/ios/PrivacyInfo.xcprivacy"
+        PROPERTIES MACOSX_PACKAGE_LOCATION .
     )
 
-    # If you build & sign locally in Xcode, pass -DAPPLE_TEAM_ID=XXXXXXXXXX to
-    # flip on automatic signing with your Apple ID team.
+    set(_TENJIN_IOS_PLIST_TEMPLATE "")
+    foreach(_candidate
+        "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info_plist.in"
+        "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in"
+        "${CMAKE_SOURCE_DIR}/App/ios/Info_plist.in"
+    )
+        if(EXISTS "${_candidate}")
+            set(_TENJIN_IOS_PLIST_TEMPLATE "${_candidate}")
+            break()
+        endif()
+    endforeach()
+    if(NOT _TENJIN_IOS_PLIST_TEMPLATE)
+        message(FATAL_ERROR "iOS Info.plist template not found.")
+    endif()
+
+    configure_file(
+        "${_TENJIN_IOS_PLIST_TEMPLATE}"
+        "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+        @ONLY
+    )
+
+    set_target_properties(Tenjin PROPERTIES
+        MACOSX_BUNDLE                               TRUE
+        MACOSX_BUNDLE_INFO_PLIST                   "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+        MACOSX_BUNDLE_BUNDLE_NAME                  "${TENJIN_APP_DISPLAY_NAME}"
+        MACOSX_BUNDLE_BUNDLE_VERSION               "${TENJIN_BUILD_NUMBER}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING         "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_GUI_IDENTIFIER               "${TENJIN_BUNDLE_ID}"
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER  "${TENJIN_BUNDLE_ID}"
+        XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "${TENJIN_IOS_DEPLOYMENT_TARGET}"
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY     "1,2"
+        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
+        XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED      "NO"
+        XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED       "NO"
+        XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS     "${CMAKE_CURRENT_SOURCE_DIR}/ios/Tenjin.entitlements"
+    )
+
     if(DEFINED APPLE_TEAM_ID)
         set_target_properties(Tenjin PROPERTIES
-            XCODE_ATTRIBUTE_DEVELOPMENT_TEAM          "${APPLE_TEAM_ID}"
-            XCODE_ATTRIBUTE_CODE_SIGN_STYLE           "Automatic"
-            XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED     "YES"
-            XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED      "YES"
+            XCODE_ATTRIBUTE_DEVELOPMENT_TEAM      "${APPLE_TEAM_ID}"
+            XCODE_ATTRIBUTE_CODE_SIGN_STYLE       "Automatic"
+            XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "YES"
+            XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED  "YES"
         )
     endif()
 
-    # Qt 6.8's QtMultimedia on iOS uses FFmpeg as its media backend, but the
-    # Qt installer does NOT auto-link the FFmpeg frameworks. Without this call
-    # the final link fails with hundreds of "Undefined symbols: _av_*, _avcodec_*,
-    # _swr_*, _sws_*" errors. qt_add_ios_ffmpeg_libraries embeds the FFmpeg
-    # frameworks (libavcodec, libavformat, libavutil, libswresample, libswscale)
-    # from the Qt iOS kit into the .app bundle and configures rpath.
-    # See: https://doc.qt.io/qt-6/qt-add-ios-ffmpeg-libraries.html
     if(MEDIA_SUPPORT)
         if(CMAKE_VERSION VERSION_LESS "3.28")
-            message(FATAL_ERROR
-                "iOS + MEDIA_SUPPORT=ON needs CMake >= 3.28 for qt_add_ios_ffmpeg_libraries. "
-                "Either upgrade CMake, or configure with -DMEDIA_SUPPORT=OFF for iOS.")
+            message(FATAL_ERROR "iOS + MEDIA_SUPPORT=ON needs CMake >= 3.28")
         endif()
         if(COMMAND qt_add_ios_ffmpeg_libraries)
-            # NOTE: Do NOT set QT_NO_FFMPEG_XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY.
-            # On iOS 26 + AltStore-on-Windows, skipping per-framework code-sign-on-copy
-            # leaves the FFmpeg frameworks signed with the Qt installer's Team ID
-            # while AltStore re-signs only the main binary with the user's free Apple
-            # ID team. dyld's Library Validation rejects the mismatch and the kernel
-            # SIGKILLs the process before main() runs — producing exactly the
-            # "black flash, no crash report" symptom. Let Xcode ad-hoc-sign the
-            # frameworks on copy; AltStore then cleanly re-signs all of them.
             qt_add_ios_ffmpeg_libraries(Tenjin)
         else()
-            message(FATAL_ERROR
-                "qt_add_ios_ffmpeg_libraries is not available — Qt 6.8+ is required "
-                "for iOS media support, or set -DMEDIA_SUPPORT=OFF.")
+            message(FATAL_ERROR "qt_add_ios_ffmpeg_libraries is not available.")
         endif()
     endif()
 endif()
 
-# Windows: install + windeployqt handled entirely in cmake/Packaging.cmake
-# (install(TARGETS) misresolves the .exe suffix for cross-compiled PE binaries,
-# and Qt's generic deploy tool crashes on them). Linux/macOS use the standard
-# install + Qt deploy script.
+qt_finalize_executable(Tenjin)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     install(TARGETS Tenjin
         BUNDLE  DESTINATION .

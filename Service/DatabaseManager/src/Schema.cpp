@@ -11,22 +11,25 @@
 namespace Service::Schema {
 namespace {
 
-// One migration step = the ordered SQL that upgrades the DB from version N-1
-// to version N. steps[0] -> v1, steps[1] -> v2, ...
+// Migration step = the ordered SQL that upgrades the DB from version N-1
+// to version N.
 using Step = std::vector<const char*>;
 
-// ── v1: baseline word-centric schema ────────────────────────────────────────
-// Mirrors the original constructor SQL (now expressed as CREATE ... IF NOT
-// EXISTS so it's a safe no-op on databases that already had it). guid /
-// updated_at are included directly here for fresh DBs; pre-existing DBs that
-// lacked them are handled by EnsureColumns() below before migrations run.
+// Single consolidated schema (version 1). Pre-release: there are no databases
+// in the wild to migrate from, so the former kV2 (language) and kV3 (leech)
+// migrations are folded directly into the base table definitions below.
 const Step kV1 = {
-    "CREATE TABLE IF NOT EXISTS word ("
+    "CREATE TABLE IF NOT EXISTS entry ("
     "id INTEGER PRIMARY KEY,"
-    "word TEXT NOT NULL UNIQUE,"
+    "title TEXT NOT NULL UNIQUE,"
+    "kind TEXT NOT NULL DEFAULT 'word',"
     "created_at TEXT DEFAULT (datetime('now')),"
     "guid TEXT DEFAULT '',"
-    "updated_at INTEGER DEFAULT 0);",
+    "updated_at INTEGER DEFAULT 0,"
+    "language TEXT NOT NULL DEFAULT '');",
+
+    "CREATE INDEX IF NOT EXISTS idx_entry_kind ON entry(kind);",
+    "CREATE INDEX IF NOT EXISTS idx_entry_language ON entry(language);",
 
     "CREATE TABLE IF NOT EXISTS tag ("
     "id INTEGER PRIMARY KEY,"
@@ -34,15 +37,16 @@ const Step kV1 = {
     "guid TEXT DEFAULT '',"
     "updated_at INTEGER DEFAULT 0);",
 
-    "CREATE TABLE IF NOT EXISTS word_tag ("
-    "word_id INTEGER REFERENCES word(id) ON DELETE CASCADE,"
-    "tag_id  INTEGER REFERENCES tag(id)  ON DELETE CASCADE,"
-    "PRIMARY KEY (word_id, tag_id));",
+    "CREATE TABLE IF NOT EXISTS entry_tag ("
+    "entry_id INTEGER REFERENCES entry(id) ON DELETE CASCADE,"
+    "tag_id   INTEGER REFERENCES tag(id)   ON DELETE CASCADE,"
+    "PRIMARY KEY (entry_id, tag_id));",
 
-    "CREATE TABLE IF NOT EXISTS word_content ("
+    "CREATE TABLE IF NOT EXISTS entry_content ("
     "id       INTEGER PRIMARY KEY,"
-    "word_id  INTEGER REFERENCES word(id) ON DELETE CASCADE,"
+    "entry_id INTEGER REFERENCES entry(id) ON DELETE CASCADE,"
     "type     INTEGER NOT NULL,"
+    "kind     TEXT NOT NULL DEFAULT 'note',"
     "content  TEXT,"
     "row      INTEGER NOT NULL,"
     "col      INTEGER NOT NULL,"
@@ -52,31 +56,33 @@ const Step kV1 = {
     "guid TEXT DEFAULT '',"
     "updated_at INTEGER DEFAULT 0);",
 
-    "CREATE VIRTUAL TABLE IF NOT EXISTS word_content_fts USING fts5("
-    "word_name, content, content=word_content, content_rowid=id);",
+    "CREATE INDEX IF NOT EXISTS idx_entry_content_kind ON entry_content(kind);",
 
-    "CREATE TRIGGER IF NOT EXISTS word_content_ai AFTER INSERT ON word_content BEGIN "
-    "  INSERT INTO word_content_fts(rowid, word_name, content) "
-    "  SELECT NEW.id, w.word, NEW.content FROM word w WHERE w.id = NEW.word_id; "
+    "CREATE VIRTUAL TABLE IF NOT EXISTS entry_content_fts USING fts5("
+    "title, content, content=entry_content, content_rowid=id);",
+
+    "CREATE TRIGGER IF NOT EXISTS entry_content_ai AFTER INSERT ON entry_content BEGIN "
+    "  INSERT INTO entry_content_fts(rowid, title, content) "
+    "  SELECT NEW.id, e.title, NEW.content FROM entry e WHERE e.id = NEW.entry_id; "
     "END;",
 
-    "CREATE TRIGGER IF NOT EXISTS word_content_ad AFTER DELETE ON word_content BEGIN "
-    "  INSERT INTO word_content_fts(word_content_fts, rowid, word_name, content) "
+    "CREATE TRIGGER IF NOT EXISTS entry_content_ad AFTER DELETE ON entry_content BEGIN "
+    "  INSERT INTO entry_content_fts(entry_content_fts, rowid, title, content) "
     "  VALUES('delete', OLD.id, '', ''); "
     "END;",
 
-    "CREATE TRIGGER IF NOT EXISTS word_content_au AFTER UPDATE ON word_content BEGIN "
-    "  INSERT INTO word_content_fts(word_content_fts, rowid, word_name, content) "
+    "CREATE TRIGGER IF NOT EXISTS entry_content_au AFTER UPDATE ON entry_content BEGIN "
+    "  INSERT INTO entry_content_fts(entry_content_fts, rowid, title, content) "
     "  VALUES('delete', OLD.id, '', ''); "
-    "  INSERT INTO word_content_fts(rowid, word_name, content) "
-    "  SELECT NEW.id, w.word, NEW.content FROM word w WHERE w.id = NEW.word_id; "
+    "  INSERT INTO entry_content_fts(rowid, title, content) "
+    "  SELECT NEW.id, e.title, NEW.content FROM entry e WHERE e.id = NEW.entry_id; "
     "END;",
 
-    "CREATE TABLE IF NOT EXISTS word_relation ("
-    "id              INTEGER PRIMARY KEY,"
-    "word_id         INTEGER REFERENCES word(id) ON DELETE CASCADE,"
-    "related_word_id INTEGER REFERENCES word(id) ON DELETE CASCADE,"
-    "relation_type   TEXT NOT NULL);",
+    "CREATE TABLE IF NOT EXISTS entry_relation ("
+    "id               INTEGER PRIMARY KEY,"
+    "entry_id         INTEGER REFERENCES entry(id) ON DELETE CASCADE,"
+    "related_entry_id INTEGER REFERENCES entry(id) ON DELETE CASCADE,"
+    "relation_type    TEXT NOT NULL);",
 
     "CREATE TABLE IF NOT EXISTS deck ("
     "id          INTEGER PRIMARY KEY,"
@@ -85,12 +91,13 @@ const Step kV1 = {
     "filter_mode TEXT DEFAULT 'AND',"
     "created_at  TEXT DEFAULT (datetime('now')),"
     "guid TEXT DEFAULT '',"
-    "updated_at INTEGER DEFAULT 0);",
+    "updated_at INTEGER DEFAULT 0,"
+    "new_cards_per_day INTEGER NOT NULL DEFAULT 20);",
 
-    "CREATE TABLE IF NOT EXISTS deck_word ("
-    "deck_id INTEGER REFERENCES deck(id) ON DELETE CASCADE,"
-    "word_id INTEGER REFERENCES word(id) ON DELETE CASCADE,"
-    "PRIMARY KEY (deck_id, word_id));",
+    "CREATE TABLE IF NOT EXISTS deck_entry ("
+    "deck_id  INTEGER REFERENCES deck(id)  ON DELETE CASCADE,"
+    "entry_id INTEGER REFERENCES entry(id) ON DELETE CASCADE,"
+    "PRIMARY KEY (deck_id, entry_id));",
 
     "CREATE TABLE IF NOT EXISTS deck_tag_filter ("
     "deck_id INTEGER REFERENCES deck(id) ON DELETE CASCADE,"
@@ -100,115 +107,30 @@ const Step kV1 = {
     "CREATE TABLE IF NOT EXISTS review ("
     "id               INTEGER PRIMARY KEY,"
     "deck_id          INTEGER REFERENCES deck(id)  ON DELETE CASCADE,"
-    "word_id          INTEGER REFERENCES word(id)  ON DELETE CASCADE,"
+    "entry_id         INTEGER REFERENCES entry(id) ON DELETE CASCADE,"
     "ease_factor      REAL DEFAULT 2.5,"
     "interval_days    INTEGER DEFAULT 1,"
     "repetitions      INTEGER DEFAULT 0,"
+    "lapses           INTEGER NOT NULL DEFAULT 0,"
+    "is_leech         INTEGER NOT NULL DEFAULT 0,"
     "next_review_date TEXT,"
     "last_review_date TEXT,"
-    "UNIQUE (deck_id, word_id));",
+    "UNIQUE (deck_id, entry_id));",
 
     "CREATE TABLE IF NOT EXISTS review_log ("
     "id            INTEGER PRIMARY KEY,"
     "deck_id       INTEGER,"
-    "word_id       INTEGER,"
+    "entry_id      INTEGER,"
     "quality       INTEGER NOT NULL,"
     "ease_factor   REAL,"
     "interval_days INTEGER,"
     "reviewed_at   INTEGER NOT NULL);",
 };
 
-// ── v2: word → entry generalization ──────────────────────────────────────────
-// A "word" becomes one kind of entry. We rebuild the spine so every reusable
-// subsystem keys on entry_id; words are entries with kind='word'.
-//
-// Strategy: rename the word table and add a `kind` column (SQLite RENAME keeps
-// data + rowids, so all existing word_id values stay valid as entry_id). The
-// association/child tables keep their physical column data but are renamed for
-// clarity; their integer values are unchanged, so foreign keys still line up.
-// FTS + triggers are dropped and recreated against entry. All inside one
-// transaction via the runner below.
-const Step kV2 = {
-    // entry = the generalized record. Rename preserves ids.
-    "ALTER TABLE word RENAME TO entry;",
-    "ALTER TABLE entry RENAME COLUMN word TO title;",
-    "ALTER TABLE entry ADD COLUMN kind TEXT NOT NULL DEFAULT 'word';",
-
-    // content blocks now belong to an entry
-    "ALTER TABLE word_content RENAME TO entry_content;",
-    "ALTER TABLE entry_content RENAME COLUMN word_id TO entry_id;",
-
-    // tag association
-    "ALTER TABLE word_tag RENAME TO entry_tag;",
-    "ALTER TABLE entry_tag RENAME COLUMN word_id TO entry_id;",
-
-    // relations
-    "ALTER TABLE word_relation RENAME TO entry_relation;",
-    "ALTER TABLE entry_relation RENAME COLUMN word_id TO entry_id;",
-    "ALTER TABLE entry_relation RENAME COLUMN related_word_id TO related_entry_id;",
-
-    // deck membership
-    "ALTER TABLE deck_word RENAME TO deck_entry;",
-    "ALTER TABLE deck_entry RENAME COLUMN word_id TO entry_id;",
-
-    // review scheduling
-    "ALTER TABLE review RENAME COLUMN word_id TO entry_id;",
-    // review_log columns are loose (no FK); rename for consistency
-    "ALTER TABLE review_log RENAME COLUMN word_id TO entry_id;",
-
-    // Rebuild FTS against entry/entry_content.
-    "DROP TRIGGER IF EXISTS word_content_ai;",
-    "DROP TRIGGER IF EXISTS word_content_ad;",
-    "DROP TRIGGER IF EXISTS word_content_au;",
-    "DROP TABLE IF EXISTS word_content_fts;",
-
-    "CREATE VIRTUAL TABLE entry_content_fts USING fts5("
-    "title, content, content=entry_content, content_rowid=id);",
-
-    // Repopulate the FTS index from existing rows.
-    "INSERT INTO entry_content_fts(rowid, title, content) "
-    "  SELECT ec.id, e.title, ec.content "
-    "  FROM entry_content ec JOIN entry e ON e.id = ec.entry_id;",
-
-    "CREATE TRIGGER entry_content_ai AFTER INSERT ON entry_content BEGIN "
-    "  INSERT INTO entry_content_fts(rowid, title, content) "
-    "  SELECT NEW.id, e.title, NEW.content FROM entry e WHERE e.id = NEW.entry_id; "
-    "END;",
-
-    "CREATE TRIGGER entry_content_ad AFTER DELETE ON entry_content BEGIN "
-    "  INSERT INTO entry_content_fts(entry_content_fts, rowid, title, content) "
-    "  VALUES('delete', OLD.id, '', ''); "
-    "END;",
-
-    "CREATE TRIGGER entry_content_au AFTER UPDATE ON entry_content BEGIN "
-    "  INSERT INTO entry_content_fts(entry_content_fts, rowid, title, content) "
-    "  VALUES('delete', OLD.id, '', ''); "
-    "  INSERT INTO entry_content_fts(rowid, title, content) "
-    "  SELECT NEW.id, e.title, NEW.content FROM entry e WHERE e.id = NEW.entry_id; "
-    "END;",
-
-    "CREATE INDEX IF NOT EXISTS idx_entry_kind ON entry(kind);",
-};
-
-// ── v3: type-blind content blocks ─────────────────────────────────────────────
-// Add a stable string discriminator `kind` to content blocks and backfill it
-// from the legacy integer `type` (0=definition, 1=media, 2=note, 3=divider).
-// The integer `type` column is retained for now so existing read paths keep
-// working; new code should branch on `kind`. Adding a new block kind (e.g.
-// "formula") is henceforth an INSERT with kind='formula' — no schema change.
-const Step kV3 = {
-    "ALTER TABLE entry_content ADD COLUMN kind TEXT NOT NULL DEFAULT 'note';",
-    "UPDATE entry_content SET kind = CASE type "
-    "  WHEN 0 THEN 'definition' "
-    "  WHEN 1 THEN 'media' "
-    "  WHEN 2 THEN 'note' "
-    "  WHEN 3 THEN 'divider' "
-    "  ELSE 'note' END;",
-    "CREATE INDEX IF NOT EXISTS idx_entry_content_kind ON entry_content(kind);",
-};
-
-// Ordered: index i upgrades to version i+1.
-const std::vector<const Step*> kSteps = {&kV1, &kV2, &kV3};
+// Single-version schema: everything is created by kV1. New schema changes
+// pre-release should edit the kV1 tables directly; post-release, reintroduce
+// an ordered migration step here and bump kSchemaVersion.
+const std::vector<const Step*> kSteps = {&kV1};
 
 int currentVersion(QSqlDatabase& db)
 {
@@ -229,47 +151,42 @@ void setVersion(QSqlDatabase& db, int v)
 void exec(QSqlDatabase& db, const char* sql)
 {
     QSqlQuery q(db);
-    if (!q.exec(QString::fromUtf8(sql)))
-        throw std::runtime_error("Schema step failed: " + q.lastError().text().toStdString() +
+    if (!q.exec(QString::fromUtf8(sql))) {
+        const QString err = q.lastError().text();
+        // SQLite returns "duplicate column name" when ALTER TABLE ADD
+        // COLUMN tries to add a column that already exists. Treat this
+        // as benign so migrations are idempotent: if a prior attempt
+        // added the column but failed to commit user_version (e.g. the
+        // process was killed between the ALTER and the PRAGMA), the
+        // re-run won't blow up here.
+        if (err.contains(QLatin1String("duplicate column"), Qt::CaseInsensitive))
+            return;
+        throw std::runtime_error("Schema step failed: " + err.toStdString() +
                                  " | SQL: " + std::string(sql));
-}
-
-// Pre-migration safety net for the oldest real databases: ensure guid /
-// updated_at exist before v1's CREATE IF NOT EXISTS is skipped on them.
-// (No-op on fresh DBs, where the tables don't yet exist.)
-void ensureLegacyColumns(QSqlDatabase& db)
-{
-    auto tableExists = [&](const QString& t) {
-        QSqlQuery q(db);
-        q.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=:t;");
-        q.bindValue(":t", t);
-        return q.exec() && q.next();
-    };
-    auto hasColumn = [&](const QString& t, const QString& c) {
-        QSqlQuery q(db);
-        if (!q.exec(QStringLiteral("PRAGMA table_info(%1);").arg(t)))
-            return false;
-        while (q.next())
-            if (q.value(1).toString() == c)
-                return true;
-        return false;
-    };
-    auto ensure = [&](const QString& t, const QString& c, const QString& decl) {
-        if (tableExists(t) && !hasColumn(t, c))
-            exec(db, QStringLiteral("ALTER TABLE %1 ADD COLUMN %2 %3;")
-                         .arg(t, c, decl).toUtf8().constData());
-    };
-
-    if (tableExists("word_content"))
-        ensure("word_content", "pos", "TEXT DEFAULT ''");
-    for (const QString& t : {QStringLiteral("word"), QStringLiteral("tag"),
-                             QStringLiteral("deck"), QStringLiteral("word_content")}) {
-        ensure(t, "guid", "TEXT DEFAULT ''");
-        ensure(t, "updated_at", "INTEGER DEFAULT 0");
     }
 }
 
 } // namespace
+
+// Drop every user table so the consolidated schema can be recreated from
+// scratch. PRE-RELEASE ONLY: there is no migration path from older dev
+// databases (the kV2/kV3 migrations were folded into the base schema), so a DB
+// whose user_version doesn't match the current schema is simply rebuilt. This
+// is safe before launch; once shipped, replace this with real migrations.
+void dropAllTables(QSqlDatabase& db)
+{
+    QSqlQuery   q(db);
+    QStringList tables;
+    if (q.exec("SELECT name FROM sqlite_master WHERE type='table' "
+               "AND name NOT LIKE 'sqlite_%';")) {
+        while (q.next())
+            tables << q.value(0).toString();
+    }
+    exec(db, "PRAGMA foreign_keys = OFF;");
+    for (const QString& t : tables)
+        exec(db, QStringLiteral("DROP TABLE IF EXISTS %1;").arg(t).toUtf8().constData());
+    exec(db, "PRAGMA foreign_keys = ON;");
+}
 
 void Migrate(QSqlDatabase& db)
 {
@@ -277,30 +194,34 @@ void Migrate(QSqlDatabase& db)
 
     const int from = currentVersion(db);
     const int to   = kSchemaVersion;
-    if (from >= to)
+
+    // Already current.
+    if (from == to)
         return;
 
-    // Patch legacy DBs (version 0 that predate guid/updated_at) before running
-    // step SQL, so v2's title/content references resolve.
-    if (from == 0)
-        ensureLegacyColumns(db);
+    // Pre-release policy: any non-empty database whose version does not match
+    // the current consolidated schema is wiped and recreated, because no forward
+    // migration path exists from the pre-consolidation layouts. A brand-new DB
+    // reports version 0 and simply has the schema created below.
+    if (from != 0 && from != to) {
+        dropAllTables(db);
+    }
 
     if (!db.transaction())
-        throw std::runtime_error("Failed to begin migration transaction.");
+        throw std::runtime_error("Failed to begin schema-build transaction.");
 
     try {
-        for (int v = from; v < to; ++v)
-            for (const char* sql : *kSteps[v])
-                exec(db, sql);
+        // Single consolidated schema (kV1) recreates every table.
+        for (const char* sql : *kSteps[0])
+            exec(db, sql);
+        setVersion(db, to);
     } catch (...) {
         db.rollback();
         throw;
     }
 
     if (!db.commit())
-        throw std::runtime_error("Failed to commit migrations.");
-
-    setVersion(db, to);
+        throw std::runtime_error("Failed to commit schema build.");
 }
 
 } // namespace Service::Schema

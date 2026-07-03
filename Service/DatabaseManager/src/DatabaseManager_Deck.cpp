@@ -41,7 +41,8 @@ Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name, bool isSmart,
 Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, name, is_smart, filter_mode, created_at FROM deck WHERE id = :id;");
+    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day "
+              "FROM deck WHERE id = :id;");
     q.bindValue(":id", QVariant::fromValue(id));
 
     if (!q.exec())
@@ -54,17 +55,19 @@ Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
     const std::string  fmStr   = q.value(3).toString().toStdString();
     const FilterMode_t mode    = (fmStr == "OR") ? FilterMode_t::Or : FilterMode_t::And;
 
-    return Deck_t{.id         = q.value(0).toLongLong(),
-                  .name       = q.value(1).toString().toStdString(),
-                  .bIsSmart   = isSmart,
-                  .filterMode = mode,
-                  .createdAt  = q.value(4).toString().toStdString()};
+    return Deck_t{.id             = q.value(0).toLongLong(),
+                  .name           = q.value(1).toString().toStdString(),
+                  .bIsSmart       = isSmart,
+                  .filterMode     = mode,
+                  .createdAt      = q.value(4).toString().toStdString(),
+                  .newCardsPerDay = q.value(5).toInt()};
 }
 
 Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
 {
     QSqlQuery q(m_db);
-    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at FROM deck ORDER BY name ASC;"))
+    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day "
+                "FROM deck ORDER BY name ASC;"))
         return std::unexpected(q.lastError().text().toStdString());
 
     std::vector<Deck_t> decks;
@@ -73,11 +76,12 @@ Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
         const std::string  fmStr   = q.value(3).toString().toStdString();
         const FilterMode_t mode    = (fmStr == "OR") ? FilterMode_t::Or : FilterMode_t::And;
 
-        decks.push_back(Deck_t{.id         = q.value(0).toLongLong(),
-                               .name       = q.value(1).toString().toStdString(),
-                               .bIsSmart   = isSmart,
-                               .filterMode = mode,
-                               .createdAt  = q.value(4).toString().toStdString()});
+        decks.push_back(Deck_t{.id             = q.value(0).toLongLong(),
+                               .name           = q.value(1).toString().toStdString(),
+                               .bIsSmart       = isSmart,
+                               .filterMode     = mode,
+                               .createdAt      = q.value(4).toString().toStdString(),
+                               .newCardsPerDay = q.value(5).toInt()});
     }
     return decks;
 }
@@ -97,7 +101,23 @@ Result_t<bool> DatabaseManager::DeleteDeck(ID_t id)
     return true;
 }
 
-Result_t<bool> DatabaseManager::AddWordToDeck(ID_t deckId, ID_t wordId)
+Result_t<bool> DatabaseManager::SetDeckNewCardsPerDay(ID_t id, int perDay)
+{
+    if (perDay < 0)
+        perDay = 0;
+    QSqlQuery q(m_db);
+    q.prepare("UPDATE deck SET new_cards_per_day = :n WHERE id = :id;");
+    q.bindValue(":n", perDay);
+    q.bindValue(":id", QVariant::fromValue(id));
+
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+    if (q.numRowsAffected() == 0)
+        return std::unexpected("No deck found with id: " + std::to_string(id));
+    return true;
+}
+
+Result_t<bool> DatabaseManager::AddEntryToDeck(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO deck_entry (deck_id, entry_id) VALUES (:deckId, :wordId);");
@@ -110,7 +130,7 @@ Result_t<bool> DatabaseManager::AddWordToDeck(ID_t deckId, ID_t wordId)
     return true;
 }
 
-Result_t<bool> DatabaseManager::RemoveWordFromDeck(ID_t deckId, ID_t wordId)
+Result_t<bool> DatabaseManager::RemoveEntryFromDeck(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM deck_entry WHERE deck_id = :deckId AND entry_id = :wordId;");
@@ -175,16 +195,16 @@ Result_t<std::vector<Tag_t>> DatabaseManager::GetTagFiltersForDeck(ID_t deckId)
     return tags;
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForDeck(ID_t deckId)
+Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForDeck(ID_t deckId)
 {
     auto deck = GetDeck(deckId);
     if (!deck)
         return std::unexpected(deck.error());
 
     if (!deck->bIsSmart) {
-        // Manual deck — read directly from deck_word junction
+        // Manual deck: read directly from deck_entry junction
         QSqlQuery q(m_db);
-        q.prepare("SELECT w.id, w.title, w.created_at FROM entry w "
+        q.prepare("SELECT w.id, w.title, w.created_at, w.language FROM entry w "
                   "JOIN deck_entry dw ON dw.entry_id = w.id "
                   "WHERE dw.deck_id = :deckId "
                   "ORDER BY w.title ASC;");
@@ -193,16 +213,17 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForDeck(ID_t deckId)
         if (!q.exec())
             return std::unexpected(q.lastError().text().toStdString());
 
-        std::vector<Word_t> words;
+        std::vector<Entry_t> words;
         while (q.next()) {
-            words.push_back(Word_t{.id        = q.value(0).toLongLong(),
-                                   .word      = q.value(1).toString().toStdString(),
-                                   .createdAt = q.value(2).toString().toStdString()});
+            words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
+                                    .word      = q.value(1).toString().toStdString(),
+                                    .createdAt = q.value(2).toString().toStdString(),
+                                    .language  = q.value(3).toString().toStdString()});
         }
         return words;
     }
 
-    // Smart deck — collect tag filters then delegate to getWordsByTags
+    // Smart deck: collect tag filters then delegate to getWordsByTags
     auto tags = GetTagFiltersForDeck(deckId);
     if (!tags)
         return std::unexpected(tags.error());
@@ -212,24 +233,24 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForDeck(ID_t deckId)
     for (const auto& tag : *tags)
         tagIds.push_back(tag.id);
 
-    return GetWordsByTags(tagIds, deck->filterMode);
+    return GetEntriesByTags(tagIds, deck->filterMode);
 }
 
-Result_t<std::vector<Word_t>> DatabaseManager::GetWordsByTags(const std::vector<ID_t>& tagIds,
-                                                              FilterMode_t             mode)
+Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vector<ID_t>& tagIds,
+                                                                 FilterMode_t             mode)
 {
     if (tagIds.empty())
-        return std::vector<Word_t>{};
+        return std::vector<Entry_t>{};
 
-    // Build the IN clause placeholder list: (:t0, :t1, :t2 ...)
+    // Build the IN clause placeholder list
     QStringList placeholders;
-    for (size_t i = 0; i < tagIds.size(); ++i)
+    for (size_t i = 0; i < tagIds.size(); i++)
         placeholders << QString(":t%1").arg(i);
 
     QString sql;
     if (mode == FilterMode_t::And) {
-        // Relational division — word must have ALL specified tags
-        sql = QString("SELECT w.id, w.title, w.created_at FROM entry w "
+        // Word must have ALL specified tags
+        sql = QString("SELECT w.id, w.title, w.created_at, w.language FROM entry w "
                       "JOIN entry_tag wt ON wt.entry_id = w.id "
                       "WHERE wt.tag_id IN (%1) "
                       "GROUP BY w.id "
@@ -238,8 +259,8 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsByTags(const std::vector<
                   .arg(placeholders.join(", "))
                   .arg(tagIds.size());
     } else {
-        // OR — word must have at least one of the specified tags
-        sql = QString("SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
+        // Word must have at least one of the specified tags
+        sql = QString("SELECT DISTINCT w.id, w.title, w.created_at, w.language FROM entry w "
                       "JOIN entry_tag wt ON wt.entry_id = w.id "
                       "WHERE wt.tag_id IN (%1) "
                       "ORDER BY w.title ASC;")
@@ -248,21 +269,48 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsByTags(const std::vector<
 
     QSqlQuery q(m_db);
     q.prepare(sql);
-    for (size_t i = 0; i < tagIds.size(); ++i)
+    for (size_t i = 0; i < tagIds.size(); i++)
         q.bindValue(QString(":t%1").arg(i), QVariant::fromValue(tagIds[i]));
 
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }
 
-// ── Import / Export ─────────────────────────────────────────────────────────
+// Lists smart decks that filter on the given tag. Drives the "deleting
+// this tag will affect these decks" confirmation popup. Only smart
+// decks are returned — manual decks aren't filtered by tags so they're
+// unaffected by tag deletes.
+Result_t<std::vector<Deck_t>> DatabaseManager::GetSmartDecksUsingTag(ID_t tagId)
+{
+    QSqlQuery q(m_db);
+    q.prepare("SELECT DISTINCT d.id, d.name, d.is_smart, d.filter_mode, d.created_at "
+              "FROM deck d "
+              "JOIN deck_tag_filter f ON f.deck_id = d.id "
+              "WHERE f.tag_id = :tag AND d.is_smart = 1 "
+              "ORDER BY d.name;");
+    q.bindValue(":tag", QVariant::fromValue(tagId));
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+
+    std::vector<Deck_t> out;
+    while (q.next()) {
+        out.push_back(Deck_t{.id         = q.value(0).toLongLong(),
+                             .name       = q.value(1).toString().toStdString(),
+                             .bIsSmart   = q.value(2).toBool(),
+                             .filterMode = q.value(3).toString() == "OR" ? FilterMode_t::Or
+                                                                         : FilterMode_t::And,
+                             .createdAt  = q.value(4).toString().toStdString()});
+    }
+    return out;
+}
 
 } // namespace Service

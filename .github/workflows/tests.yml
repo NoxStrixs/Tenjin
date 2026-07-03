@@ -1,0 +1,93 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    env:
+      CACHE_VERSION: v3
+      QT_VERSION:    "6.8.3"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/tenjin-setup
+        with:
+          extra-defaults: 'echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"'
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ninja-build cmake \
+            libgl1-mesa-dev libxkbcommon-x11-0 libdbus-1-3
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version:          ${{ env.QT_VERSION }}
+          host:             linux
+          target:           desktop
+          arch:             linux_gcc_64
+          dir:              ${{ github.workspace }}/Qt
+          cache:            true
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-qt-tests
+          setup-python:     false
+
+      - name: Cache icon font
+        uses: actions/cache@v4
+        with:
+          path: |
+            View/fonts/MaterialSymbolsOutlined.ttf
+            View/fonts/MaterialSymbolsOutlined.codepoints
+          key: ${{ env.CACHE_VERSION }}-iconfont-v2
+
+      - name: Verify icon glyphs
+        run: |
+          # The .codepoints index keeps TenjinIcons.qml glyphs honest. Material
+          # Symbols reassigns some legacy Material Icons codepoints, so a stale
+          # codepoint silently renders the wrong glyph. Fetch the index (small)
+          # if not cached, then fail the build on any mismatch.
+          CP="View/fonts/MaterialSymbolsOutlined.codepoints"
+          if [ ! -f "$CP" ]; then
+            mkdir -p View/fonts
+            for url in \
+              "https://raw.githubusercontent.com/google/material-design-icons/master/variablefont/MaterialSymbolsOutlined%5BFILL,GRAD,opsz,wght%5D.codepoints" \
+              "https://cdn.jsdelivr.net/gh/google/material-design-icons@master/variablefont/MaterialSymbolsOutlined%5BFILL,GRAD,opsz,wght%5D.codepoints"; do
+              if curl -fsSL "$url" -o "$CP"; then break; fi
+            done
+          fi
+          python3 tools/scripts/verify_icons.py --check --codepoints "$CP"
+
+      - name: Configure (tests on)
+        run: |
+          QT_DIR="${{ github.workspace }}/Qt/Qt/${{ env.QT_VERSION }}/gcc_64"
+          cmake -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_PREFIX_PATH="$QT_DIR" \
+            -DTENJIN_BUILD_TESTS=ON \
+            -DMEDIA_SUPPORT=OFF \
+            -DWEBVIEW_SUPPORT=OFF \
+            -DSANITIZERS="asan,ubsan"
+
+      - name: Build tests
+        run: cmake --build build --target tenjin_tests --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+        env:
+          QT_QPA_PLATFORM: offscreen

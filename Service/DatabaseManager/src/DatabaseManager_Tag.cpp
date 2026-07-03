@@ -29,7 +29,6 @@ Result_t<Tag_t> DatabaseManager::AddTag(const std::string& name)
     return Tag_t{.id = q.lastInsertId().toLongLong(), .name = name};
 }
 
-
 Result_t<Tag_t> DatabaseManager::GetTag(std::string_view name)
 {
     QSqlQuery q(m_db);
@@ -45,7 +44,6 @@ Result_t<Tag_t> DatabaseManager::GetTag(std::string_view name)
     return Tag_t{.id = q.value(0).toLongLong(), .name = q.value(1).toString().toStdString()};
 }
 
-
 Result_t<std::vector<Tag_t>> DatabaseManager::GetAllTags()
 {
     QSqlQuery q(m_db);
@@ -59,7 +57,6 @@ Result_t<std::vector<Tag_t>> DatabaseManager::GetAllTags()
     }
     return tags;
 }
-
 
 Result_t<bool> DatabaseManager::DeleteTag(ID_t id)
 {
@@ -76,12 +73,9 @@ Result_t<bool> DatabaseManager::DeleteTag(ID_t id)
     return true;
 }
 
-
 Result_t<bool> DatabaseManager::RenameTag(ID_t id, const std::string& name)
 {
     // Bumps updated_at so the rename wins during timestamp-based merge import.
-    // A duplicate name trips the tag.name UNIQUE constraint and surfaces as an
-    // error rather than silently corrupting the collection.
     QSqlQuery q(m_db);
     q.prepare("UPDATE tag SET name = :name, updated_at = :u WHERE id = :id;");
     q.bindValue(":name", QString::fromStdString(name));
@@ -97,8 +91,7 @@ Result_t<bool> DatabaseManager::RenameTag(ID_t id, const std::string& name)
     return true;
 }
 
-
-Result_t<bool> DatabaseManager::AddTagToWord(ID_t wordId, ID_t tagId)
+Result_t<bool> DatabaseManager::AddTagToEntry(ID_t wordId, ID_t tagId)
 {
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO entry_tag (entry_id, tag_id) VALUES (:wordId, :tagId);");
@@ -111,8 +104,7 @@ Result_t<bool> DatabaseManager::AddTagToWord(ID_t wordId, ID_t tagId)
     return true;
 }
 
-
-Result_t<bool> DatabaseManager::RemoveTagFromWord(ID_t wordId, ID_t tagId)
+Result_t<bool> DatabaseManager::RemoveTagFromEntry(ID_t wordId, ID_t tagId)
 {
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM entry_tag WHERE entry_id = :wordId AND tag_id = :tagId;");
@@ -128,8 +120,7 @@ Result_t<bool> DatabaseManager::RemoveTagFromWord(ID_t wordId, ID_t tagId)
     return true;
 }
 
-
-Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForWord(ID_t wordId)
+Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForEntry(ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT t.id, t.name FROM tag t "
@@ -149,11 +140,10 @@ Result_t<std::vector<Tag_t>> DatabaseManager::GetTagsForWord(ID_t wordId)
     return tags;
 }
 
-
-Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForTag(ID_t tagId)
+Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesForTag(ID_t tagId)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT w.id, w.title, w.created_at FROM entry w "
+    q.prepare("SELECT w.id, w.title, w.created_at, w.language FROM entry w "
               "JOIN entry_tag wt ON wt.entry_id = w.id "
               "WHERE wt.tag_id = :tagId "
               "ORDER BY w.title ASC;");
@@ -162,11 +152,37 @@ Result_t<std::vector<Word_t>> DatabaseManager::GetWordsForTag(ID_t tagId)
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
+    }
+    return words;
+}
+
+Result_t<std::vector<Entry_t>> DatabaseManager::GetUntaggedEntries()
+{
+    // Entries with no row in entry_tag. These never appear under any tag in the
+    // sidebar, so without this they'd be invisible there (though still listed
+    // and searchable elsewhere). The sidebar surfaces them in an "Untagged"
+    // group built from this query.
+    QSqlQuery q(m_db);
+    q.prepare("SELECT w.id, w.title, w.created_at, w.language FROM entry w "
+              "WHERE NOT EXISTS "
+              "(SELECT 1 FROM entry_tag wt WHERE wt.entry_id = w.id) "
+              "ORDER BY w.title ASC;");
+
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+
+    std::vector<Entry_t> words;
+    while (q.next()) {
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }

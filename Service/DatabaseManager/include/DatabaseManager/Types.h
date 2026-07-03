@@ -8,64 +8,90 @@
 
 namespace Service {
 
-// ── Core aliases ─────────────────────────────────────────────────────────────
-// Row identifier. SQLite INTEGER PRIMARY KEY is a signed 64-bit value, read
-// back through QVariant::toLongLong().
 using ID_t = std::int64_t;
 
-// Every fallible service/database call returns one of these: the value on
-// success, or a human-readable message on failure.
 template <typename T>
 using Result_t = std::expected<T, std::string>;
 
-// ── Enums ────────────────────────────────────────────────────────────────────
-// Kind of a content block on an entry page. Stored as the INTEGER `type`
-// column in entry_content, and (since schema v3) also as the stable string
-// `kind` column. New code should prefer the string kind: adding a kind needs
-// only a new enumerator + entry in the kind<->string maps below, and a View
-// delegate — no schema change.
 enum class ContentType_t : int {
     Definition = 0,
     Media      = 1,
     Note       = 2,
     Divider    = 3,
-    Formula    = 4, // LaTeX payload, rendered read-only (schema v3+)
+    Formula    = 4, // LaTeX payload, rendered read-only
+    Header     = 5, // Section heading — large bold text
+    Tense      = 6, // Verb conjugation table; body is JSON object of
+                    // tense → form pairs ({"present":"go","past":"went",
+                    // "future":"will go","conditional":"would go"})
 };
 
-// Stable string identifier for a block kind (matches entry_content.kind and the
-// View-side delegate registry). Unknown values map to "note".
 inline std::string ToKindString(ContentType_t t)
 {
     switch (t) {
-    case ContentType_t::Definition: return "definition";
-    case ContentType_t::Media:      return "media";
-    case ContentType_t::Note:       return "note";
-    case ContentType_t::Divider:    return "divider";
-    case ContentType_t::Formula:    return "formula";
+    case ContentType_t::Definition:
+        return "definition";
+    case ContentType_t::Media:
+        return "media";
+    case ContentType_t::Note:
+        return "note";
+    case ContentType_t::Divider:
+        return "divider";
+    case ContentType_t::Formula:
+        return "formula";
+    case ContentType_t::Header:
+        return "header";
+    case ContentType_t::Tense:
+        return "tense";
     }
     return "note";
 }
 
 inline ContentType_t FromKindString(std::string_view s)
 {
-    if (s == "definition") return ContentType_t::Definition;
-    if (s == "media")      return ContentType_t::Media;
-    if (s == "divider")    return ContentType_t::Divider;
-    if (s == "formula")    return ContentType_t::Formula;
+    if (s == "definition")
+        return ContentType_t::Definition;
+    if (s == "media")
+        return ContentType_t::Media;
+    if (s == "divider")
+        return ContentType_t::Divider;
+    if (s == "formula")
+        return ContentType_t::Formula;
+    if (s == "header")
+        return ContentType_t::Header;
+    if (s == "tense")
+        return ContentType_t::Tense;
     return ContentType_t::Note;
 }
 
-// How a smart deck combines its tag filters.
+// Convert an untrusted integer (e.g. from an imported file) into a valid
+// ContentType_t, clamping anything out of the known 0..6 range to Note. Using
+// static_cast<ContentType_t> directly on external data would store an invalid
+// enum value that later switch statements don't handle.
+inline ContentType_t ValidContentType(int raw)
+{
+    switch (static_cast<ContentType_t>(raw)) {
+    case ContentType_t::Definition:
+    case ContentType_t::Media:
+    case ContentType_t::Note:
+    case ContentType_t::Divider:
+    case ContentType_t::Formula:
+    case ContentType_t::Header:
+    case ContentType_t::Tense:
+        return static_cast<ContentType_t>(raw);
+    }
+    return ContentType_t::Note;
+}
+
 enum class FilterMode_t {
     And,
     Or,
 };
 
-// ── Value types ──────────────────────────────────────────────────────────────
-struct Word_t {
+struct Entry_t {
     ID_t        id = 0;
     std::string word;
     std::string createdAt;
+    std::string language; // kV2: ISO 639-1 code, "" = unspecified
 };
 
 struct Tag_t {
@@ -73,14 +99,14 @@ struct Tag_t {
     std::string name;
 };
 
-// One block on a word's page. `content` is the block's payload (definition
-// text, note text, or a media path/URL); `pos` is the part of speech and is
-// only meaningful for definition blocks. row/col/span describe its placement
-// in the page grid.
+// One block on a word's page.
+// `content` is the block's payload.
+// `pos` is the part of speech and is only meaningful for definition blocks.
+// row/col/span describe its placement in the page grid.
 struct ContentBlock_t {
-    ID_t          id      = 0;
-    ID_t          wordId  = 0;
-    ContentType_t type    = ContentType_t::Note;
+    ID_t          id     = 0;
+    ID_t          wordId = 0;
+    ContentType_t type   = ContentType_t::Note;
     std::string   content;
     int           row     = 0;
     int           col     = 0;
@@ -89,8 +115,8 @@ struct ContentBlock_t {
     std::string   pos;
 };
 
-// A directed relation from one word to another (synonym, antonym, …).
-struct WordRelation_t {
+// A directed relation from one word to another.
+struct EntryRelation_t {
     ID_t        id             = 0;
     ID_t        wordId         = 0;
     ID_t        wordRelationId = 0; // the related word's id
@@ -98,23 +124,26 @@ struct WordRelation_t {
 };
 
 struct Deck_t {
-    ID_t         id         = 0;
+    ID_t         id = 0;
     std::string  name;
     bool         bIsSmart   = false;
     FilterMode_t filterMode = FilterMode_t::And;
     std::string  createdAt;
+    int          newCardsPerDay = 20;
 };
 
 // SM-2 scheduling state for one (deck, word) pair.
 struct Review_t {
-    ID_t        id           = 0;
-    ID_t        deckId       = 0;
-    ID_t        wordId       = 0;
-    float       easeFactor   = 2.5f;
+    ID_t          id           = 0;
+    ID_t          deckId       = 0;
+    ID_t          wordId       = 0;
+    float         easeFactor   = 2.5f;
     std::uint16_t intervalDays = 1;
     std::uint16_t repetitions  = 0;
-    std::string nextReviewDate;
-    std::string lastReviewDate;
+    std::uint16_t lapses       = 0;
+    bool          isLeech      = false;
+    std::string   nextReviewDate;
+    std::string   lastReviewDate;
 };
 
 // At-a-glance deck progress.
@@ -124,8 +153,7 @@ struct DeckStats_t {
     std::string nextDue; // earliest upcoming review date, "" if none
 };
 
-// One day's review aggregate (for charts). Built positionally:
-// { date, count, avgQuality }.
+// One day's review aggregate.
 struct DailyStat_t {
     std::string date;
     int         count      = 0;
@@ -138,9 +166,23 @@ struct DeckAnalytics_t {
     double                   retention    = 0.0; // fraction graded "remembered"
 };
 
-// One historical review event for a word (for per-word history charts). Built
-// positionally: { reviewedAt, quality, easeFactor, intervalDays }.
-struct WordReviewEvent_t {
+// Collection-wide study statistics, aggregated across every deck.
+struct GlobalStats_t {
+    std::vector<DailyStat_t> daily;              // per-day review counts (all decks)
+    int                      totalReviews = 0;   // lifetime graded reviews
+    int                      totalWords   = 0;   // entries in the collection
+    int                      dueToday     = 0;   // cards due now or earlier
+    int                      dueNext7Days = 0;   // cards becoming due within a week
+    double                   retention    = 0.0; // fraction graded "remembered" (q>=2)
+    int         currentStreakDays = 0; // consecutive days with >=1 review, ending today/yesterday
+    int         longestStreakDays = 0; // best consecutive-day run ever
+    int         reviewsToday      = 0; // reviews logged today
+    int         leechCount        = 0; // cards currently flagged as leeches
+    std::string firstReviewDate;       // ISO date of earliest review, "" if none
+};
+
+// One historical review event for a word (for per-word history charts).
+struct EntryReviewEvent_t {
     std::int64_t reviewedAt   = 0; // epoch milliseconds
     int          quality      = 0;
     double       easeFactor   = 0.0;

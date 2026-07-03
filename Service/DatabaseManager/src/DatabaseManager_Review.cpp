@@ -8,18 +8,19 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSet>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QUuid>
 #include <QVariant>
 
+#include <algorithm>
 #include <cmath>
 
 namespace Service {
 
 Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
 {
-    // INSERT OR IGNORE — safe to call multiple times, won't overwrite existing progress
     QSqlQuery q(m_db);
     q.prepare("INSERT OR IGNORE INTO review (deck_id, entry_id, next_review_date) "
               "VALUES (:deckId, :wordId, date('now', 'localtime'));");
@@ -29,9 +30,8 @@ Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    // Fetch the row whether it was just inserted or already existed
     q.prepare("SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
-              "next_review_date, last_review_date "
+              "lapses, is_leech, next_review_date, last_review_date "
               "FROM review WHERE deck_id = :deckId AND entry_id = :wordId;");
     q.bindValue(":deckId", QVariant::fromValue(deckId));
     q.bindValue(":wordId", QVariant::fromValue(wordId));
@@ -45,16 +45,16 @@ Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
                     .easeFactor     = q.value(3).toFloat(),
                     .intervalDays   = static_cast<uint16_t>(q.value(4).toInt()),
                     .repetitions    = static_cast<uint16_t>(q.value(5).toInt()),
-                    .nextReviewDate = q.value(6).toString().toStdString(),
-                    .lastReviewDate = q.value(7).toString().toStdString()};
+                    .lapses         = static_cast<uint16_t>(q.value(6).toInt()),
+                    .isLeech        = q.value(7).toInt() != 0,
+                    .nextReviewDate = q.value(8).toString().toStdString(),
+                    .lastReviewDate = q.value(9).toString().toStdString()};
 }
-
 
 Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int quality)
 {
-    // Fetch current state
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, ease_factor, interval_days, repetitions "
+    q.prepare("SELECT id, ease_factor, interval_days, repetitions, lapses, is_leech "
               "FROM review WHERE deck_id = :deckId AND entry_id = :wordId;");
     q.bindValue(":deckId", QVariant::fromValue(deckId));
     q.bindValue(":wordId", QVariant::fromValue(wordId));
@@ -66,9 +66,26 @@ Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int q
     float      easeFactor   = q.value(1).toFloat();
     int        intervalDays = q.value(2).toInt();
     int        repetitions  = q.value(3).toInt();
+    int        lapses       = q.value(4).toInt();
+    bool       isLeech      = q.value(5).toInt() != 0;
 
-    // SM-2 algorithm
-    if (quality >= 3) {
+    // The UI grades on a 0..3 scale (0 Forgot, 1 Hard, 2 Good, 3 Easy), but the
+    // SM-2 algorithm is defined on a 0..5 quality scale and treats q >= 3 as a
+    // pass. Map the UI buttons onto SM-2's scale so "Good" counts as a pass
+    // (the previous code compared the raw 0..3 value against >= 3, which made
+    // "Good" a failure and reset the card — a real scheduling bug).
+    //
+    //   UI 0 Forgot -> SM-2 0 (fail)
+    //   UI 1 Hard   -> SM-2 3 (minimal pass)
+    //   UI 2 Good   -> SM-2 4
+    //   UI 3 Easy   -> SM-2 5
+    static constexpr int kSm2[4]    = {0, 3, 4, 5};
+    const int            uiQuality  = std::clamp(quality, 0, 3);
+    const int            sm2Quality = kSm2[uiQuality];
+
+    // SM-2 algorithm (operating on the mapped 0..5 quality).
+    constexpr int kLeechThreshold = 8; // lapses before a card is flagged a leech
+    if (sm2Quality >= 3) {
         if (repetitions == 0)
             intervalDays = 1;
         else if (repetitions == 1)
@@ -76,13 +93,18 @@ Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int q
         else
             intervalDays = static_cast<int>(std::round(intervalDays * easeFactor));
 
-        easeFactor += 0.1f - (5 - quality) * (0.08f + (5 - quality) * 0.02f);
+        easeFactor += 0.1f - (5 - sm2Quality) * (0.08f + (5 - sm2Quality) * 0.02f);
         easeFactor = std::max(1.3f, easeFactor);
         repetitions++;
     } else {
-        // Failed — reset streak, keep ease factor
+        // Failed. Reset the streak, keep ease factor, and count a lapse. A card
+        // that lapses repeatedly is flagged as a leech so the user can review or
+        // suspend it rather than seeing it churn forever at interval 1.
         repetitions  = 0;
         intervalDays = 1;
+        lapses++;
+        if (!isLeech && lapses >= kLeechThreshold)
+            isLeech = true;
     }
 
     const QString today    = QDate::currentDate().toString("yyyy-MM-dd");
@@ -90,11 +112,14 @@ Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int q
 
     q.prepare(
         "UPDATE review SET ease_factor = :ef, interval_days = :interval, repetitions = :reps, "
+        "lapses = :lapses, is_leech = :leech, "
         "next_review_date = :nextDate, last_review_date = :lastDate "
         "WHERE deck_id = :deckId AND entry_id = :wordId;");
     q.bindValue(":ef", easeFactor);
     q.bindValue(":interval", intervalDays);
     q.bindValue(":reps", repetitions);
+    q.bindValue(":lapses", lapses);
+    q.bindValue(":leech", isLeech ? 1 : 0);
     q.bindValue(":nextDate", nextDate);
     q.bindValue(":lastDate", today);
     q.bindValue(":deckId", QVariant::fromValue(deckId));
@@ -103,7 +128,7 @@ Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int q
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    // Append to the review history log (analytics). Non-fatal if it fails.
+    // Append to the review history log. Non-fatal if it fails.
     {
         QSqlQuery log(m_db);
         log.prepare("INSERT INTO review_log "
@@ -124,43 +149,95 @@ Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int q
                     .easeFactor     = easeFactor,
                     .intervalDays   = static_cast<uint16_t>(intervalDays),
                     .repetitions    = static_cast<uint16_t>(repetitions),
+                    .lapses         = static_cast<uint16_t>(lapses),
+                    .isLeech        = isLeech,
                     .nextReviewDate = nextDate.toStdString(),
                     .lastReviewDate = today.toStdString()};
 }
 
-
 Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
 {
-    QSqlQuery q(m_db);
-    q.prepare("SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
-              "next_review_date, last_review_date "
-              "FROM review WHERE deck_id = :deckId AND next_review_date <= date('now', 'localtime') "
-              "ORDER BY next_review_date ASC;");
-    q.bindValue(":deckId", QVariant::fromValue(deckId));
+    // Per-deck daily new-card limit. New cards (repetitions = 0, never reviewed)
+    // would otherwise all become due at once — importing 2,000 cards would dump
+    // 2,000 into one session. We cap how many *new* cards enter the queue per
+    // day while letting every genuinely-due *review* card through.
+    int newPerDay = 20;
+    {
+        QSqlQuery dq(m_db);
+        dq.prepare("SELECT new_cards_per_day FROM deck WHERE id = :d;");
+        dq.bindValue(":d", QVariant::fromValue(deckId));
+        if (dq.exec() && dq.next())
+            newPerDay = dq.value(0).toInt();
+    }
 
-    if (!q.exec())
-        return std::unexpected(q.lastError().text().toStdString());
+    // How many new cards were already introduced today (graduated from
+    // repetitions 0 to >=1 with last_review_date == today). This makes the limit
+    // hold across multiple sessions in the same day.
+    int introducedToday = 0;
+    {
+        QSqlQuery cq(m_db);
+        cq.prepare("SELECT COUNT(*) FROM review WHERE deck_id = :d "
+                   "AND repetitions >= 1 AND last_review_date = date('now', 'localtime');");
+        cq.bindValue(":d", QVariant::fromValue(deckId));
+        if (cq.exec() && cq.next())
+            introducedToday = cq.value(0).toInt();
+    }
+    const int newAllowance = std::max(0, newPerDay - introducedToday);
 
-    std::vector<Review_t> reviews;
-    while (q.next()) {
-        reviews.push_back(Review_t{.id             = q.value(0).toLongLong(),
+    auto readRows = [](QSqlQuery& q, std::vector<Review_t>& out) {
+        while (q.next()) {
+            out.push_back(Review_t{.id             = q.value(0).toLongLong(),
                                    .deckId         = q.value(1).toLongLong(),
                                    .wordId         = q.value(2).toLongLong(),
                                    .easeFactor     = q.value(3).toFloat(),
                                    .intervalDays   = static_cast<uint16_t>(q.value(4).toInt()),
                                    .repetitions    = static_cast<uint16_t>(q.value(5).toInt()),
-                                   .nextReviewDate = q.value(6).toString().toStdString(),
-                                   .lastReviewDate = q.value(7).toString().toStdString()});
+                                   .lapses         = static_cast<uint16_t>(q.value(6).toInt()),
+                                   .isLeech        = q.value(7).toInt() != 0,
+                                   .nextReviewDate = q.value(8).toString().toStdString(),
+                                   .lastReviewDate = q.value(9).toString().toStdString()});
+        }
+    };
+
+    std::vector<Review_t> reviews;
+
+    // 1. Review cards: already learned (repetitions >= 1) and due. No cap.
+    {
+        QSqlQuery q(m_db);
+        q.prepare("SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
+                  "lapses, is_leech, next_review_date, last_review_date "
+                  "FROM review WHERE deck_id = :deckId AND repetitions >= 1 "
+                  "AND next_review_date <= date('now', 'localtime') "
+                  "ORDER BY next_review_date ASC;");
+        q.bindValue(":deckId", QVariant::fromValue(deckId));
+        if (!q.exec())
+            return std::unexpected(q.lastError().text().toStdString());
+        readRows(q, reviews);
     }
+
+    // 2. New cards: repetitions == 0, limited to today's remaining allowance.
+    if (newAllowance > 0) {
+        QSqlQuery q(m_db);
+        q.prepare("SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
+                  "lapses, is_leech, next_review_date, last_review_date "
+                  "FROM review WHERE deck_id = :deckId AND repetitions = 0 "
+                  "AND next_review_date <= date('now', 'localtime') "
+                  "ORDER BY entry_id ASC LIMIT :lim;");
+        q.bindValue(":deckId", QVariant::fromValue(deckId));
+        q.bindValue(":lim", newAllowance);
+        if (!q.exec())
+            return std::unexpected(q.lastError().text().toStdString());
+        readRows(q, reviews);
+    }
+
     return reviews;
 }
-
 
 Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
 {
     DeckStats_t stats;
 
-    auto words = GetWordsForDeck(deckId);
+    auto words = GetEntriesForDeck(deckId);
     if (!words)
         return std::unexpected(words.error());
     stats.total = static_cast<int>(words->size());
@@ -183,12 +260,12 @@ Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
     for (const auto& w : *words) {
         const auto it = nextByWord.find(static_cast<qint64>(w.id));
         if (it == nextByWord.end()) {
-            ++stats.due; // never reviewed → new card, due
+            stats.due++; // never reviewed → new card, due
             continue;
         }
         const QString next = it.value();
         if (next.isEmpty() || next <= today) {
-            ++stats.due;
+            stats.due++;
         } else if (earliestUpcoming.isEmpty() || next < earliestUpcoming) {
             earliestUpcoming = next;
         }
@@ -197,14 +274,12 @@ Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
     return stats;
 }
 
-
 Result_t<DeckAnalytics_t> DatabaseManager::GetDeckAnalytics(ID_t deckId)
 {
     DeckAnalytics_t a;
 
     // Daily aggregates: count + average grade per day, chronological.
-    // reviewed_at is epoch ms; convert to a local date string in SQL via SQLite's
-    // datetime on (ms/1000) seconds.
+    // reviewed_at is epoch ms.
     QSqlQuery q(m_db);
     q.prepare("SELECT date(reviewed_at/1000, 'unixepoch', 'localtime') AS d, "
               "COUNT(*) AS c, AVG(quality) AS aq "
@@ -232,8 +307,7 @@ Result_t<DeckAnalytics_t> DatabaseManager::GetDeckAnalytics(ID_t deckId)
     return a;
 }
 
-
-Result_t<std::vector<WordReviewEvent_t>> DatabaseManager::GetWordHistory(ID_t deckId, ID_t wordId)
+Result_t<std::vector<EntryReviewEvent_t>> DatabaseManager::GetEntryHistory(ID_t deckId, ID_t wordId)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT reviewed_at, quality, ease_factor, interval_days "
@@ -244,14 +318,134 @@ Result_t<std::vector<WordReviewEvent_t>> DatabaseManager::GetWordHistory(ID_t de
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<WordReviewEvent_t> events;
+    std::vector<EntryReviewEvent_t> events;
     while (q.next()) {
-        events.push_back(WordReviewEvent_t{q.value(0).toLongLong(),
-                                           q.value(1).toInt(),
-                                           q.value(2).toDouble(),
-                                           q.value(3).toInt()});
+        events.push_back(EntryReviewEvent_t{q.value(0).toLongLong(),
+                                            q.value(1).toInt(),
+                                            q.value(2).toDouble(),
+                                            q.value(3).toInt()});
     }
     return events;
+}
+
+Result_t<GlobalStats_t> DatabaseManager::GetGlobalStats()
+{
+    GlobalStats_t s;
+
+    // Daily review counts across all decks, chronological.
+    {
+        QSqlQuery q(m_db);
+        if (!q.exec("SELECT date(reviewed_at/1000, 'unixepoch', 'localtime') AS d, "
+                    "COUNT(*) AS c, AVG(quality) AS aq "
+                    "FROM review_log GROUP BY d ORDER BY d ASC;"))
+            return std::unexpected(q.lastError().text().toStdString());
+        while (q.next()) {
+            const std::string day = q.value(0).toString().toStdString();
+            const int         cnt = q.value(1).toInt();
+            s.daily.push_back(DailyStat_t{day, cnt, q.value(2).toDouble()});
+            s.totalReviews += cnt;
+            if (s.firstReviewDate.empty())
+                s.firstReviewDate = day;
+        }
+    }
+
+    // Retention across all decks.
+    {
+        QSqlQuery q(m_db);
+        if (q.exec("SELECT SUM(CASE WHEN quality >= 2 THEN 1 ELSE 0 END), COUNT(*) "
+                   "FROM review_log;") &&
+            q.next()) {
+            const int total = q.value(1).toInt();
+            s.retention = (total > 0) ? q.value(0).toDouble() / static_cast<double>(total) : 0.0;
+        }
+    }
+
+    // Total words.
+    {
+        QSqlQuery q(m_db);
+        if (q.exec("SELECT COUNT(*) FROM entry;") && q.next())
+            s.totalWords = q.value(0).toInt();
+    }
+
+    // Due counts: today (<= today) and next 7 days.
+    {
+        const QString today = QDate::currentDate().toString("yyyy-MM-dd");
+        const QString in7   = QDate::currentDate().addDays(7).toString("yyyy-MM-dd");
+        QSqlQuery     q(m_db);
+        q.prepare("SELECT "
+                  "SUM(CASE WHEN next_review_date <= :today THEN 1 ELSE 0 END), "
+                  "SUM(CASE WHEN next_review_date > :today AND next_review_date <= :in7 "
+                  "         THEN 1 ELSE 0 END) "
+                  "FROM review WHERE next_review_date IS NOT NULL AND next_review_date != '';");
+        q.bindValue(":today", today);
+        q.bindValue(":in7", in7);
+        if (q.exec() && q.next()) {
+            s.dueToday     = q.value(0).toInt();
+            s.dueNext7Days = q.value(1).toInt();
+        }
+    }
+
+    // Reviews today.
+    {
+        const QString today = QDate::currentDate().toString("yyyy-MM-dd");
+        QSqlQuery     q(m_db);
+        q.prepare("SELECT COUNT(*) FROM review_log "
+                  "WHERE date(reviewed_at/1000, 'unixepoch', 'localtime') = :today;");
+        q.bindValue(":today", today);
+        if (q.exec() && q.next())
+            s.reviewsToday = q.value(0).toInt();
+    }
+
+    // Streaks from the distinct set of review days.
+    {
+        QSet<QDate> days;
+        QSqlQuery   q(m_db);
+        if (q.exec("SELECT DISTINCT date(reviewed_at/1000, 'unixepoch', 'localtime') "
+                   "FROM review_log;")) {
+            while (q.next()) {
+                const QDate d = QDate::fromString(q.value(0).toString(), "yyyy-MM-dd");
+                if (d.isValid())
+                    days.insert(d);
+            }
+        }
+        // Longest run.
+        int longest = 0;
+        for (const QDate& d : days) {
+            if (days.contains(d.addDays(-1)))
+                continue; // not a run start
+            int   run = 1;
+            QDate cur = d;
+            while (days.contains(cur.addDays(1))) {
+                cur = cur.addDays(1);
+                ++run;
+            }
+            longest = std::max(longest, run);
+        }
+        s.longestStreakDays = longest;
+        // Current run ending today or yesterday.
+        const QDate today   = QDate::currentDate();
+        QDate       anchor  = days.contains(today)               ? today
+                              : days.contains(today.addDays(-1)) ? today.addDays(-1)
+                                                                 : QDate();
+        int         current = 0;
+        if (anchor.isValid()) {
+            QDate cur = anchor;
+            while (days.contains(cur)) {
+                ++current;
+                cur = cur.addDays(-1);
+            }
+        }
+        s.currentStreakDays = current;
+    }
+
+    // Count cards currently flagged as leeches across all decks.
+    {
+        QSqlQuery lq(m_db);
+        if (lq.exec("SELECT COUNT(*) FROM review WHERE is_leech = 1;") && lq.next())
+            s.leechCount = lq.value(0).toInt();
+    }
+
+    return s;
 }
 
 } // namespace Service

@@ -17,31 +17,32 @@
 
 namespace Service {
 
-Result_t<std::vector<Word_t>> DatabaseManager::SearchWords(const std::string& query)
+Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntries(const std::string& query)
 {
-    // Append * for prefix matching so partial input works (e.g. "ephe" matches "ephemeral")
+    // Append * for prefix matching so partial input works
     const QString ftsQuery = QString::fromStdString(query) + "*";
 
     QSqlQuery q(m_db);
-    q.prepare("SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
-              "JOIN entry_content_fts fts ON fts.rowid = (SELECT id FROM entry_content WHERE entry_id "
-              "= w.id LIMIT 1) "
-              "WHERE entry_content_fts MATCH :query "
-              "ORDER BY w.title ASC;");
+    q.prepare(
+        "SELECT DISTINCT w.id, w.title, w.created_at, w.language FROM entry w "
+        "JOIN entry_content_fts fts ON fts.rowid = (SELECT id FROM entry_content WHERE entry_id "
+        "= w.id LIMIT 1) "
+        "WHERE entry_content_fts MATCH :query "
+        "ORDER BY w.title ASC;");
     q.bindValue(":query", ftsQuery);
 
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }
-
 
 Result_t<std::vector<ContentBlock_t>> DatabaseManager::SearchContent(const std::string& query)
 {
@@ -67,18 +68,18 @@ Result_t<std::vector<ContentBlock_t>> DatabaseManager::SearchContent(const std::
                                         .row     = q.value(4).toInt(),
                                         .col     = q.value(5).toInt(),
                                         .rowSpan = q.value(6).toInt(),
-                                        .colSpan = q.value(7).toInt()});
+                                        .colSpan = q.value(7).toInt(),
+                                        .pos     = ""});
     }
     return blocks;
 }
 
-// ── Substring search (LIKE) ───────────────────────────────────────────────────
+// Substring search (LIKE)
 
-
-Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByName(const std::string& substring)
+Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByName(const std::string& substring)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, title, created_at FROM entry "
+    q.prepare("SELECT id, title, created_at, language FROM entry "
               "WHERE title LIKE :pat ESCAPE '\\' "
               "ORDER BY title ASC;");
     QString pat = QString::fromStdString(substring);
@@ -88,15 +89,15 @@ Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByName(const std::stri
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }
-
 
 Result_t<std::vector<Tag_t>> DatabaseManager::SearchTagsByName(const std::string& substring)
 {
@@ -119,11 +120,10 @@ Result_t<std::vector<Tag_t>> DatabaseManager::SearchTagsByName(const std::string
     return tags;
 }
 
-
-Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByContent(const std::string& substring)
+Result_t<std::vector<Entry_t>> DatabaseManager::SearchEntriesByContent(const std::string& substring)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT DISTINCT w.id, w.title, w.created_at FROM entry w "
+    q.prepare("SELECT DISTINCT w.id, w.title, w.created_at, w.language FROM entry w "
               "JOIN entry_content wc ON wc.entry_id = w.id "
               "WHERE wc.content LIKE :pat ESCAPE '\\' "
               "ORDER BY w.title ASC;");
@@ -134,11 +134,12 @@ Result_t<std::vector<Word_t>> DatabaseManager::SearchWordsByContent(const std::s
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    std::vector<Word_t> words;
+    std::vector<Entry_t> words;
     while (q.next()) {
-        words.push_back(Word_t{.id        = q.value(0).toLongLong(),
-                               .word      = q.value(1).toString().toStdString(),
-                               .createdAt = q.value(2).toString().toStdString()});
+        words.push_back(Entry_t{.id        = q.value(0).toLongLong(),
+                                .word      = q.value(1).toString().toStdString(),
+                                .createdAt = q.value(2).toString().toStdString(),
+                                .language  = q.value(3).toString().toStdString()});
     }
     return words;
 }

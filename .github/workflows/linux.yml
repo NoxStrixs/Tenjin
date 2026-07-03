@@ -1,0 +1,255 @@
+name: Linux build
+
+# Builds Tenjin for Linux on ubuntu-24.04 (GCC 13+ for <expected>).
+# Publishes an AppImage as a GitHub Release asset.
+#
+# Translations: CI assumes translations/*.ts are committed. We do NOT
+# run `tool translation` here (it needs ~2GB of PyTorch + Argos models).
+# lrelease compiles whatever .ts files exist into .qm at build time via
+# qt_add_translations. If translations/ is absent we seed empty .ts
+# files so the build still succeeds.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+
+    env:
+      TENJIN_APP_NAME: Tenjin
+      CCACHE_MAXSIZE: 500M
+      CCACHE_COMPRESS: "true"
+      # Bump this to invalidate all caches without changing keys.
+      CACHE_VERSION: v2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load .env into environment
+        run: |
+          echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"
+          if [ -f .env ]; then
+            awk -F= '
+              /^[[:space:]]*#/ { next } /^[[:space:]]*$/ { next } NF < 2 { next }
+              { k=$1; $1=""; v=substr($0,2);
+                sub(/^[[:space:]]+/,"",k); sub(/[[:space:]]+$/,"",k);
+                sub(/^[[:space:]]+/,"",v); sub(/[[:space:]]+$/,"",v);
+                if (v ~ /^".*"$/ || v ~ /^'\''.*'\''$/) v=substr(v,2,length(v)-2);
+                print k "=" v
+              }
+            ' .env >> "$GITHUB_ENV"
+          fi
+
+      # Seed empty translations/*.ts files if the user hasn't committed
+      # any yet. Avoids "no rule to make target tenjin_ja.ts" errors from
+      # qt_add_translations on a fresh clone. The .ts file list mirrors
+      # TENJIN_UI_LANGUAGES in cmake/Translations.cmake.
+      - name: Seed translation .ts files if missing
+        run: |
+          mkdir -p translations
+          for lang in ja es fr de zh_CN pt ko it ru ar; do
+            f="translations/tenjin_${lang}.ts"
+            if [ ! -f "$f" ]; then
+              cat > "$f" <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <!DOCTYPE TS>
+          <TS version="2.1" language="${lang}">
+          </TS>
+          EOF
+              echo "  seeded empty $f"
+            fi
+          done
+          ls -la translations/ | head
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+           build-essential ninja-build ccache cmake \
+           libgl1-mesa-dev libxkbcommon-x11-0 libdbus-1-3 \
+           libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+           libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+           libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
+           libxcb-xkb1 libxkbcommon0 libfontconfig1 \
+           libfuse2t64 patchelf wget file librsvg2-bin
+          echo "===== compiler versions ====="
+          gcc --version
+          g++ --version
+          echo "===== <expected> available? ====="
+          echo '#include <expected>' | g++ -std=c++23 -E -xc++ - >/dev/null && echo "OK" || (echo "MISSING — abort" && exit 1)
+
+      - name: Set up Python (for aqtinstall)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: "linux"
+          target: "desktop"
+          arch: "linux_gcc_64"
+          modules: "qtmultimedia"
+          dir: ${{ github.workspace }}/Qt
+          cache: true
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-linux
+          setup-python: false
+
+      - name: Verify Qt Linguist tools (lupdate/lrelease)
+        run: |
+          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          for t in lupdate lrelease; do
+            if [ ! -x "$QT_LINUX/bin/$t" ]; then
+              echo "::error::Qt $t missing at $QT_LINUX/bin/$t. qt_add_translations will fail."
+              ls "$QT_LINUX/bin" | head -50
+              exit 1
+            fi
+          done
+          "$QT_LINUX/bin/lrelease" -version
+          "$QT_LINUX/bin/lupdate" -version
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ env.CACHE_VERSION }}-linux-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ env.CACHE_VERSION }}-linux-ccache-
+
+      - name: Cache icon font
+        uses: actions/cache@v4
+        with:
+          path: View/fonts/MaterialSymbolsOutlined.ttf
+          key: ${{ env.CACHE_VERSION }}-iconfont-v1
+
+      - name: Configure (CMake, Ninja)
+        run: |
+          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          export PATH="$QT_LINUX/bin:$PATH"
+          cmake -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_PREFIX_PATH="$QT_LINUX" \
+            -DMEDIA_SUPPORT=OFF \
+            -DWEBVIEW_SUPPORT=OFF \
+            -DBUILD_TESTS=OFF \
+            -DBUILD_BENCHMARKS=OFF \
+            -DSANITIZERS="" \
+            -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
+
+      - name: Build
+        run: |
+          ccache --max-size=$CCACHE_MAXSIZE
+          ccache --zero-stats
+          cmake --build build --config Release
+          echo "===== ccache stats ====="
+          ccache --show-stats
+
+      - name: Locate built binary
+        run: |
+          BIN=$(find build -name "$TENJIN_APP_NAME" -type f -executable | head -n1)
+          if [ -z "$BIN" ]; then
+            echo "::error::Built binary not found"
+            find build -maxdepth 4 -type f -executable | head -20
+            exit 1
+          fi
+          echo "Binary: $BIN"
+          file "$BIN"
+          du -h "$BIN"
+          echo "TENJIN_BIN=$BIN" >> "$GITHUB_ENV"
+
+      - name: Package AppImage
+        run: |
+          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          export PATH="$QT_LINUX/bin:$PATH"
+          export LD_LIBRARY_PATH="$QT_LINUX/lib:$LD_LIBRARY_PATH"
+
+          # 1. Prepare AppDir structural layout
+          mkdir -p AppDir/usr/bin \
+                   AppDir/usr/share/applications \
+                   AppDir/usr/share/icons/hicolor/256x256/apps
+
+          cp "${{ github.workspace }}/build/bin/Tenjin" AppDir/usr/bin/Tenjin
+
+          # 2. Setup Desktop File
+          cat > AppDir/usr/share/applications/tenjin.desktop <<EOF
+          [Desktop Entry]
+          Type=Application
+          Name=Tenjin
+          Exec=Tenjin
+          Icon=tenjin
+          Categories=Education;
+          EOF
+
+          # 3. Setup Assets
+          if [ -f tenjin.svg ]; then
+            rsvg-convert -w 256 -h 256 tenjin.svg -o AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png
+          else
+            echo "::warning::tenjin.svg not found; extracting placeholder"
+            python3 -c "import base64,sys; sys.stdout.buffer.write(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAQMAAAAlPW0iAAAABlBMVEUAAAD///+l2Z/dAAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg=='))" > AppDir/usr/share/icons/hicolor/256x256/apps/tenjin.png
+          fi
+
+          # 4. Download modern linuxdeploy + Qt6 plugin
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -O linuxdeploy
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage -O linuxdeploy-plugin-qt
+          chmod +x linuxdeploy linuxdeploy-plugin-qt
+
+          # 4.5 Strip unused Qt SQL driver plugins before deployment.
+          # linuxdeploy-plugin-qt bundles every .so it finds under
+          # plugins/sqldrivers, not just the one Tenjin actually loads
+          # (QSQLITE). The Qt 6.8 install also ships libqsqlmimer.so and
+          # libqsqlmysql.so, which link against libmimerapi.so /
+          # libmysqlclient.so — third-party client libraries that aren't
+          # installed on this runner (and never will be, since Tenjin only
+          # opens a local SQLite database). Their absence makes
+          # linuxdeploy-plugin-qt abort with
+          # "ERROR: Could not find dependency: libmimerapi.so" before it
+          # ever reaches libqsqlite.so. Removing the drivers we don't ship
+          # is the documented workaround (see linuxdeploy/linuxdeploy-plugin-qt#153).
+          SQLDRIVERS_DIR="$QT_LINUX/plugins/sqldrivers"
+          echo "sqldrivers before pruning:"
+          ls "$SQLDRIVERS_DIR"
+          find "$SQLDRIVERS_DIR" -maxdepth 1 -name '*.so' ! -name 'libqsqlite.so' -print -delete
+          echo "sqldrivers after pruning:"
+          ls "$SQLDRIVERS_DIR"
+
+          # 5. Execute deployment using updated variable standards
+          export QMAKE="$QT_LINUX/bin/qmake6"
+          export EXTRA_QT_MODULES="core qml quick controls sql imageformats"
+          export APPIMAGE_EXTRACT_AND_RUN=1
+
+          ./linuxdeploy --appdir AppDir \
+            --plugin qt \
+            --output appimage
+
+          # 6. Locate final artifact
+          IMG=$(find . -maxdepth 1 -name "*.AppImage" ! -name "linuxdeploy*" -type f | head -n1)
+          if [ -z "$IMG" ]; then
+            echo "::error::No AppImage produced"
+            exit 1
+          fi
+          echo "TENJIN_APPIMAGE=$IMG" >> "$GITHUB_ENV"
+          echo "Built successfully: $IMG"
+
+      - name: Publish AppImage to a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: linux-build-${{ github.run_number }}
+          name: Linux build ${{ github.run_number }}
+          files: ${{ env.TENJIN_APPIMAGE }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

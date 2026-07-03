@@ -1,0 +1,5 @@
+// Windows executable icon. windres/rc compiles this into the binary so
+// Explorer and the taskbar show the app logo. Requires the vendored
+// tenjin.ico next to this file (see README.md); the build warns and skips
+// this resource if the icon is missing.
+IDI_ICON1 ICON "tenjin.ico"

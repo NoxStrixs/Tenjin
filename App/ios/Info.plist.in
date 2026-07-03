@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
+    <key>CFBundleIdentifier</key>
+    <string>@TENJIN_BUNDLE_ID@</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>@TENJIN_APP_NAME@</string>
+    <key>CFBundleDisplayName</key>
+    <string>@TENJIN_APP_DISPLAY_NAME@</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
+    <key>CFBundleVersion</key>
+    <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+
+    <!-- App icon — Xcode compiles the asset catalog (Assets.xcassets /
+         AppIcon.appiconset) into the actual icon files. -->
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
+    <key>CFBundleIcons</key>
+    <dict>
+        <key>CFBundlePrimaryIcon</key>
+        <dict>
+            <key>CFBundleIconName</key>
+            <string>AppIcon</string>
+        </dict>
+    </dict>
+
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>MinimumOSVersion</key>
+    <string>@TENJIN_IOS_DEPLOYMENT_TARGET@</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>iPhoneOS</string>
+    </array>
+    <key>UIDeviceFamily</key>
+    <array>
+        <integer>1</integer>
+        <integer>2</integer>
+    </array>
+
+    <!-- UILaunchScreen MUST be a non-empty dict for iOS to opt the app into
+         the modern launch-screen system and render at the device's native
+         screen resolution. An absent or empty `<dict/>` makes iOS fall back
+         to legacy compatibility scaling — that's the "letterboxed /
+         cropped" symptom you've been seeing on the physical iPhone. The
+         single UIImageRespectsSafeAreaInsets key is enough to satisfy the
+         requirement without needing an asset-catalog entry; we can swap in
+         a UIColorName / UIImageName once a real launch asset lands. -->
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIImageRespectsSafeAreaInsets</key>
+        <true/>
+    </dict>
+
+    <!-- Cross-device sync — Tenjin exports/imports its whole collection as
+         JSON. These two keys make the app's Documents directory visible in
+         the Files app and in Finder file sharing. -->
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+
+    <!-- "Open in" target for .json export files. -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Tenjin Collection</string>
+            <key>LSHandlerRank</key>
+            <string>Default</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.json</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- QtMultimedia / media access usage strings. iOS terminates the app
+         if any protected-resource API is touched without these present —
+         even local-file playback can probe these. -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Tenjin can attach images and videos to your word cards.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Tenjin can record audio for pronunciation notes.</string>
+    <key>NSAppleMusicUsageDescription</key>
+    <string>Tenjin can play audio attached to your cards.</string>
+
+    <!-- No non-exempt encryption — skips the export-compliance prompt on
+         every TestFlight upload. -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+
+    <!-- App Store category. -->
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.education</string>
+
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+</dict>
+</plist>
+

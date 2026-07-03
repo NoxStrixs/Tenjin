@@ -1,43 +1,27 @@
-add_subdirectory(ViewModels)
-
-# Files that must be tagged as QML singletons before being passed to
-# qt_add_qml_module — set_source_files_properties() must execute in the same
-# directory scope as the module declaration.
 set_source_files_properties(Platform.qml PROPERTIES
     QT_QML_SINGLETON_TYPE TRUE
 )
+set_source_files_properties(TenjinIcons.qml PROPERTIES
+    QT_QML_SINGLETON_TYPE TRUE
+)
+set_source_files_properties(LanguageFlags.qml PROPERTIES
+    QT_QML_SINGLETON_TYPE TRUE
+)
 
-# Media QML files are added only when their backing Qt module is enabled, so a
-# lean build (MEDIA_SUPPORT=OFF / WEBVIEW_SUPPORT=OFF) doesn't try to compile
-# QML that imports a module it wasn't linked against.
 set(_TENJIN_MEDIA_QML "")
 if(MEDIA_SUPPORT)
-    list(APPEND _TENJIN_MEDIA_QML MediaPlayerView.qml)
+    list(APPEND _TENJIN_MEDIA_QML media/MediaPlayerView.qml)
 endif()
 if(WEBVIEW_SUPPORT)
-    list(APPEND _TENJIN_MEDIA_QML WebEmbed.qml)
-endif()
-# FormulaWebView imports QtWebView, so it's only compiled into the module when
-# FORMULA_SUPPORT is on. FormulaBlock itself is always present (it gates the
-# WebView behind a Loader and shows a text fallback otherwise).
-if(FORMULA_SUPPORT)
-    list(APPEND _TENJIN_MEDIA_QML FormulaWebView.qml)
+    list(APPEND _TENJIN_MEDIA_QML media/WebEmbed.qml)
 endif()
 
-# Declaring every module our .qml files import is REQUIRED for static builds
-# (iOS): it tells qmlimportscanner which backing plugins to link into the
-# binary. Without it, modules like QtQuick.Layouts / QtQuick.Controls.Basic are
-# dead-stripped and the app fails at runtime with "module ... is not installed"
-# → no root objects → silent exit.
-#
-# NOTE: the IMPORTS keyword takes PLAIN module names evaluated at configure
-# time. Generator expressions ($<...>) are NOT evaluated here and would be
-# recorded verbatim as bogus module names — so build the list with ordinary
-# if() appends instead.
+# Declaring modules imported inside our .qml files
 set(_TENJIN_QML_IMPORTS
     QtQuick
-    QtQuick.Controls
+    QtQuick.Window
     QtQuick.Controls.Basic
+    QtQuick.Templates
     QtQuick.Layouts
     QtQuick.Dialogs
     QtQml
@@ -47,10 +31,63 @@ if(MEDIA_SUPPORT)
     list(APPEND _TENJIN_QML_IMPORTS QtMultimedia)
 endif()
 if(WEBVIEW_SUPPORT)
-    list(APPEND _TENJIN_QML_IMPORTS QtWebEngine)
-endif()
-if(FORMULA_SUPPORT)
     list(APPEND _TENJIN_QML_IMPORTS QtWebView)
+endif()
+
+# ── Bundled binary resources (icon font, mono font, flag SVGs) ───────────────
+# All assets are embedded THROUGH the QML module so their resource initializers
+# are force-linked with the STATIC backing target. A detached qt_add_resources()
+# has its initializer stripped at static-link time, so the bytes never reach the
+# binary even when configure reports the file as found.
+#
+# Resource paths (RESOURCE_PREFIX defaults to /qt/qml via QTP0001 from
+# qt_standard_project_setup(REQUIRES 6.8)):
+#   qrc:/qt/qml/TenjinView/fonts/MaterialSymbolsOutlined.ttf
+#   qrc:/qt/qml/TenjinView/fonts/JetBrainsMono-Regular.ttf
+#   qrc:/qt/qml/TenjinView/fonts/JetBrainsMono-Bold.ttf
+#   qrc:/qt/qml/TenjinView/flags/<iso2>.svg
+set(_TENJIN_BUNDLED_RESOURCES "")
+
+# Icon font lives at an ABSOLUTE path (fetched by cmake/IconFont.cmake into the
+# source tree). Qt 6.8 rejects absolute RESOURCES entries unless the in-resource
+# location is given via QT_RESOURCE_ALIAS — set BEFORE qt_add_qml_module().
+if(EXISTS "${TENJIN_ICON_FONT_FILE}")
+    set_source_files_properties("${TENJIN_ICON_FONT_FILE}" PROPERTIES
+        QT_RESOURCE_ALIAS "fonts/MaterialSymbolsOutlined.ttf")
+    list(APPEND _TENJIN_BUNDLED_RESOURCES "${TENJIN_ICON_FONT_FILE}")
+else()
+    message(WARNING
+        "Icon font missing at ${TENJIN_ICON_FONT_FILE}. Icons will fall back "
+        "to system glyphs. Run cmake configure with network access to fetch it.")
+endif()
+
+# Monospace UI font (vendored / fetched into View/fonts/, repo-relative so the
+# implicit alias fonts/<name>.ttf is correct without QT_RESOURCE_ALIAS).
+foreach(_mono JetBrainsMono-Regular.ttf JetBrainsMono-Bold.ttf)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/fonts/${_mono}")
+        list(APPEND _TENJIN_BUNDLED_RESOURCES "fonts/${_mono}")
+    else()
+        message(WARNING "Mono font missing: View/fonts/${_mono} "
+                        "(see View/fonts/README.md).")
+    endif()
+endforeach()
+
+# Flag SVGs (lipis/flag-icons, MIT) — only the mapped subset placed in
+# View/flags/. Repo-relative; aliased as flags/<iso2>.svg implicitly.
+file(GLOB _TENJIN_FLAG_SVGS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+     "${CMAKE_CURRENT_SOURCE_DIR}/flags/*.svg")
+list(APPEND _TENJIN_BUNDLED_RESOURCES ${_TENJIN_FLAG_SVGS})
+
+# DesktopFileDialogs.qml imports QtQuick.Dialogs, which does not exist on
+# iOS/Android. If it is part of the module there, the static import scanner
+# demands the QtQuick.Dialogs plugin, the TenjinView module fails to resolve,
+# and EVERY Main.qml import reports "not installed". Bundle it on desktop only;
+# Main.qml already guards its Loader with active: !Platform.isMobile.
+set(_TENJIN_DESKTOP_ONLY_QML "")
+if(NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    list(APPEND _TENJIN_DESKTOP_ONLY_QML
+        components/DesktopFileDialogs.qml
+        components/DesktopMediaDialog.qml)
 endif()
 
 qt_add_qml_module(TenjinView
@@ -59,37 +96,70 @@ qt_add_qml_module(TenjinView
     STATIC
     OUTPUT_DIRECTORY  ${CMAKE_BINARY_DIR}/qml/TenjinView
     IMPORT_PATH       ${CMAKE_BINARY_DIR}/qml
-
     IMPORTS
         ${_TENJIN_QML_IMPORTS}
-
+    RESOURCES
+        ${_TENJIN_BUNDLED_RESOURCES}
     QML_FILES
+        # ── root ──
         Main.qml
-        ActionButton.qml
-        Sidebar.qml
         Platform.qml
-        WordPage.qml
-        WordDetailView.qml
-        WordListPanel.qml
-        TagsPage.qml
-        RenameTagDialog.qml
-        MobileDrawer.qml
-        AnalyticsPanel.qml
-        ChartCard.qml
-        DeckListPage.qml
-        DeckListPanel.qml
-        DeckDetailPanel.qml
-        ReviewPage.qml
-        ContentBlock.qml
-        FormulaBlock.qml
-        GridContentView.qml
-        TagChip.qml
-        SearchBox.qml
-        ConfirmDialog.qml
-        AddTagDialog.qml
-        AddWordDialog.qml
-        AddDeckDialog.qml
-        IconBtn.qml
+        TenjinIcons.qml
+        LanguageFlags.qml
+        # ── components ──
+        components/ActionButton.qml
+        components/StyledComboBox.qml
+        components/LanguageFlagRow.qml
+        components/LoadingState.qml
+        components/ErrorState.qml
+        components/PressScale.qml
+        components/ToggleSwitch.qml
+        components/ThemePicker.qml
+        components/SheetPopup.qml
+        components/AgeGateDialog.qml
+        components/ColorPickerPopup.qml
+        components/Stepper.qml
+        ${_TENJIN_DESKTOP_ONLY_QML}
+        components/ChartCard.qml
+        components/ContentBlock.qml
+        components/EmptyState.qml
+        components/FormulaBlock.qml
+        components/GridContentView.qml
+        components/IconBtn.qml
+        components/SearchBox.qml
+        components/SkeletonItem.qml
+        components/TagChip.qml
+        components/TagFilterPopup.qml
+        # ── dialogs ──
+        dialogs/AddDeckDialog.qml
+        dialogs/AddEntryDialog.qml
+        dialogs/AddRelationDialog.qml
+        dialogs/AddTagDialog.qml
+        dialogs/ConfirmDialog.qml
+        dialogs/ImportPickerDialog.qml
+        dialogs/MediaPickerDialog.qml
+        dialogs/RenameTagDialog.qml
+        dialogs/ThemedDialog.qml
+        dialogs/BugReportDialog.qml
+        dialogs/WhatsNewSheet.qml
+        # ── pages ──
+        pages/DeckListPage.qml
+        pages/EntryPage.qml
+        pages/ReviewPage.qml
+        pages/TagsPage.qml
+        pages/HelpPage.qml
+        pages/NewsPage.qml
+        pages/SettingsPage.qml
+        pages/StatsPage.qml
+        # ── panels ──
+        panels/AnalyticsPanel.qml
+        panels/DeckDetailPanel.qml
+        panels/DeckListPanel.qml
+        panels/EntryDetailView.qml
+        panels/EntryListPanel.qml
+        panels/MobileDrawer.qml
+        panels/Sidebar.qml
+        # ── media (conditionally compiled) ──
         ${_TENJIN_MEDIA_QML}
 )
 
@@ -97,37 +167,12 @@ target_link_libraries(TenjinView
     PRIVATE  TenjinViewModels
              Qt6::Quick
              Qt6::QuickControls2
+             Qt6::Svg
              ${TENJIN_MEDIA_COMPONENTS}
              tenjin_warnings
              tenjin_sanitizers
 )
 
-# ── Offline KaTeX bundle ──────────────────────────────────────────────────────
-# Formula rendering loads KaTeX from qrc:/katex/... so it works fully offline
-# (no CDN). The assets are NOT committed to the repo; fetch them once with
-#   tools/fetch-katex.sh
-# which populates View/katex/. If the directory is missing we skip the resource
-# and FormulaWebView's loader falls back to the CDN/text path, so a fresh clone
-# still configures and builds.
-if(FORMULA_SUPPORT)
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/katex/katex.min.js")
-        file(GLOB_RECURSE _KATEX_ASSETS
-             RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-             "katex/*")
-        qt_add_resources(TenjinView "katex"
-            PREFIX "/"
-            FILES ${_KATEX_ASSETS}
-        )
-    else()
-        message(WARNING
-            "FORMULA_SUPPORT=ON but View/katex/ is empty. Run tools/fetch-katex.sh "
-            "to bundle the offline assets. Formulas will use the network/text "
-            "fallback until then.")
-    endif()
-endif()
-
-# Feature macros (TENJIN_MEDIA / TENJIN_WEBVIEW). PUBLIC so the App target, which
-# includes AppViewModel.h (it reads TENJIN_WEBVIEW), inherits them transitively.
 target_compile_definitions(TenjinView
     PUBLIC   ${TENJIN_FEATURE_DEFINITIONS}
 )

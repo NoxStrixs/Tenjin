@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=@TENJIN_APP_DISPLAY_NAME@
+GenericName=Vocabulary
+Comment=@TENJIN_APP_DESCRIPTION@
+Exec=@TENJIN_APP_NAME@
+Icon=tenjin
+Terminal=false
+Categories=@TENJIN_APP_CATEGORIES@
+StartupWMClass=@TENJIN_APP_NAME@
+Keywords=@TENJIN_APP_KEYWORDS@
+
