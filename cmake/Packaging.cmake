@@ -59,6 +59,14 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(CPACK_NSIS_CONTACT               "${CPACK_PACKAGE_CONTACT}")
     set(CPACK_NSIS_MODIFY_PATH           OFF)
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    # Installer/uninstaller wizard icon and the Add/Remove Programs icon, from
+    # the same generated .ico as the exe (single source). Only set when the
+    # icon was generated (App/CMakeLists.txt writes it to generated/tenjin.ico).
+    if(EXISTS "${CMAKE_BINARY_DIR}/generated/tenjin.ico")
+        set(CPACK_NSIS_MUI_ICON        "${CMAKE_BINARY_DIR}/generated/tenjin.ico")
+        set(CPACK_NSIS_MUI_UNIICON     "${CMAKE_BINARY_DIR}/generated/tenjin.ico")
+        set(CPACK_NSIS_INSTALLED_ICON_NAME "${TENJIN_APP_NAME}.exe")
+    endif()
     # Exe + qt.conf sit at install ROOT (windeployqt stage\bin flattened via
     # CPACK_INSTALLED_DIRECTORIES). qt.conf Prefix=. resolves plugins\ and qml\
     # relative to the launch working dir, so the shortcut MUST set workdir to

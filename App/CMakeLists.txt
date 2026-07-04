@@ -60,15 +60,28 @@ if(WIN32)
     # QQuickWindow; only dwmapi is required.
     target_link_libraries(Tenjin PRIVATE dwmapi)
 
-    # Executable icon. Follows the vendored-binary policy (icons/fonts are
-    # committed, never downloaded); unlike the fonts this is cosmetic, so a
-    # missing .ico warns instead of failing the build.
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/windows/tenjin.ico")
-        target_sources(Tenjin PRIVATE windows/tenjin.rc)
+    # Executable icon: generated at configure time from the single canonical
+    # icon source (the 1024 master shared with iOS/macOS), so no binary .ico is
+    # committed (§4). A generated .rc points rc.exe at the built .ico. Cosmetic,
+    # so any generation failure warns and skips rather than failing the build.
+    include(${CMAKE_SOURCE_DIR}/cmake/GenerateIcons.cmake)
+    set(_tenjin_icon_src
+        "${CMAKE_SOURCE_DIR}/App/ios/Assets.xcassets/AppIcon.appiconset/icon-1024.png")
+    set(_tenjin_ico "${CMAKE_BINARY_DIR}/generated/tenjin.ico")
+    tenjin_generate_win_ico("${_tenjin_icon_src}" "${_tenjin_ico}" _tenjin_ico_ok)
+
+    if(_tenjin_ico_ok)
+        # rc references the icon by absolute path so it resolves regardless of
+        # the .rc's own location.
+        set(_tenjin_rc "${CMAKE_BINARY_DIR}/generated/tenjin.rc")
+        file(TO_NATIVE_PATH "${_tenjin_ico}" _tenjin_ico_native)
+        string(REPLACE "\\" "\\\\" _tenjin_ico_rc "${_tenjin_ico_native}")
+        file(WRITE "${_tenjin_rc}" "IDI_ICON1 ICON \"${_tenjin_ico_rc}\"\n")
+        target_sources(Tenjin PRIVATE "${_tenjin_rc}")
     else()
         message(WARNING
-            "App/windows/tenjin.ico missing — the Windows executable will have "
-            "no icon. See App/windows/README.md to generate and commit it.")
+            "Windows executable icon skipped (see prior warning). The exe will "
+            "have the default icon.")
     endif()
 endif()
 

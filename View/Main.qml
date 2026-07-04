@@ -579,7 +579,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                model: appVM.builtinLanguages
+                model: appVM.supportedUiLanguages
                 spacing: 2
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
@@ -588,7 +588,7 @@ ApplicationWindow {
                     width: langList.width
                     height: Platform.touchTarget
                     radius: Platform.radius
-                    readonly property bool isCurrent: appVM.uiLanguage === modelData.code
+                    readonly property bool isCurrent: appVM.uiLanguage === modelData
                     color: langDelegateArea.containsMouse ? Platform.surfaceAlt
                            : (isCurrent ? Platform.surfaceAlt : "transparent")
 
@@ -597,11 +597,11 @@ ApplicationWindow {
                         spacing: Platform.spacingMd
 
                         LanguageFlagRow {
-                            codes: LanguageFlags.flags(modelData.code)
+                            codes: LanguageFlags.flags(modelData)
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: modelData.name
+                            text: LanguageFlags.name(modelData) || modelData
                             color: Platform.textPrimary
                             font.pixelSize: Platform.fontBase
                             font.bold: parent.parent.isCurrent
@@ -620,7 +620,7 @@ ApplicationWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            appVM.setUiLanguage(modelData.code)
+                            appVM.setUiLanguage(modelData)
                             languageMenu.close()
                         }
                     }
