@@ -48,7 +48,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     # Native MSVC build. NSIS installer + portable ZIP. The install tree is
     # assembled by the Windows workflow's windeployqt step; CPack packages it.
     set(CPACK_GENERATOR "NSIS;ZIP")
-    set(CPACK_NSIS_EXECUTABLES_DIRECTORY "bin")
+    set(CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
     set(CPACK_PACKAGE_EXECUTABLES        "${TENJIN_APP_NAME}" "${TENJIN_APP_DISPLAY_NAME}")
     set(CPACK_NSIS_MUI_FINISHPAGE_RUN    "${TENJIN_APP_NAME}.exe")
     set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${TENJIN_APP_NAME}SpacedRepetitionApp")
@@ -59,9 +59,14 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(CPACK_NSIS_CONTACT               "${CPACK_PACKAGE_CONTACT}")
     set(CPACK_NSIS_MODIFY_PATH           OFF)
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    # Exe + qt.conf sit at install ROOT (windeployqt stage\bin flattened via
+    # CPACK_INSTALLED_DIRECTORIES). qt.conf Prefix=. resolves plugins\ and qml\
+    # relative to the launch working dir, so the shortcut MUST set workdir to
+    # $INSTDIR or a Start-Menu launch reports "no platform plugin".
+    # CreateShortCut: link target params icon idx showmode hotkey workdir
     set(CPACK_NSIS_CREATE_ICONS_EXTRA "
         SetShellVarContext all
-        CreateShortCut '\$SMPROGRAMS\\\\${TENJIN_APP_DISPLAY_NAME}\\\\${TENJIN_APP_DISPLAY_NAME}.lnk' '\$INSTDIR\\\\bin\\\\${TENJIN_APP_NAME}.exe'
+        CreateShortCut '\$SMPROGRAMS\\\\${TENJIN_APP_DISPLAY_NAME}\\\\${TENJIN_APP_DISPLAY_NAME}.lnk' '\$INSTDIR\\\\${TENJIN_APP_NAME}.exe' '' '\$INSTDIR\\\\${TENJIN_APP_NAME}.exe' 0 SW_SHOWNORMAL '' '\$INSTDIR'
     ")
     set(CPACK_NSIS_DELETE_ICONS_EXTRA "
         SetShellVarContext all

@@ -198,7 +198,7 @@ Item {
             }
             SectionDivider {}
 
-            SectionHeader { text: qsTr("Language") }
+            SectionHeader { text: qsTr("Interface & display language") }
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: uiLangCol.implicitHeight + Platform.spacingMd * 2
@@ -316,7 +316,7 @@ Item {
                 Text {
                     id: langHeader
                     anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: Platform.spacingLg }
-                    text: qsTr("Language")
+                    text: qsTr("Filter vocabulary by language")
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontLarge
                     font.bold: true

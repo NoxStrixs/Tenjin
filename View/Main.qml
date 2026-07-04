@@ -302,7 +302,7 @@ ApplicationWindow {
             IconBtn {
                 id: langBtn
                 glyph: TenjinIcons.globe
-                accessibleName: qsTr("Change language")
+                accessibleName: qsTr("Interface language")
                 onActivated: languageMenu.open()
             }
             IconBtn {

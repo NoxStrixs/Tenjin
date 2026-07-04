@@ -363,7 +363,7 @@ Rectangle {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("Language")
+                    text: qsTr("Filter by language")
                     color: Platform.textPrimary
                     font.pixelSize: 12
                 }
