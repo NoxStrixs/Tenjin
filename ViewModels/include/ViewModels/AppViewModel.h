@@ -2,6 +2,7 @@
 #include <DeckService/DeckService.h>
 #include <EntryService/EntryService.h>
 #include <ViewModels/DeckViewModel.h>
+#include <ViewModels/DocumentPickerService.h>
 #include <ViewModels/EntryViewModel.h>
 #include <ViewModels/ReviewViewModel.h>
 #include <ViewModels/SidebarViewModel.h>
@@ -389,7 +390,12 @@ public:
     // Native Files/iCloud picker for import; false where unsupported so QML
     // falls back to the in-app Documents picker.
     Q_INVOKABLE bool openNativeImportPicker();
-    QStringList      supportedUiLanguages() const;
+
+    // Injected by main.cpp (owns the platform service). AppViewModel wires
+    // documentPicked -> importFromPath and drives the picker from
+    // openNativeImportPicker(). Not owned.
+    void        setDocumentPicker(DocumentPickerService* picker);
+    QStringList supportedUiLanguages() const;
 
     // Wired from main.cpp after engine construction so the VM can call
     // retranslate() on language switch.
@@ -448,5 +454,6 @@ private:
     QString                      m_uiLanguage = QStringLiteral("en");
     QStringList                  m_customLanguages;
     std::unique_ptr<QTranslator> m_uiTranslator;
-    QQmlEngine*                  m_qmlEngine = nullptr;
+    QQmlEngine*                  m_qmlEngine      = nullptr;
+    DocumentPickerService*       m_documentPicker = nullptr; // not owned
 };

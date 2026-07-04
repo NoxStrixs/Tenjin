@@ -3,6 +3,7 @@
 // the caller fall back to the exported-to-Documents toast.
 
 #include <QString>
+#include <ViewModels/PlatformHooks.h>
 
 namespace tenjin {
 

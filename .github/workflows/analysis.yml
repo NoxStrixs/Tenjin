@@ -1,0 +1,53 @@
+name: Static analysis
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: analysis-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format clang-tidy cppcheck
+
+      - name: Install Qt 6.8.3 (for qmllint / compile db)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.8.3
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtmultimedia
+
+      - name: clang-format (check)
+        run: python3 tools/tool format --check
+
+      - name: Configure (compile_commands.json)
+        run: cmake --preset linux-release -DTENJIN_BUILD_GUI=OFF
+
+      - name: clang-tidy
+        run: |
+          run-clang-tidy -p build/linux-release \
+            $(git ls-files 'Service/**/*.cpp' 'ViewModels/**/*.cpp') || true
+
+      - name: cppcheck
+        run: |
+          cppcheck --enable=warning,performance,portability --std=c++23 \
+            --inline-suppr --suppress=missingIncludeSystem \
+            --project=build/linux-release/compile_commands.json || true
+
+      - name: qmllint
+        run: |
+          QMLLINT="$QT_ROOT_DIR/bin/qmllint"
+          "$QMLLINT" $(git ls-files 'View/**/*.qml') || true

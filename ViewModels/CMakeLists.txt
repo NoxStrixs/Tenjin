@@ -1,23 +1,28 @@
-# Platform-specific notification delivery backend. Exactly one is compiled:
-# iOS uses UserNotifications (.mm), Android uses a JNI call to a Java helper,
-# everything else uses the no-op default that falls back to an in-app toast.
+# ── Platform service backends ─────────────────────────────────────────────────
+# Each platform service (base + subclass + compile-time create() factory) selects
+# exactly one backend TU here, so only the target platform's native code links in.
+# Stateless free-function hooks (Motion/Share, see PlatformHooks.h) select their
+# single TU the same way.
 if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    set(_TENJIN_NOTIFY_BACKEND src/NotificationService_ios.mm)
-    set(_TENJIN_MOTION_BACKEND src/MotionService_ios.mm)
-    set(_TENJIN_SHARE_BACKEND  src/ShareService_ios.mm)
-    set(_TENJIN_PICKER_BACKEND src/DocumentPickerService_ios.mm)
+    set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_ios.mm)
+    set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_ios.mm)
+    set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_ios.mm)
+    set(_TENJIN_MOTION_BACKEND   src/MotionService_ios.mm)
+    set(_TENJIN_SHARE_BACKEND    src/ShareService_ios.mm)
 elseif(ANDROID)
-    set(_TENJIN_NOTIFY_BACKEND src/NotificationService_android.cpp)
-    set(_TENJIN_MOTION_BACKEND src/MotionService_android.cpp)
-    # Android share needs a FileProvider (manifest + res/xml) before ACTION_SEND
-    # can expose the file; until that lands, the default no-op keeps the
-    # toast-with-path fallback.
-    set(_TENJIN_SHARE_BACKEND  src/ShareService_default.cpp)
+    set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_android.cpp)
+    set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_android.cpp)
+    # Android document picking (Storage Access Framework) and share (FileProvider)
+    # are not yet implemented; the default backends keep the in-app fallbacks.
+    set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_default.cpp)
+    set(_TENJIN_MOTION_BACKEND   src/MotionService_android.cpp)
+    set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
 else()
-    set(_TENJIN_NOTIFY_BACKEND src/NotificationService_default.cpp)
-    set(_TENJIN_MOTION_BACKEND src/MotionService_default.cpp)
-    set(_TENJIN_SHARE_BACKEND  src/ShareService_default.cpp)
-    set(_TENJIN_PICKER_BACKEND src/DocumentPickerService_default.cpp)
+    set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_default.cpp)
+    set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_default.cpp)
+    set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_default.cpp)
+    set(_TENJIN_MOTION_BACKEND   src/MotionService_default.cpp)
+    set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
 endif()
 
 qt_add_library(TenjinViewModels STATIC
@@ -35,13 +40,19 @@ qt_add_library(TenjinViewModels STATIC
     src/SidebarViewModel.cpp
     src/ReviewViewModel.cpp
     src/FormulaRenderer.cpp
+
+    # Platform services: shared base + selected backend TU.
     src/NotificationService.cpp
     ${_TENJIN_NOTIFY_BACKEND}
-    ${_TENJIN_MOTION_BACKEND}
-    ${_TENJIN_SHARE_BACKEND}
+    src/HapticsService.cpp
+    ${_TENJIN_HAPTICS_BACKEND}
+    src/DocumentPickerService.cpp
     ${_TENJIN_PICKER_BACKEND}
     src/CloudService.cpp
-    src/HapticsService.cpp
+
+    # Stateless platform hooks (free functions; one TU each).
+    ${_TENJIN_MOTION_BACKEND}
+    ${_TENJIN_SHARE_BACKEND}
 
     include/ViewModels/AppViewModel.h
     include/ViewModels/EntryViewModel.h
@@ -51,8 +62,10 @@ qt_add_library(TenjinViewModels STATIC
     include/ViewModels/LogViewModel.h
     include/ViewModels/FormulaRenderer.h
     include/ViewModels/NotificationService.h
-    include/ViewModels/CloudService.h
     include/ViewModels/HapticsService.h
+    include/ViewModels/DocumentPickerService.h
+    include/ViewModels/CloudService.h
+    include/ViewModels/PlatformHooks.h
 )
 
 target_include_directories(TenjinViewModels PUBLIC
@@ -77,8 +90,8 @@ target_link_libraries(TenjinViewModels
         tenjin_sanitizers
 )
 
-# iOS: the notification backend uses the UserNotifications framework; the
-# reduced-motion probe uses UIKit (UIAccessibility).
+# iOS frameworks: notifications (UserNotifications), share/picker (UIKit),
+# document types (UniformTypeIdentifiers).
 if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
     target_link_libraries(TenjinViewModels PRIVATE
         "-framework UserNotifications"
@@ -86,8 +99,7 @@ if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
         "-framework UniformTypeIdentifiers")
 endif()
 
-# Android: the notification backend uses QtAndroidPrivate (runtime permission),
-# which lives in Qt6::CorePrivate.
+# Android: runtime notification permission + JNI use QtAndroidPrivate/CorePrivate.
 if(ANDROID)
     find_package(Qt6 6.8 REQUIRED COMPONENTS CorePrivate)
     target_link_libraries(TenjinViewModels PRIVATE Qt6::CorePrivate)

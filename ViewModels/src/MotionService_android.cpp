@@ -7,6 +7,7 @@
 
 #include <QJniObject>
 #include <QtCore/qnativeinterface.h>
+#include <ViewModels/PlatformHooks.h>
 
 namespace tenjin {
 

@@ -1,0 +1,124 @@
+name: Release
+
+# Manual release orchestrator. Bumps the semantic version, tags the commit,
+# fans out to the platform builds (which upload artifacts), then a single
+# collect job downloads every artifact and attaches them to the one GitHub
+# Release for the new tag.
+#
+# Version source of truth: TENJIN_APP_VERSION in .env. Build hash (display-only)
+# is derived at configure time via git describe (cmake/Version.cmake). Artifact
+# filenames are plain: Tenjin-<version>-<platform>.<ext>.
+#
+# Signing: none by default (free-tier). Signing steps in the platform workflows
+# are secret-gated — add the documented repository secrets to enable them
+# without editing any workflow. See docs/SUBMISSION_CHECKLIST.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Semantic version bump"
+        type: choice
+        required: true
+        default: patch
+        options: [major, minor, patch]
+      platforms:
+        description: "Comma-separated platforms to build (or 'all')"
+        type: string
+        required: false
+        default: all
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag:     ${{ steps.bump.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute and write next version
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+          cur=$(grep -E '^TENJIN_APP_VERSION=' .env | head -1 | cut -d= -f2 | tr -d '"'"'"'"')
+          IFS=. read -r MA MI PA <<< "$cur"
+          case "${{ inputs.bump }}" in
+            major) MA=$((MA+1)); MI=0; PA=0 ;;
+            minor) MI=$((MI+1)); PA=0 ;;
+            patch) PA=$((PA+1)) ;;
+          esac
+          next="${MA}.${MI}.${PA}"; tag="v${next}"
+          sed -i -E "s/^TENJIN_APP_VERSION=.*/TENJIN_APP_VERSION=${next}/" .env
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .env
+          git commit -m "release: ${tag}"
+          git tag -a "${tag}" -m "Tenjin ${tag}"
+          git push origin HEAD --follow-tags
+          echo "version=${next}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}"      >> "$GITHUB_OUTPUT"
+
+  linux:
+    needs: version
+    if: ${{ inputs.platforms == 'all' || contains(inputs.platforms, 'linux') }}
+    uses: ./.github/workflows/linux.yml
+
+  windows:
+    needs: version
+    if: ${{ inputs.platforms == 'all' || contains(inputs.platforms, 'windows') }}
+    uses: ./.github/workflows/windows.yml
+
+  macos:
+    needs: version
+    if: ${{ inputs.platforms == 'all' || contains(inputs.platforms, 'macos') }}
+    uses: ./.github/workflows/macos.yml
+
+  ios:
+    needs: version
+    if: ${{ inputs.platforms == 'all' || contains(inputs.platforms, 'ios') }}
+    uses: ./.github/workflows/ios.yml
+
+  android:
+    needs: version
+    if: ${{ inputs.platforms == 'all' || contains(inputs.platforms, 'android') }}
+    uses: ./.github/workflows/android.yml
+
+  collect:
+    needs: [version, linux, windows, macos, ios, android]
+    # Run even if some platforms were skipped (platforms input filtered them) or
+    # a non-critical platform failed; attach whatever artifacts exist.
+    if: ${{ always() && needs.version.result == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List collected artifacts
+        run: |
+          echo "Collected:"
+          find artifacts -type f -printf '  %p (%s bytes)\n' || echo "  (none)"
+
+      - name: Attach artifacts to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: Tenjin ${{ needs.version.outputs.tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: false
+          files: artifacts/**/*

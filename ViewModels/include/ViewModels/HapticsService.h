@@ -2,18 +2,16 @@
 
 #include <QObject>
 
-// HapticsService — cross-platform haptic feedback for tactile UI events.
+#include <memory>
+
+// HapticsService — cross-platform haptic feedback (base + per-platform subclass
+// + compile-time create() factory). The base owns the enabled state and the
+// QML-visible surface; each platform TU defines a concrete subclass overriding
+// playImpl() plus this platform's create(). CMake links exactly one TU.
 //
-// On iOS/Android, triggers the device's haptic engine. On desktop, no-ops.
-// QML usage:
-//   haptics.light()    — selection change, toggle
-//   haptics.medium()   — button press, item added
-//   haptics.heavy()    — destructive action (delete), error
-//   haptics.success()  — completed review session
-//   haptics.warning()  — validation failure
-//
-// Backed by Qt 6.8's QHapticFeedbackEffect where available; falls back to a
-// simple vibration on platforms without the rich haptics API.
+// QML usage (unchanged): haptics.light() / medium() / heavy() / success() /
+// warning(). Desktop no-ops; iOS uses UIImpactFeedbackGenerator, Android the
+// system Vibrator.
 class HapticsService : public QObject
 {
     Q_OBJECT
@@ -21,6 +19,9 @@ class HapticsService : public QObject
 
 public:
     explicit HapticsService(QObject* parent = nullptr);
+    ~HapticsService() override;
+
+    static std::unique_ptr<HapticsService> create(QObject* parent = nullptr);
 
     bool enabled() const
     {
@@ -37,7 +38,13 @@ public:
 signals:
     void enabledChanged();
 
+protected:
+    // Native feedback. level: 0=light 1=medium 2=heavy 3=success 4=warning.
+    // Default base impl is a no-op so every platform builds and runs; platform
+    // subclasses override with the real engine.
+    virtual void playImpl(int level);
+
 private:
-    void play(int level); // 0=light 1=medium 2=heavy 3=success 4=warning
+    void play(int level);
     bool m_enabled = true;
 };

@@ -1,59 +1,65 @@
 // NotificationService_android.cpp — Android notification backend.
 //
-// Calls the Java NotificationClient.notify() helper (App/android/src/...) via
-// JNI, passing the app context. Compiled only on Android.
+// Calls the Java NotificationClient.notify() helper via JNI. Compiled only on
+// Android.
+
+#include <ViewModels/NotificationService.h>
 
 #include <QJniObject>
-#include <QString>
-#include <QVariantMap>
 
-#include <QCoreApplication>
 #include <QtCore/private/qandroidextras_p.h>
 #include <QtCore/qnativeinterface.h>
 
-namespace tenjin {
+namespace {
 
-bool platformDeliverLocalPush(const QString& title,
-                              const QString& body,
-                              const QVariantMap& /*payload*/)
+class NotificationServiceAndroid final : public NotificationService
 {
-    QJniObject jTitle = QJniObject::fromString(title);
-    QJniObject jBody  = QJniObject::fromString(body);
+public:
+    using NotificationService::NotificationService;
 
-    // Qt 6.8: QAndroidApplication::context() returns a QJniObject.
-    QJniObject context = QNativeInterface::QAndroidApplication::context();
-    if (!context.isValid())
-        return false;
+protected:
+    bool deliverNative(const QString& title,
+                       const QString& body,
+                       const QVariantMap& /*payload*/) override
+    {
+        QJniObject jTitle = QJniObject::fromString(title);
+        QJniObject jBody  = QJniObject::fromString(body);
 
-    QJniObject::callStaticMethod<void>(
-        "app/tenjin/Tenjin/NotificationClient",
-        "notify",
-        "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V",
-        context.object(),
-        jTitle.object<jstring>(),
-        jBody.object<jstring>());
+        QJniObject context = QNativeInterface::QAndroidApplication::context();
+        if (!context.isValid())
+            return false;
 
-    return true;
-}
+        QJniObject::callStaticMethod<void>(
+            "app/tenjin/Tenjin/NotificationClient",
+            "notify",
+            "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V",
+            context.object(),
+            jTitle.object<jstring>(),
+            jBody.object<jstring>());
 
-bool platformRequestNotificationPermission()
+        return true;
+    }
+
+    bool requestPermissionNative() override
+    {
+        // POST_NOTIFICATIONS is a runtime permission only on API 33+. Below
+        // that the manifest declaration suffices.
+        if (QNativeInterface::QAndroidApplication::sdkVersion() < 33)
+            return true;
+
+        const QString perm = QStringLiteral("android.permission.POST_NOTIFICATIONS");
+        if (QtAndroidPrivate::checkPermission(perm).result() == QtAndroidPrivate::Authorized)
+            return true;
+
+        // Async request; return optimistically (denial -> in-app toast fallback).
+        QtAndroidPrivate::requestPermission(perm);
+        return true;
+    }
+};
+
+} // namespace
+
+std::unique_ptr<NotificationService> NotificationService::create(QObject* parent)
 {
-    // POST_NOTIFICATIONS is a runtime ("dangerous") permission only on Android
-    // 13 (API 33) and newer. Below that, the manifest declaration suffices.
-    if (QNativeInterface::QAndroidApplication::sdkVersion() < 33)
-        return true;
-
-    const QString perm = QStringLiteral("android.permission.POST_NOTIFICATIONS");
-
-    // Already granted?
-    if (QtAndroidPrivate::checkPermission(perm).result() == QtAndroidPrivate::Authorized)
-        return true;
-
-    // Request asynchronously (the sync variant can hang the UI thread). We
-    // return optimistically; if the user denies, notifications simply won't
-    // show and the app falls back to in-app toasts while focused.
-    QtAndroidPrivate::requestPermission(perm);
-    return true;
+    return std::make_unique<NotificationServiceAndroid>(parent);
 }
-
-} // namespace tenjin

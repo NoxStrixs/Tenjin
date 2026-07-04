@@ -1,39 +1,44 @@
 import logging
+import subprocess
 
-from scripts.docker import ensure_image, run
-from scripts.targets import TARGETS
+from scripts.config import ROOT
 
 logger = logging.getLogger(__name__)
 
 NAME = "format"
 
-_IMAGE      = TARGETS["linux"]["image"]
-_DOCKERFILE = TARGETS["linux"]["dockerfile"]
-
-_SOURCES = (
-    "find App Service ViewModels View "
-    "  \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.c' -o -name '*.h' \\) "
-    "  -not -path '*/build/*'"
-)
+_DIRS = ["App", "Service", "ViewModels", "View"]
+_EXTS = ("*.cpp", "*.hpp", "*.c", "*.h")
 
 
 def register(subparsers) -> None:
-    parser = subparsers.add_parser(NAME, help="Format source files with clang-format")
-    parser.add_argument(
-        "--check",
-        action = "store_true",
-        help   = "Check only; exit non-zero if any files need formatting",
-    )
+    parser = subparsers.add_parser(NAME, help="Format C/C++ sources with clang-format")
+    parser.add_argument("--check", action="store_true",
+                        help="Check only; exit non-zero if any file needs formatting")
     parser.set_defaults(func=run_cmd)
 
 
+def _sources() -> list[str]:
+    files: list[str] = []
+    for d in _DIRS:
+        root = ROOT / d
+        if not root.exists():
+            continue
+        for ext in _EXTS:
+            files += [str(p) for p in root.rglob(ext) if "build" not in p.parts]
+    return files
+
+
 def run_cmd(args) -> None:
-    ensure_image(_IMAGE, _DOCKERFILE)
-
+    files = _sources()
+    if not files:
+        logger.info("No sources found")
+        return
+    cmd = ["clang-format"]
     if args.check:
-        logger.warning("Checking formatting...")
-        run(_IMAGE, ["bash", "-c", f"{_SOURCES} | xargs clang-format --dry-run --Werror"])
+        logger.info("Checking formatting (%d files)...", len(files))
+        cmd += ["--dry-run", "--Werror"]
     else:
-        logger.warning("Formatting source files...")
-        run(_IMAGE, ["bash", "-c", f"{_SOURCES} | xargs clang-format -i"])
-
+        logger.info("Formatting %d files...", len(files))
+        cmd += ["-i"]
+    subprocess.run(cmd + files, cwd=ROOT, check=True)

@@ -1,17 +1,12 @@
 import logging
 
+import subprocess
+
 from scripts.config import ROOT
-from scripts.docker import ensure_image, run
-from scripts.targets import TARGETS
 
 logger = logging.getLogger(__name__)
 
 NAME = "translation"
-
-# Run inside the linux image -- it has Qt's lupdate/lrelease and pip can
-# install argostranslate cleanly. Same pattern as `tool format`.
-_IMAGE      = TARGETS["linux"]["image"]
-_DOCKERFILE = TARGETS["linux"]["dockerfile"]
 
 # Languages we ship .qm files for. Mirrors TENJIN_UI_LANGUAGES in
 # cmake/Translations.cmake. Update both together when adding a locale.
@@ -46,8 +41,6 @@ def register(subparsers) -> None:
 
 
 def run_cmd(args) -> None:
-    ensure_image(_IMAGE, _DOCKERFILE)
-
     langs = args.lang if args.lang else _LANGUAGES
     bad = [l for l in langs if l not in _LANGUAGES]
     if bad:
@@ -61,10 +54,10 @@ def run_cmd(args) -> None:
     (ROOT / "translations").mkdir(exist_ok=True)
     sources = "App Service ViewModels View"
     ts_args = " ".join(f"-ts translations/tenjin_{l}.ts" for l in langs)
-    run(_IMAGE, [
+    subprocess.run([
         "bash", "-c",
         f"lupdate -locations none -no-obsolete {sources} {ts_args}",
-    ])
+    ], cwd=ROOT, check=True)
 
     # 2. Argos -- machine-translate empty entries. Skipped on --no-translate.
     if not args.no_translate:
@@ -72,7 +65,7 @@ def run_cmd(args) -> None:
         script = _argos_script(langs, force=args.force)
         # The script handles its own pip install. Keeping it inline (heredoc)
         # avoids adding a third file just for ~80 lines of Python.
-        run(_IMAGE, ["bash", "-c", f"python3 -c {_shquote(script)}"])
+        subprocess.run(["bash", "-c", f"python3 -c {_shquote(script)}"], cwd=ROOT, check=True)
     else:
         logger.info("Skipping Argos translation (--no-translate).")
 
@@ -81,7 +74,7 @@ def run_cmd(args) -> None:
     # immediate feedback that the .ts files are syntactically valid.
     logger.warning("Running lrelease to compile .ts -> .qm...")
     ts_inputs = " ".join(f"translations/tenjin_{l}.ts" for l in langs)
-    run(_IMAGE, ["bash", "-c", f"lrelease {ts_inputs}"])
+    subprocess.run(["bash", "-c", f"lrelease {ts_inputs}"], cwd=ROOT, check=True)
 
     logger.info(
         f"Done. Refreshed {len(langs)} language(s): {langs}. "

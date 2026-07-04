@@ -1,24 +1,22 @@
-// NotificationService_default.cpp — desktop / fallback notification backend.
-//
-// Compiled on every platform EXCEPT iOS and Android (see ViewModels/CMakeLists).
-// Returns false so NotificationService falls back to an in-app toast. The
-// platform TUs (_ios.mm, _android.cpp) provide real OS notifications instead.
+// NotificationService_default.cpp — desktop / fallback backend.
+// Compiled on every platform except iOS and Android. Inherits the base's
+// desktop defaults (no OS delivery -> in-app toast fallback; permission
+// auto-granted) and supplies this platform's create().
 
-#include <QString>
-#include <QVariantMap>
+#include <ViewModels/NotificationService.h>
 
-namespace tenjin {
+namespace {
 
-bool platformDeliverLocalPush(const QString& /*title*/,
-                              const QString& /*body*/,
-                              const QVariantMap& /*payload*/)
+class NotificationServiceDefault final : public NotificationService
 {
-    return false;
-}
+public:
+    using NotificationService::NotificationService;
+    // Inherits base deliverNative()/requestPermissionNative() (desktop).
+};
 
-bool platformRequestNotificationPermission()
+} // namespace
+
+std::unique_ptr<NotificationService> NotificationService::create(QObject* parent)
 {
-    return true; // Desktop needs no notification permission.
+    return std::make_unique<NotificationServiceDefault>(parent);
 }
-
-} // namespace tenjin

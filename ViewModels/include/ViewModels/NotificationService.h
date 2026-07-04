@@ -4,6 +4,8 @@
 #include <QTime>
 #include <QVariantMap>
 
+#include <memory>
+
 class QTimer;
 
 class NotificationService : public QObject
@@ -24,6 +26,9 @@ public:
 
     explicit NotificationService(QObject* parent = nullptr);
     ~NotificationService() override;
+
+    // Compile-time factory. Defined once per platform TU; CMake links one.
+    static std::unique_ptr<NotificationService> create(QObject* parent = nullptr);
 
     // ── Immediate notifications ──────────────────────────────────────────────
     Q_INVOKABLE void toast(const QString& message, int level = 0);
@@ -71,6 +76,15 @@ signals:
     void notificationActivated(const QVariantMap& payload);
     void permissionResult(bool granted);
     void reminderChanged();
+
+protected:
+    // Native surface (the only platform-varying operations). Base defaults
+    // are desktop behaviour: no OS delivery, permission auto-granted.
+    // Return true from deliverNative() if a real OS notification was posted;
+    // false falls back to an in-app toast.
+    virtual bool
+    deliverNative(const QString& title, const QString& body, const QVariantMap& payload);
+    virtual bool requestPermissionNative();
 
 private:
     void

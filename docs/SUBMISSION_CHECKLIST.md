@@ -79,3 +79,38 @@ Coverage:
   export → import round-trip with count verification
 
 These are a foundation, not exhaustive coverage. Expand as features land.
+
+## CI Signing Secrets (optional — enables signed artifacts)
+
+The release workflow ships **unsigned** artifacts by default. Signing steps are
+secret-gated: add the secrets below to a repository (Settings → Secrets and
+variables → Actions) and the corresponding signing step activates automatically
+on the next run. No workflow edits needed.
+
+### Android (Play `.aab`)
+- `ANDROID_KEYSTORE_BASE64` — `base64 -w0 upload.keystore`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+Without these, CI produces only the debug-signed `.apk` (sideload/testing).
+
+### macOS (Developer ID `.dmg` notarization)
+- `MACOS_CERT_P12_BASE64` — `base64 -w0 DeveloperID.p12`
+- `MACOS_CERT_PASSWORD`
+- `MACOS_NOTARY_APPLE_ID`
+- `MACOS_NOTARY_TEAM_ID`
+- `MACOS_NOTARY_PASSWORD` — app-specific password
+
+Without these, CI produces an unsigned `.dmg` (right-click → Open to run).
+
+### Windows (Authenticode)
+- `WINDOWS_CERT_PFX_BASE64` — `base64 -w0 cert.pfx`
+- `WINDOWS_CERT_PASSWORD`
+
+Without these, CI produces an unsigned `.zip`.
+
+### iOS
+CI produces an unsigned `.ipa` for AltStore/Sideloadly. Signed distribution
+requires an Apple Developer account and provisioning profile; wire it into
+`ios.yml` when the cert is available (the export step is the insertion point).

@@ -26,18 +26,7 @@
 #include <QVariantMap>
 #include <functional>
 
-namespace tenjin {
-// Platform probe for the OS "reduce motion" accessibility setting. Implemented
-// per platform (iOS/Android); a default returns false where there is no such
-// setting. Declared here and defined in the MotionService_* translation units.
-bool platformPrefersReducedMotion();
-// Native share sheet for an exported file (iOS UIActivityViewController).
-// Returns false where unsupported; callers then fall back to a toast.
-bool platformShareFile(const QString& absPath);
-// Native document picker for import (iOS Files/iCloud). Invokes the callback
-// with a readable local path; returns false where unsupported.
-bool platformPickImportDocument(const std::function<void(const QString&)>& onPicked);
-} // namespace tenjin
+#include <ViewModels/PlatformHooks.h>
 
 AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
 {
@@ -155,8 +144,27 @@ void AppViewModel::renameCustomLanguage(const QString& oldCode, const QString& n
 
 bool AppViewModel::openNativeImportPicker()
 {
-    return tenjin::platformPickImportDocument(
-        [this](const QString& path) { importFromPath(path); });
+    // Delegates to the injected platform DocumentPickerService. The result
+    // arrives asynchronously via documentPicked() (wired in setDocumentPicker),
+    // which calls importFromPath(). Returns false when no native picker is
+    // available so the caller can show the in-app Documents picker.
+    if (!m_documentPicker)
+        return false;
+    m_documentPicker->pickImportDocument();
+    return true;
+}
+
+void AppViewModel::setDocumentPicker(DocumentPickerService* picker)
+{
+    if (m_documentPicker == picker)
+        return;
+    m_documentPicker = picker;
+    if (m_documentPicker) {
+        connect(m_documentPicker,
+                &DocumentPickerService::documentPicked,
+                this,
+                [this](const QString& path) { importFromPath(path); });
+    }
 }
 
 bool AppViewModel::shareFile(const QString& absPath)

@@ -6,8 +6,11 @@ qt_add_executable(Tenjin
 
 tenjin_configure_translations(${TENJIN_APP_NAME})
 
+# Monotonic build number for store submission (Apple CFBundleVersion, Android
+# versionCode). Defaults to the git-derived TENJIN_VERSION_CODE so re-uploads
+# never collide; can be overridden explicitly on the CMake command line.
 if(NOT DEFINED TENJIN_BUILD_NUMBER)
-    set(TENJIN_BUILD_NUMBER "1")
+    set(TENJIN_BUILD_NUMBER "${TENJIN_VERSION_CODE}")
 endif()
 
 set_target_properties(Tenjin PROPERTIES
@@ -73,7 +76,7 @@ if(ANDROID)
     set_target_properties(Tenjin PROPERTIES
         QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
         QT_ANDROID_VERSION_NAME       "${PROJECT_VERSION}"
-        QT_ANDROID_VERSION_CODE       "${TENJIN_BUILD_NUMBER}"
+        QT_ANDROID_VERSION_CODE       "${TENJIN_VERSION_CODE}"
         QT_ANDROID_MIN_SDK_VERSION    "26"
         QT_ANDROID_TARGET_SDK_VERSION "34"
         QT_ANDROID_PACKAGE_NAME       "${TENJIN_BUNDLE_ID}"

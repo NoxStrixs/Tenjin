@@ -6,22 +6,6 @@
 
 #include <limits>
 
-namespace tenjin {
-// Platform-specific delivery hook. Returns true if it scheduled/posted a real
-// OS notification; false to fall back to an in-app toast. Implemented by the
-// per-platform TU (NotificationService_ios.mm / _android.cpp); a weak default
-// in NotificationService_default.cpp returns false on desktop.
-bool platformDeliverLocalPush(const QString&     title,
-                              const QString&     body,
-                              const QVariantMap& payload);
-
-// Platform-specific permission request. On Android 13+ this triggers the
-// runtime POST_NOTIFICATIONS prompt; on iOS the .mm requests authorization at
-// first delivery, so this is a no-op returning true. Desktop returns true
-// (no permission needed).
-bool platformRequestNotificationPermission();
-} // namespace tenjin
-
 NotificationService::NotificationService(QObject* parent) : QObject(parent)
 {
     loadSettings();
@@ -65,7 +49,7 @@ void NotificationService::requestPermission()
     // immediately. The granted flag is optimistic on Android because the prompt
     // is async; actual denial simply means notifications won't appear, which the
     // app already tolerates (it falls back to in-app toasts while focused).
-    const bool ok       = tenjin::platformRequestNotificationPermission();
+    const bool ok       = requestPermissionNative();
     m_permissionGranted = ok;
     emit permissionResult(ok);
 }
@@ -219,7 +203,23 @@ void NotificationService::deliverLocalPush(const QString&     title,
     // Try the platform backend first (real OS notification that fires even when
     // backgrounded). On iOS/Android the platform TU implements this; elsewhere
     // the weak default returns false and we fall back to an in-app toast.
-    if (tenjin::platformDeliverLocalPush(title, body, payload))
+    if (deliverNative(title, body, payload))
         return;
     emit toastRequested(title + QStringLiteral(": ") + body, 0);
+}
+
+// ── Native surface: base defaults (desktop) ──────────────────────────────────
+// Platform subclasses override these; the base provides safe desktop behaviour
+// so the app runs everywhere. Base delivery does nothing at the OS level (the
+// caller falls back to an in-app toast); base permission is auto-granted.
+bool NotificationService::deliverNative(const QString& /*title*/,
+                                        const QString& /*body*/,
+                                        const QVariantMap& /*payload*/)
+{
+    return false;
+}
+
+bool NotificationService::requestPermissionNative()
+{
+    return true;
 }

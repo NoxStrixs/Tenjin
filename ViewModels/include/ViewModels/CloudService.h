@@ -6,6 +6,8 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+#include <memory>
+
 // CloudService — unified endpoint client for all cloud features.
 //
 // Endpoint layout (base URL from TENJIN_CLOUD_URL in .env):
@@ -23,6 +25,11 @@ class CloudService : public QObject
 
 public:
     explicit CloudService(QObject* parent = nullptr);
+
+    // Compile-time factory seat. No platform variance yet (single default
+    // impl); a future native cloud backend slots in here without touching
+    // callers. Returns the base by value-of-unique_ptr.
+    static std::unique_ptr<CloudService> create(QObject* parent = nullptr);
 
     bool available() const
     {

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.25)
 
 include(cmake/DotEnv.cmake)
 tenjin_dotenv_load("${CMAKE_SOURCE_DIR}/.env")
@@ -21,27 +21,31 @@ project(Tenjin
     LANGUAGES CXX C
 )
 
+# Resolve canonical version + git identity (semver core, build hash, versionCode).
+include(cmake/Version.cmake)
+tenjin_resolve_version()
+
 set(CMAKE_CXX_STANDARD          23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        OFF)
 set(CMAKE_CXX_VISIBILITY_PRESET     hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Build options
 option(MEDIA_SUPPORT    "Enable audio/video playback (QtMultimedia)" ON)
 option(WEBVIEW_SUPPORT  "Enable web/YouTube embeds (QtWebView)"      OFF)
 option(TENJIN_DEBUG_UI  "Include debug console drawer in the build"  OFF)
-option(TENJIN_BUILD_TESTS "Build the unit test suite"                 OFF)
-# Build the GUI (View + App + bundled UI assets). Turn OFF for a tests-only
-# configure so the logic suite builds without requiring the icon/mono fonts or
-# flag SVGs (the tests link only the Service/ libraries).
-option(TENJIN_BUILD_GUI   "Build the QML GUI application"            ON)
+option(TENJIN_BUILD_GUI "Build the QML GUI application"              ON)
 
 # SANITIZERS: comma-separated list (asan,lsan,tsan,ubsan,msan). Empty = off.
 set(SANITIZERS "" CACHE STRING "Sanitizers to enable")
 
 include(cmake/Sanitizers.cmake)
 include(cmake/Warnings.cmake)
+include(cmake/StaticAnalysis.cmake)
+include(cmake/Vendor.cmake)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS
     Core Gui Qml Network Sql
@@ -64,15 +68,11 @@ qt_standard_project_setup(REQUIRES 6.8)
 
 # ── miniz: ZIP reader for Anki .apkg import ───────────────────────────────────
 # MIT-licensed, no system dependencies. Works on every target including
-# iOS/Android static builds. See cmake/Miniz.cmake for the full rationale and
-# setup; it produces a `miniz` (and `miniz::miniz`) static target with complete
-# usage requirements, so consumers link it with target_link_libraries and CMake
-# resolves include paths and link order transitively.
+# iOS/Android static builds. Produces a `miniz` (miniz::miniz) static target
+# with complete usage requirements.
 include(cmake/Miniz.cmake)
 
-# Validate vendored UI assets — only when building the GUI. A tests-only
-# configure (TENJIN_BUILD_GUI=OFF) skips these, so the logic suite never
-# requires the icon/mono fonts or flag SVGs.
+# Validate vendored UI assets — only when building the GUI.
 if(TENJIN_BUILD_GUI)
     include(cmake/IconFont.cmake)
     include(cmake/Assets.cmake)
@@ -102,7 +102,7 @@ if(WEBVIEW_SUPPORT)
     endif()
 endif()
 
-# Generated config header
+# Generated config header (carries version core, git hash, versionCode).
 configure_file(
     "${CMAKE_SOURCE_DIR}/cmake/TenjinConfig.h.in"
     "${CMAKE_BINARY_DIR}/generated/TenjinConfig.h"
@@ -116,16 +116,11 @@ add_subdirectory(ViewModels)
 if(TENJIN_BUILD_GUI)
     add_subdirectory(View)
     # Translations.cmake defines the tenjin_configure_translations macro.
-    # It must be included before add_subdirectory(App) which calls the macro,
-    # but after View/ViewModels/Service so all targets are visible when the macro runs.
+    # Included after View/ViewModels/Service so all targets are visible, and
+    # before add_subdirectory(App) which calls the macro.
     include(cmake/Translations.cmake)
 
     add_subdirectory(App)
-endif()
-
-if(TENJIN_BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
 endif()
 
 include(cmake/Packaging.cmake)

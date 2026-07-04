@@ -5,6 +5,8 @@
 
 #include <QString>
 
+#include <ViewModels/PlatformHooks.h>
+
 namespace tenjin {
 
 bool platformShareFile(const QString& absPath)

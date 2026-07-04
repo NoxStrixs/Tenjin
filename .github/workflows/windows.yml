@@ -4,9 +4,9 @@ name: Windows build
 # directory as a Release asset.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+  # Called by the release orchestrator (release.yml).
+  workflow_call:
 
 concurrency:
   group: windows-${{ github.ref }}
@@ -135,8 +135,6 @@ jobs:
             -DCMAKE_PREFIX_PATH="$QT_WIN" `
             -DMEDIA_SUPPORT=OFF `
             -DWEBVIEW_SUPPORT=OFF `
-            -DBUILD_TESTS=OFF `
-            -DBUILD_BENCHMARKS=OFF `
             -DSANITIZERS="" `
             -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
           if ($LASTEXITCODE -ne 0) {
@@ -201,18 +199,33 @@ jobs:
       - name: Package zip
         shell: pwsh
         run: |
-          $zip = "$env:TENJIN_APP_NAME-${{ github.run_number }}-windows-x64.zip"
+          $zip = "$env:TENJIN_APP_NAME-$env:TENJIN_APP_VERSION-windows.zip"
           Compress-Archive -Path "$env:TENJIN_STAGE\*" -DestinationPath $zip -Force
           $size = (Get-Item $zip).Length / 1MB
           Write-Host "Packaged: $zip  ($([math]::Round($size, 1)) MB)"
           Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_ZIP=$zip"
-
-      - name: Publish .zip to a GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: windows-build-${{ github.run_number }}
-          name: Windows build ${{ github.run_number }}
-          files: ${{ env.TENJIN_ZIP }}
-          fail_on_unmatched_files: true
+      # Authenticode signing. Skipped unless the code-signing cert secret is
+      # present, so the default run ships an unsigned .zip. To enable: add
+      # WINDOWS_CERT_PFX_BASE64 and WINDOWS_CERT_PASSWORD
+      # (see docs/SUBMISSION_CHECKLIST.md).
+      - name: Sign Windows binaries
+        if: ${{ env.HAS_CERT == 'true' }}
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HAS_CERT: ${{ secrets.WINDOWS_CERT_PFX_BASE64 != '' }}
+          WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $pfx = "$env:RUNNER_TEMP\cert.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_PFX_BASE64))
+          $exe = Get-ChildItem -Recurse -Filter "$env:TENJIN_APP_NAME.exe" | Select-Object -First 1
+          & signtool sign /f $pfx /p $env:WINDOWS_CERT_PASSWORD /fd SHA256 `
+            /tr http://timestamp.digicert.com /td SHA256 $exe.FullName
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenjin-windows
+          path: ${{ env.TENJIN_ZIP }}
+          if-no-files-found: error
+          retention-days: 7

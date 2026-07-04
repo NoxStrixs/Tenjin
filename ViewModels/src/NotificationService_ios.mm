@@ -1,71 +1,77 @@
 // NotificationService_ios.mm — iOS notification backend.
 //
 // Posts an immediate local notification via UserNotifications. Permission is
-// requested lazily on first delivery. Daily scheduling is driven by the Qt/C++
-// timer in NotificationService; this only needs to display when called.
-// Compiled only on iOS.
+// requested lazily on first delivery; requestPermissionNative() also asks
+// proactively when reminders are enabled. Daily scheduling is driven by the
+// Qt/C++ timer in the base. Compiled only on iOS.
 
-#include <QString>
-#include <QVariantMap>
+#include <ViewModels/NotificationService.h>
 
 #import <UserNotifications/UserNotifications.h>
 
-namespace tenjin {
+namespace {
 
-bool platformDeliverLocalPush(const QString& title, const QString& body,
-                              const QVariantMap& /*payload*/)
+class NotificationServiceIos final : public NotificationService
 {
-    UNUserNotificationCenter* center =
-        [UNUserNotificationCenter currentNotificationCenter];
+public:
+    using NotificationService::NotificationService;
 
-    UNAuthorizationOptions opts =
-        UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge;
+protected:
+    bool deliverNative(const QString& title, const QString& body,
+                       const QVariantMap& /*payload*/) override
+    {
+        UNUserNotificationCenter* center =
+            [UNUserNotificationCenter currentNotificationCenter];
 
-    NSString* nsTitle = title.toNSString();
-    NSString* nsBody  = body.toNSString();
+        UNAuthorizationOptions opts =
+            UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge;
 
-    // Ensure authorization, then post. requestAuthorization is a no-op if the
-    // user already decided; the completion still fires with the current grant.
-    [center requestAuthorizationWithOptions:opts
-                          completionHandler:^(BOOL granted, NSError* _Nullable error) {
-        if (!granted || error != nil)
-            return;
+        NSString* nsTitle = title.toNSString();
+        NSString* nsBody  = body.toNSString();
 
-        UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
-        content.title = nsTitle;
-        content.body  = nsBody;
-        content.sound = [UNNotificationSound defaultSound];
+        // Ensure authorization, then post. requestAuthorization is a no-op if
+        // the user already decided; the completion still fires with the grant.
+        [center requestAuthorizationWithOptions:opts
+                              completionHandler:^(BOOL granted, NSError* _Nullable error) {
+            if (!granted || error != nil)
+                return;
 
-        // Fire almost immediately (1s); the C++ timer decides *when* to call us.
-        UNTimeIntervalNotificationTrigger* trigger =
-            [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:1
-                                                               repeats:NO];
+            UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
+            content.title = nsTitle;
+            content.body  = nsBody;
+            content.sound = [UNNotificationSound defaultSound];
 
-        NSString* identifier =
-            [NSString stringWithFormat:@"tenjin.%@", [[NSUUID UUID] UUIDString]];
-        UNNotificationRequest* request =
-            [UNNotificationRequest requestWithIdentifier:identifier
-                                                 content:content
-                                                 trigger:trigger];
+            UNTimeIntervalNotificationTrigger* trigger =
+                [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:1 repeats:NO];
 
-        [center addNotificationRequest:request withCompletionHandler:nil];
-    }];
+            NSString* identifier =
+                [NSString stringWithFormat:@"tenjin.%@", [[NSUUID UUID] UUIDString]];
+            UNNotificationRequest* request =
+                [UNNotificationRequest requestWithIdentifier:identifier
+                                                     content:content
+                                                     trigger:trigger];
 
-    return true;
-}
+            [center addNotificationRequest:request withCompletionHandler:nil];
+        }];
 
-bool platformRequestNotificationPermission()
+        return true;
+    }
+
+    bool requestPermissionNative() override
+    {
+        UNUserNotificationCenter* center =
+            [UNUserNotificationCenter currentNotificationCenter];
+        UNAuthorizationOptions opts =
+            UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge;
+        [center requestAuthorizationWithOptions:opts
+                              completionHandler:^(BOOL /*granted*/, NSError* _Nullable /*error*/) {}];
+        return true;
+    }
+};
+
+} // namespace
+
+std::unique_ptr<NotificationService> NotificationService::create(QObject* parent)
 {
-    // iOS requests authorization lazily inside platformDeliverLocalPush, so the
-    // explicit request is a no-op here. We still proactively ask so the prompt
-    // can appear when the user enables reminders, not only at first fire.
-    UNUserNotificationCenter* center =
-        [UNUserNotificationCenter currentNotificationCenter];
-    UNAuthorizationOptions opts =
-        UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge;
-    [center requestAuthorizationWithOptions:opts
-                          completionHandler:^(BOOL /*granted*/, NSError* _Nullable /*error*/) {}];
-    return true;
+    return std::make_unique<NotificationServiceIos>(parent);
 }
-
-} // namespace tenjin

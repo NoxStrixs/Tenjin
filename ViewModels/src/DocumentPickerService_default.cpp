@@ -1,16 +1,21 @@
-// DocumentPickerService_default.cpp — no native document picker on this
-// platform. Returning false makes the caller fall back to the in-app
-// Documents-folder picker (ImportPickerDialog).
+// DocumentPickerService_default.cpp — desktop / fallback backend.
+// Compiled on every platform except iOS. Inherits the base's pickCancelled()
+// default (the caller then shows the in-app Documents picker) and supplies
+// this platform's create().
 
-#include <functional>
+#include <ViewModels/DocumentPickerService.h>
 
-#include <QString>
+namespace {
 
-namespace tenjin {
-
-bool platformPickImportDocument(const std::function<void(const QString&)>& /*onPicked*/)
+class DocumentPickerServiceDefault final : public DocumentPickerService
 {
-    return false;
-}
+public:
+    using DocumentPickerService::DocumentPickerService;
+};
 
-} // namespace tenjin
+} // namespace
+
+std::unique_ptr<DocumentPickerService> DocumentPickerService::create(QObject* parent)
+{
+    return std::make_unique<DocumentPickerServiceDefault>(parent);
+}

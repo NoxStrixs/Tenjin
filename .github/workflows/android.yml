@@ -8,9 +8,9 @@ name: Android build
 # seeded if absent so the build never fails on a fresh clone.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+  # Called by the release orchestrator (release.yml).
+  workflow_call:
 
 concurrency:
   group: android-${{ github.ref }}
@@ -166,8 +166,6 @@ jobs:
             -DQT_HOST_PATH="$QT_HOST" \
             -DMEDIA_SUPPORT=OFF \
             -DWEBVIEW_SUPPORT=OFF \
-            -DBUILD_TESTS=OFF \
-            -DBUILD_BENCHMARKS=OFF \
             -DSANITIZERS="" \
             -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
 
@@ -182,6 +180,30 @@ jobs:
       - name: Build APK
         run: cmake --build build --target apk
 
+      # Signed AAB for Play submission. Skipped entirely unless the keystore
+      # secrets are present, so the default (free-tier) run produces only the
+      # debug-signed APK below. To enable: add repository secrets
+      # ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
+      # ANDROID_KEY_PASSWORD (see docs/SUBMISSION_CHECKLIST.md).
+      - name: Build & sign AAB (release)
+        if: ${{ env.HAS_KEYSTORE == 'true' }}
+        env:
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/upload.keystore"
+          cmake --build build --target aab
+          AAB=$(find build -name "*.aab" -type f | head -n1)
+          if [ -z "$AAB" ]; then echo "::error::No AAB produced"; exit 1; fi
+          "$ANDROID_SDK_ROOT"/build-tools/*/apksigner sign \
+            --ks "$RUNNER_TEMP/upload.keystore" \
+            --ks-pass "pass:${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
+            --key-pass "pass:${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            "$AAB"
+          OUT="${TENJIN_APP_NAME}-${TENJIN_APP_VERSION}-android.aab"
+          cp "$AAB" "$OUT"
+          echo "TENJIN_AAB=$OUT" >> "$GITHUB_ENV"
+
       - name: Locate APK
         run: |
           APK=$(find build -name "*.apk" -type f | grep -i release | head -n1)
@@ -193,17 +215,16 @@ jobs:
             find build -maxdepth 6 -name '*.apk' -type f
             exit 1
           fi
-          OUT="${TENJIN_APP_NAME}-${{ github.run_number }}-android-${{ env.ANDROID_ABI }}.apk"
+          OUT="${TENJIN_APP_NAME}-${TENJIN_APP_VERSION}-android.apk"
           cp "$APK" "$OUT"
           du -h "$OUT"
           echo "TENJIN_APK=$OUT" >> "$GITHUB_ENV"
-
-      - name: Publish APK to a GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: android-build-${{ github.run_number }}
-          name: Android build ${{ github.run_number }}
-          files: ${{ env.TENJIN_APK }}
-          fail_on_unmatched_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: tenjin-android
+          path: |
+            ${{ env.TENJIN_APK }}
+            ${{ env.TENJIN_AAB }}
+          if-no-files-found: error
+          retention-days: 7

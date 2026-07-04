@@ -1,13 +1,12 @@
-import platform
-import os
 import logging
+import os
 import shutil
 import subprocess
 
 from scripts import state
-from scripts.args import add_config, add_jobs, add_target
-from scripts.config import BuildConfig, ROOT
-from scripts.runner import DockerRunner
+from scripts.args import add_jobs, add_target
+from scripts.config import ROOT
+from scripts.targets import CI_ONLY, LOCAL_TARGETS
 
 logger = logging.getLogger(__name__)
 
@@ -15,79 +14,49 @@ NAME = "build"
 
 
 def register(subparsers) -> None:
-    parser = subparsers.add_parser(NAME, help="Configure and build the project")
+    parser = subparsers.add_parser(
+        NAME, help="Configure and build locally via CMake presets (Linux/WSL2)")
     add_target(parser)
-    add_config(parser)
     add_jobs(parser)
-    parser.add_argument(
-        "--clean",
-        action = "store_true",
-        help   = "Remove build directory before configuring",
-    )
+    parser.add_argument("--clean", action="store_true",
+                        help="Remove the preset build dir before configuring")
     parser.set_defaults(func=run_cmd)
 
 
-def run_cmd(args) -> None:
-    cfg    = BuildConfig.from_args(args)
-    runner = DockerRunner(cfg)
-
-    # Defensive: wipe build dir whenever the underlying Docker image changes.
-    # Qt's imported targets (e.g. Qt6::qmlimportscanner) cache absolute paths
-    # into the build dir; if the image was rebuilt — say with a different
-    # QT_HOST_PATH or a fixed toolchain — those paths can point at stale
-    # locations. Detecting "image changed" and clearing the cache is the
-    # cheapest way to avoid the qmlimportscanner "Permission denied" recurring.
-    if cfg.target == "windows":
-        if _docker_image_changed(cfg.image, cfg.build_dir_abs):
-            logger.info("Docker image changed; wiping build dir")
-            args.clean = True
-
-    if args.clean and cfg.build_dir_abs.exists():
-        logger.info(f"Cleaning {cfg.build_dir}...")
-        # rm -rf runs inside the container so it can clean root-owned files.
-        runner.run(["rm", "-rf", cfg.build_dir])
-
-    if not cfg.configured:
-        _configure(runner, cfg)
-
-    logger.info(f"Building {cfg.target}/{cfg.config}...")
-    runner.run(["cmake", "--build", cfg.build_dir, "--parallel", str(cfg.jobs)])
-
-    state.save(cfg.target, cfg.config)
-
-def _configure(runner, cfg):
-    # Dynamically pick the generator based on target and host
-    is_mac = platform.system() == "Darwin"
-    generator = ["-G", "Xcode"] if (cfg.target == "ios" and is_mac) else ["-G", "Ninja"]
-
-    # If native on macOS, ensure CMAKE_PREFIX_PATH is set
+def _qt_prefix() -> dict[str, str]:
+    # aqtinstall lays Qt down at $QT_ROOT/<ver>/gcc_64. Honour an explicit
+    # CMAKE_PREFIX_PATH if the developer already exported one; otherwise leave
+    # it to the preset/toolchain. Reproducible: CI uses the same 6.8.3 kit.
     env = {}
-    if is_mac and cfg.target == "ios":
-        env["CMAKE_PREFIX_PATH"] = os.environ.get("CMAKE_PREFIX_PATH", "")
+    prefix = os.environ.get("CMAKE_PREFIX_PATH")
+    if prefix:
+        env["CMAKE_PREFIX_PATH"] = prefix
+    return env
 
-    runner.run([
-        "cmake", "-S", ".", "-B", cfg.build_dir,
-        *generator, *cfg.cmake_flags
-    ], env=env)
 
-def _docker_image_changed(image: str, build_dir_abs) -> bool:
-    """True if the Docker image ID differs from the one stamped in build_dir."""
-    stamp = build_dir_abs / ".image-id"
-    try:
-        current = subprocess.check_output(
-            ["docker", "inspect", "--format={{.Id}}", image],
-            text=True,
-        ).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+def run_cmd(args) -> None:
+    if args.target in CI_ONLY:
+        logger.error("%s builds in CI only. Run: gh workflow run %s",
+                     args.target, CI_ONLY[args.target])
+        raise SystemExit(2)
 
-    if not stamp.exists():
-        build_dir_abs.mkdir(parents=True, exist_ok=True)
-        stamp.write_text(current)
-        return False
+    preset = LOCAL_TARGETS[args.target]
+    build_dir = ROOT / "build" / preset
 
-    previous = stamp.read_text().strip()
-    if previous != current:
-        stamp.write_text(current)
-        return True
-    return False
+    if args.clean and build_dir.exists():
+        logger.info("Cleaning %s", build_dir)
+        shutil.rmtree(build_dir)
+
+    env = {**os.environ, **_qt_prefix()}
+
+    if not (build_dir / "build.ninja").exists():
+        logger.info("Configuring preset %s", preset)
+        subprocess.run(["cmake", "--preset", preset], cwd=ROOT, env=env, check=True)
+
+    logger.info("Building preset %s", preset)
+    subprocess.run(
+        ["cmake", "--build", "--preset", preset, "--parallel", str(args.jobs)],
+        cwd=ROOT, env=env, check=True,
+    )
+
+    state.save(args.target)

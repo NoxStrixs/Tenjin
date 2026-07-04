@@ -1,26 +1,14 @@
 import os
 
-from scripts.targets import CONFIGS, DEFAULT_CONFIG, DEFAULT_TARGET, TARGETS
+from scripts.targets import DEFAULT_TARGET, LOCAL_TARGETS
 
 
 def add_target(parser, *, default: str = DEFAULT_TARGET) -> None:
     parser.add_argument(
         "--target",
-        choices = list(TARGETS),
+        choices = list(LOCAL_TARGETS),
         default = default,
-        help    = f"Build target (default: {default})",
-    )
-
-
-def add_config(parser,
-               *,
-               default: str       = DEFAULT_CONFIG,
-               choices: list[str] = CONFIGS) -> None:
-    parser.add_argument(
-        "--config",
-        choices = choices,
-        default = default,
-        help    = f"Build configuration (default: {default})",
+        help    = f"Local build target / preset (default: {default})",
     )
 
 
@@ -29,5 +17,5 @@ def add_jobs(parser) -> None:
         "--jobs",
         type    = int,
         default = os.cpu_count(),
-        help    = "Parallel jobs (default: cpu count)",
+        help    = f"Parallel jobs (default: {os.cpu_count()})",
     )

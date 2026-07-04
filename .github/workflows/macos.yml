@@ -16,9 +16,9 @@ name: macOS build
 # compiles them into .qm at build time. Empty stubs are seeded if absent.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+  # Called by the release orchestrator (release.yml).
+  workflow_call:
 
 concurrency:
   group: macos-${{ github.ref }}
@@ -140,8 +140,6 @@ jobs:
             -DCMAKE_MACOSX_BUNDLE=ON \
             -DMEDIA_SUPPORT=OFF \
             -DWEBVIEW_SUPPORT=OFF \
-            -DBUILD_TESTS=OFF \
-            -DBUILD_BENCHMARKS=OFF \
             -DSANITIZERS="" \
             -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
 
@@ -176,7 +174,7 @@ jobs:
 
       - name: Package .dmg
         run: |
-          DMG="${TENJIN_APP_NAME}-${{ github.run_number }}.dmg"
+          DMG="${TENJIN_APP_NAME}-${TENJIN_APP_VERSION}-macos.dmg"
           rm -f "$DMG"
           create-dmg \
             --volname "$TENJIN_APP_NAME" \
@@ -194,13 +192,35 @@ jobs:
           fi
           echo "TENJIN_DMG=$DMG" >> "$GITHUB_ENV"
           du -h "$DMG"
-
-      - name: Publish .dmg to a GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: macos-build-${{ github.run_number }}
-          name: macOS build ${{ github.run_number }}
-          files: ${{ env.TENJIN_DMG }}
-          fail_on_unmatched_files: true
+      # Codesign + notarize. Skipped unless the Developer ID secrets are
+      # present, so the default run ships an unsigned .dmg (user right-click ->
+      # Open to bypass Gatekeeper). To enable: add MACOS_CERT_P12_BASE64,
+      # MACOS_CERT_PASSWORD, MACOS_NOTARY_APPLE_ID, MACOS_NOTARY_TEAM_ID,
+      # MACOS_NOTARY_PASSWORD (see docs/SUBMISSION_CHECKLIST.md).
+      - name: Codesign & notarize .dmg
+        if: ${{ env.HAS_CERT == 'true' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HAS_CERT: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.MACOS_CERT_P12_BASE64 }}" | base64 -d > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p actions "$RUNNER_TEMP/build.keychain"
+          security unlock-keychain -p actions "$RUNNER_TEMP/build.keychain"
+          security import "$RUNNER_TEMP/cert.p12" -k "$RUNNER_TEMP/build.keychain" \
+            -P "${{ secrets.MACOS_CERT_PASSWORD }}" -T /usr/bin/codesign
+          security list-keychains -s "$RUNNER_TEMP/build.keychain"
+          codesign --force --deep --options runtime \
+            --sign "Developer ID Application" "$TENJIN_DMG"
+          xcrun notarytool submit "$TENJIN_DMG" \
+            --apple-id "${{ secrets.MACOS_NOTARY_APPLE_ID }}" \
+            --team-id "${{ secrets.MACOS_NOTARY_TEAM_ID }}" \
+            --password "${{ secrets.MACOS_NOTARY_PASSWORD }}" --wait
+          xcrun stapler staple "$TENJIN_DMG"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenjin-macos
+          path: ${{ env.TENJIN_DMG }}
+          if-no-files-found: error
+          retention-days: 7

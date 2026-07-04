@@ -10,9 +10,9 @@ name: Linux build
 # files so the build still succeeds.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+  # Called by the release orchestrator (release.yml).
+  workflow_call:
 
 concurrency:
   group: linux-${{ github.ref }}
@@ -145,8 +145,6 @@ jobs:
             -DCMAKE_PREFIX_PATH="$QT_LINUX" \
             -DMEDIA_SUPPORT=OFF \
             -DWEBVIEW_SUPPORT=OFF \
-            -DBUILD_TESTS=OFF \
-            -DBUILD_BENCHMARKS=OFF \
             -DSANITIZERS="" \
             -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
 
@@ -241,15 +239,14 @@ jobs:
             echo "::error::No AppImage produced"
             exit 1
           fi
-          echo "TENJIN_APPIMAGE=$IMG" >> "$GITHUB_ENV"
+          DEST="Tenjin-${TENJIN_APP_VERSION}-linux.AppImage"
+          mv "$IMG" "$DEST"
+          echo "TENJIN_APPIMAGE=$DEST" >> "$GITHUB_ENV"
           echo "Built successfully: $IMG"
-
-      - name: Publish AppImage to a GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: linux-build-${{ github.run_number }}
-          name: Linux build ${{ github.run_number }}
-          files: ${{ env.TENJIN_APPIMAGE }}
-          fail_on_unmatched_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: tenjin-linux
+          path: ${{ env.TENJIN_APPIMAGE }}
+          if-no-files-found: error
+          retention-days: 7

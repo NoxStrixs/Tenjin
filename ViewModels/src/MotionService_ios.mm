@@ -5,6 +5,8 @@
 
 #import <UIKit/UIKit.h>
 
+#include <ViewModels/PlatformHooks.h>
+
 namespace tenjin {
 
 bool platformPrefersReducedMotion()

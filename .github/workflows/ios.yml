@@ -19,9 +19,9 @@ name: iOS build
 # seeded if absent so the build never fails on a fresh clone.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+  # Called by the release orchestrator (release.yml).
+  workflow_call:
 
 concurrency:
   group: ios-${{ github.ref }}
@@ -168,8 +168,6 @@ jobs:
             -DQT_HOST_PATH="$QT_HOST" \
             -DMEDIA_SUPPORT=OFF \
             -DWEBVIEW_SUPPORT=OFF \
-            -DBUILD_TESTS=OFF \
-            -DBUILD_BENCHMARKS=OFF \
             -DSANITIZERS="" \
             -DTENJIN_BUILD_NUMBER="${{ github.run_number }}"
 
@@ -239,7 +237,7 @@ jobs:
       - name: Package unsigned .ipa
         run: |
           APP=$(find build-ios -name "${TENJIN_APP_NAME}.app" -type d | head -n1)
-          IPA="${TENJIN_APP_NAME}-unsigned.ipa"
+          IPA="${TENJIN_APP_NAME}-${TENJIN_APP_VERSION}-ios.ipa"
           rm -rf payload && mkdir -p payload/Payload
           cp -RP "$APP" payload/Payload/
           ( cd payload && ditto -c -k --keepParent --sequesterRsrc Payload "../$IPA" )
@@ -251,13 +249,10 @@ jobs:
             && echo "Payload/ at top level — OK" \
             || { echo "::error::archive does not start with Payload/"; exit 1; }
           echo "TENJIN_IPA_PATH=$IPA" >> "$GITHUB_ENV"
-
-      - name: Publish .ipa to a GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ios-build-${{ github.run_number }}
-          name: iOS build ${{ github.run_number }}
-          files: ${{ env.TENJIN_IPA_PATH }}
-          fail_on_unmatched_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: tenjin-ios
+          path: ${{ env.TENJIN_IPA_PATH }}
+          if-no-files-found: error
+          retention-days: 7
