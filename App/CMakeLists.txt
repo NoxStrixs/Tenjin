@@ -215,15 +215,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
         BUNDLE  DESTINATION .
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
-    # windeployqt/macdeployqt/linuxdeploy equivalent, driven by CMake so CPack
-    # (NSIS + ZIP on Windows, DEB on Linux) has a complete, self-contained
+    # qt_generate_deploy_qml_app_script drives windeployqt/macdeployqt/
+    # linuxdeploy so CPack (NSIS + ZIP on Windows, DEB on Linux) has a complete
     # payload. Translations ship in the qrc; --no-translations avoids
-    # duplicating Qt's. On Windows the MSVC runtime is static (/MT, set in the
-    # preset), so --no-compiler-runtime is correct.
+    # duplicating Qt's. The MSVC runtime is dynamic (/MD, matching the official
+    # aqtinstall Qt binaries), so the VC runtime DLLs are bundled (no
+    # --no-compiler-runtime). NOTE: for a STATIC app QML module this script does
+    # not reliably deploy the imported QtQuick.Controls.Basic QML tree; the
+    # Windows workflow runs an explicit `windeployqt --qmldir` to guarantee it.
     qt_generate_deploy_qml_app_script(
         TARGET               Tenjin
         OUTPUT_SCRIPT        deploy_script
-        DEPLOY_TOOL_OPTIONS  --no-compiler-runtime --no-translations
+        DEPLOY_TOOL_OPTIONS  --no-translations
     )
     install(SCRIPT ${deploy_script})
 endif()

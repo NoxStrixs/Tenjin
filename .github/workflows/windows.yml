@@ -172,8 +172,26 @@ jobs:
           # windeployqt under the hood, producing a self-contained tree.
           cmake --install build --config Release --prefix "$env:GITHUB_WORKSPACE\stage"
           if ($LASTEXITCODE -ne 0) { Write-Host "::error::cmake --install failed"; exit $LASTEXITCODE }
+          # The CMake deploy script deploys plugins into a sibling layout
+          # (stage\plugins, stage\qml as siblings of stage\bin, qt.conf in
+          # stage\bin with Prefix=..) but leaves stage\qml EMPTY: it does not
+          # deploy the imported QtQuick.Controls.Basic QML tree for our STATIC
+          # app module, so the app aborts at import. Fill only the QML tree with
+          # an explicit windeployqt --qmldir, targeting the SAME sibling layout
+          # (--dir stage, --qmldir <sources>, --no-plugins so we don't disturb
+          # the already-correct plugins/ or rewrite qt.conf's prefix).
+          & "$QT_WIN\bin\windeployqt.exe" --release `
+              --qmldir "$env:GITHUB_WORKSPACE\View" `
+              --no-translations --no-plugins `
+              --dir "$env:GITHUB_WORKSPACE\stage" `
+              "$env:GITHUB_WORKSPACE\stage\bin\$env:TENJIN_APP_NAME.exe"
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::windeployqt --qmldir failed"; exit $LASTEXITCODE }
           Write-Host "===== staged ====="
-          Get-ChildItem -Path "$env:GITHUB_WORKSPACE\stage" -Recurse | Select-Object -First 40
+          Get-ChildItem -Path "$env:GITHUB_WORKSPACE\stage" -Recurse | Select-Object -First 60
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\stage\qml\QtQuick\Controls\Basic")) {
+            Write-Host "::error::QtQuick.Controls.Basic QML tree still missing after windeployqt"
+            exit 1
+          }
 
       # Authenticode signing of installed binaries BEFORE packaging, so both the
       # NSIS installer and the ZIP contain signed executables. Skipped unless
