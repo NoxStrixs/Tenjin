@@ -47,24 +47,24 @@ include(cmake/Warnings.cmake)
 include(cmake/StaticAnalysis.cmake)
 include(cmake/Vendor.cmake)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS
+find_package(Qt6 6.9 REQUIRED COMPONENTS
     Core Gui Qml Network Sql
 )
 
 if(TENJIN_BUILD_GUI)
-    find_package(Qt6 6.8 REQUIRED COMPONENTS
+    find_package(Qt6 6.9 REQUIRED COMPONENTS
         Quick QuickControls2 Svg
     )
 endif()
 
 if(TENJIN_BUILD_GUI AND MEDIA_SUPPORT)
-    find_package(Qt6 6.8 REQUIRED COMPONENTS Multimedia)
+    find_package(Qt6 6.9 REQUIRED COMPONENTS Multimedia)
 endif()
 if(TENJIN_BUILD_GUI AND WEBVIEW_SUPPORT)
-    find_package(Qt6 6.8 REQUIRED COMPONENTS WebView)
+    find_package(Qt6 6.9 REQUIRED COMPONENTS WebView)
 endif()
 
-qt_standard_project_setup(REQUIRES 6.8)
+qt_standard_project_setup(REQUIRES 6.9)
 
 # ── miniz: ZIP reader for Anki .apkg import ───────────────────────────────────
 # MIT-licensed, no system dependencies. Works on every target including

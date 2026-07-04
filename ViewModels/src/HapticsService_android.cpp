@@ -1,12 +1,5 @@
-// HapticsService_android.cpp — Android backend using the system Vibrator.
-// Compiled only on Android.
-//
-// LIMITATION (stated per robustness mandate): predefined haptic constants
-// (VibrationEffect.EFFECT_TICK/CLICK/HEAVY_CLICK) exist from API 29. This maps
-// the five levels onto one-shot VibrationEffects with graded durations, which
-// is portable across API 26+ (app minSdk is 26) and avoids the API-31
-// VibratorManager split. It is not the richest possible haptic; a future pass
-// can branch on Build.VERSION for EFFECT_* constants where available.
+// Android haptics via system Vibrator. One-shot VibrationEffects with graded
+// durations (portable API 26+; avoids the API-31 VibratorManager split).
 
 #include <ViewModels/HapticsService.h>
 
@@ -24,19 +17,19 @@ void vibrateOneShot(int ms)
     if (!context.isValid())
         return;
 
-    QJniObject vibratorSvc = QJniObject::getStaticObjectField(
-        "android/content/Context", "VIBRATOR_SERVICE", "Ljava/lang/String;");
+    QJniObject vibratorSvc =
+        QJniObject::getStaticObjectField("android/content/Context", "VIBRATOR_SERVICE",
+                                         "Ljava/lang/String;");
     QJniObject vibrator = context.callObjectMethod(
         "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;", vibratorSvc.object());
     if (!vibrator.isValid())
         return;
 
     // VibrationEffect.createOneShot(long ms, int amplitude=DEFAULT_AMPLITUDE=-1)
-    QJniObject effect = QJniObject::callStaticObjectMethod("android/os/VibrationEffect",
-                                                           "createOneShot",
-                                                           "(JI)Landroid/os/VibrationEffect;",
-                                                           static_cast<jlong>(ms),
-                                                           static_cast<jint>(-1));
+    QJniObject effect = QJniObject::callStaticObjectMethod(
+        "android/os/VibrationEffect", "createOneShot",
+        "(JI)Landroid/os/VibrationEffect;",
+        static_cast<jlong>(ms), static_cast<jint>(-1));
     if (!effect.isValid())
         return;
 

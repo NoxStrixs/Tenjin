@@ -18,8 +18,7 @@ public:
     using NotificationService::NotificationService;
 
 protected:
-    bool deliverNative(const QString& title,
-                       const QString& body,
+    bool deliverNative(const QString& title, const QString& body,
                        const QVariantMap& /*payload*/) override
     {
         QJniObject jTitle = QJniObject::fromString(title);

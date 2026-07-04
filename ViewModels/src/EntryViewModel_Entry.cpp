@@ -123,7 +123,7 @@ QVariantList EntryViewModel::getAllEntries()
     return out;
 }
 
-// ── Typed relations ─────────────────────────────────────────────────
+// Typed relations
 //
 // Relations live in the entry_relation table with (entry_id, related_entry_id,
 // relation_type) — schema kV1. The DB layer returns IDs only, so we look up

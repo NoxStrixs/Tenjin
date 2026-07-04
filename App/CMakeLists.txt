@@ -208,11 +208,18 @@ endif()
 
 qt_finalize_executable(Tenjin)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
+   OR CMAKE_SYSTEM_NAME STREQUAL "Darwin"
+   OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
     install(TARGETS Tenjin
         BUNDLE  DESTINATION .
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
+    # windeployqt/macdeployqt/linuxdeploy equivalent, driven by CMake so CPack
+    # (NSIS + ZIP on Windows, DEB on Linux) has a complete, self-contained
+    # payload. Translations ship in the qrc; --no-translations avoids
+    # duplicating Qt's. On Windows the MSVC runtime is static (/MT, set in the
+    # preset), so --no-compiler-runtime is correct.
     qt_generate_deploy_qml_app_script(
         TARGET               Tenjin
         OUTPUT_SCRIPT        deploy_script

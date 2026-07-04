@@ -57,10 +57,10 @@ Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 #include <TenjinConfig.h>
 #include <ViewModels/AppViewModel.h>
 #include <ViewModels/CloudService.h>
-#include <ViewModels/DocumentPickerService.h>
 #include <ViewModels/HapticsService.h>
 #include <ViewModels/LogViewModel.h>
 #include <ViewModels/NotificationService.h>
+#include <ViewModels/DocumentPickerService.h>
 
 static LogViewModel*    g_logModel        = nullptr;
 static QtMessageHandler g_previousHandler = nullptr;
@@ -215,7 +215,7 @@ int main(int argc, char* argv[])
 
     QDir().mkpath(appDataDir());
 
-    // ── AppViewModel (initialises database) ──────────────────────────────────
+    // AppViewModel (initialises database)
     std::unique_ptr<AppViewModel> appVMPtr;
     try {
         appVMPtr = std::make_unique<AppViewModel>();
@@ -236,17 +236,17 @@ int main(int argc, char* argv[])
     }
     AppViewModel& appVM = *appVMPtr;
 
-    // ── Standalone services (compile-time platform factories) ─────────────────
+    // Standalone services (compile-time platform factories)
     // create() returns the platform-appropriate subclass; only the target
     // platform's backend TU is compiled in (see ViewModels/CMakeLists.txt).
-    auto                   notifServicePtr = NotificationService::create();
-    auto                   cloudServicePtr = CloudService::create();
-    auto                   hapticsPtr      = HapticsService::create();
-    auto                   pickerPtr       = DocumentPickerService::create();
-    NotificationService&   notifService    = *notifServicePtr;
-    CloudService&          cloudService    = *cloudServicePtr;
-    HapticsService&        haptics         = *hapticsPtr;
-    DocumentPickerService& picker          = *pickerPtr;
+    auto notifServicePtr = NotificationService::create();
+    auto cloudServicePtr = CloudService::create();
+    auto hapticsPtr      = HapticsService::create();
+    auto pickerPtr       = DocumentPickerService::create();
+    NotificationService&   notifService = *notifServicePtr;
+    CloudService&          cloudService = *cloudServicePtr;
+    HapticsService&        haptics      = *hapticsPtr;
+    DocumentPickerService& picker       = *pickerPtr;
 
     // Inject the picker so AppViewModel can drive native import and receive the
     // async documentPicked() result.
@@ -262,12 +262,12 @@ int main(int argc, char* argv[])
             cloudService.setDataCollectionAllowed(appVM.dataCollectionAllowed());
         });
 
-    // ── Log model + message handler ──────────────────────────────────────────
+    // Log model + message handler
     LogViewModel logModel;
     g_logModel        = &logModel;
     g_previousHandler = qInstallMessageHandler(tenjinMessageHandler);
 
-    // ── QML engine ───────────────────────────────────────────────────────────
+    // QML engine
     QQmlApplicationEngine engine;
     appVM.setQmlEngine(&engine);
 

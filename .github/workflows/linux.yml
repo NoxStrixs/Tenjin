@@ -97,7 +97,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.8.3"
+          version: "6.9.3"
           host: "linux"
           target: "desktop"
           arch: "linux_gcc_64"
@@ -109,7 +109,7 @@ jobs:
 
       - name: Verify Qt Linguist tools (lupdate/lrelease)
         run: |
-          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.9.3/gcc_64"
           for t in lupdate lrelease; do
             if [ ! -x "$QT_LINUX/bin/$t" ]; then
               echo "::error::Qt $t missing at $QT_LINUX/bin/$t. qt_add_translations will fail."
@@ -136,7 +136,7 @@ jobs:
 
       - name: Configure (CMake, Ninja)
         run: |
-          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.9.3/gcc_64"
           export PATH="$QT_LINUX/bin:$PATH"
           cmake -G Ninja -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -171,7 +171,7 @@ jobs:
 
       - name: Package AppImage
         run: |
-          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          QT_LINUX="${{ github.workspace }}/Qt/Qt/6.9.3/gcc_64"
           export PATH="$QT_LINUX/bin:$PATH"
           export LD_LIBRARY_PATH="$QT_LINUX/lib:$LD_LIBRARY_PATH"
 

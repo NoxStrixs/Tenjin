@@ -86,7 +86,7 @@ jobs:
       - name: Install Qt (host / desktop)
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.8.3"
+          version: "6.9.3"
           host: "linux"
           target: "desktop"
           arch: "linux_gcc_64"
@@ -98,7 +98,7 @@ jobs:
       - name: Install Qt for Android
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.8.3"
+          version: "6.9.3"
           host: "linux"
           target: "android"
           arch: "android_arm64_v8a"
@@ -110,7 +110,7 @@ jobs:
 
       - name: Verify Qt Linguist tools on host (lupdate/lrelease)
         run: |
-          QT_HOST="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
+          QT_HOST="${{ github.workspace }}/Qt/Qt/6.9.3/gcc_64"
           for t in lupdate lrelease; do
             if [ ! -x "$QT_HOST/bin/$t" ]; then
               echo "::error::Qt $t missing at $QT_HOST/bin/$t"
@@ -152,8 +152,8 @@ jobs:
 
       - name: Configure (CMake via qt-cmake)
         run: |
-          QT_HOST="${{ github.workspace }}/Qt/Qt/6.8.3/gcc_64"
-          QT_ANDROID="${{ github.workspace }}/Qt/Qt/6.8.3/android_arm64_v8a"
+          QT_HOST="${{ github.workspace }}/Qt/Qt/6.9.3/gcc_64"
+          QT_ANDROID="${{ github.workspace }}/Qt/Qt/6.9.3/android_arm64_v8a"
           export PATH="$QT_ANDROID/bin:$QT_HOST/bin:$PATH"
           export ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/${{ env.ANDROID_NDK_VERSION }}"
 

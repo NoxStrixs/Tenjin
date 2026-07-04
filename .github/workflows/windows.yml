@@ -73,7 +73,7 @@ jobs:
 
       - name: Install Ninja & sccache
         shell: pwsh
-        run: choco install -y ninja sccache
+        run: choco install -y ninja sccache nsis
 
       - name: Set up Python (for aqtinstall)
         uses: actions/setup-python@v5
@@ -83,7 +83,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.8.3"
+          version: "6.9.3"
           host: "windows"
           target: "desktop"
           arch: "win64_msvc2022_64"
@@ -96,7 +96,7 @@ jobs:
       - name: Verify Qt Linguist tools (lupdate/lrelease)
         shell: pwsh
         run: |
-          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
+          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.9.3\msvc2022_64"
           foreach ($t in @("lupdate.exe","lrelease.exe")) {
             $path = Join-Path "$QT_WIN\bin" $t
             if (-not (Test-Path $path)) {
@@ -126,7 +126,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
+          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.9.3\msvc2022_64"
           $env:PATH = "$QT_WIN\bin;$env:PATH"
           cmake -G Ninja -S . -B build `
             -DCMAKE_BUILD_TYPE=Release `
@@ -162,53 +162,24 @@ jobs:
           Write-Host "===== sccache stats ====="
           sccache --show-stats
 
-      - name: Locate built binary
+      - name: Install to staging tree (CMake + Qt deploy)
         shell: pwsh
         run: |
-          Write-Host "===== all .exe files under build/ ====="
-          $allExe = Get-ChildItem -Path build -Recurse -Filter '*.exe' -File -ErrorAction SilentlyContinue
-          $allExe | ForEach-Object { Write-Host "  $($_.FullName)  ($([math]::Round($_.Length/1KB, 1)) KB)" }
-          $exe = $allExe `
-            | Where-Object { $_.FullName -notmatch 'CompilerId|CMakeFiles\\3' } `
-            | Where-Object { $_.BaseName -ieq $env:TENJIN_APP_NAME } `
-            | Select-Object -First 1
-          if (-not $exe) {
-            Write-Host "::error::No '$($env:TENJIN_APP_NAME).exe' found in build tree"
-            exit 1
-          }
-          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_EXE=$($exe.FullName)"
-
-      - name: windeployqt
-        shell: pwsh
-        run: |
-          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.8.3\msvc2022_64"
-          $stage = "stage\$env:TENJIN_APP_NAME"
-          New-Item -ItemType Directory -Path $stage -Force | Out-Null
-          Copy-Item -Path $env:TENJIN_EXE -Destination $stage
-          # Drop --no-translations: we ship our own .qm files (in the qrc)
-          # AND want Qt's qtbase_<code>.qm so standard dialog buttons
-          # translate. windeployqt copies the matching Qt translations
-          # into a translations/ subdir of the stage.
-          & "$QT_WIN\bin\windeployqt.exe" --release `
-              --no-system-d3d-compiler --no-opengl-sw `
-              "$stage\$env:TENJIN_APP_NAME.exe"
+          $ErrorActionPreference = 'Stop'
+          $QT_WIN = "${{ github.workspace }}\Qt\Qt\6.9.3\msvc2022_64"
+          $env:PATH = "$QT_WIN\bin;$env:PATH"
+          # install(SCRIPT) runs qt_generate_deploy_qml_app_script ->
+          # windeployqt under the hood, producing a self-contained tree.
+          cmake --install build --config Release --prefix "$env:GITHUB_WORKSPACE\stage"
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::cmake --install failed"; exit $LASTEXITCODE }
           Write-Host "===== staged ====="
-          Get-ChildItem -Path $stage | Select-Object -First 30
-          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_STAGE=$stage"
+          Get-ChildItem -Path "$env:GITHUB_WORKSPACE\stage" -Recurse | Select-Object -First 40
 
-      - name: Package zip
-        shell: pwsh
-        run: |
-          $zip = "$env:TENJIN_APP_NAME-$env:TENJIN_APP_VERSION-windows.zip"
-          Compress-Archive -Path "$env:TENJIN_STAGE\*" -DestinationPath $zip -Force
-          $size = (Get-Item $zip).Length / 1MB
-          Write-Host "Packaged: $zip  ($([math]::Round($size, 1)) MB)"
-          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_ZIP=$zip"
-      # Authenticode signing. Skipped unless the code-signing cert secret is
-      # present, so the default run ships an unsigned .zip. To enable: add
-      # WINDOWS_CERT_PFX_BASE64 and WINDOWS_CERT_PASSWORD
+      # Authenticode signing of installed binaries BEFORE packaging, so both the
+      # NSIS installer and the ZIP contain signed executables. Skipped unless
+      # WINDOWS_CERT_PFX_BASE64 / WINDOWS_CERT_PASSWORD are present
       # (see docs/SUBMISSION_CHECKLIST.md).
-      - name: Sign Windows binaries
+      - name: Sign staged binaries
         if: ${{ env.HAS_CERT == 'true' }}
         shell: pwsh
         env:
@@ -218,14 +189,51 @@ jobs:
         run: |
           $pfx = "$env:RUNNER_TEMP\cert.pfx"
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_PFX_BASE64))
-          $exe = Get-ChildItem -Recurse -Filter "$env:TENJIN_APP_NAME.exe" | Select-Object -First 1
-          & signtool sign /f $pfx /p $env:WINDOWS_CERT_PASSWORD /fd SHA256 `
-            /tr http://timestamp.digicert.com /td SHA256 $exe.FullName
+          Get-ChildItem "$env:GITHUB_WORKSPACE\stage" -Recurse -Include *.exe,*.dll | ForEach-Object {
+            & signtool sign /f $pfx /p $env:WINDOWS_CERT_PASSWORD /fd SHA256 `
+              /tr http://timestamp.digicert.com /td SHA256 $_.FullName
+          }
+
+      - name: Package (CPack NSIS + ZIP)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Push-Location build
+          # Packaging.cmake sets CPACK_GENERATOR "NSIS;ZIP" and the plain
+          # Tenjin-<version>-windows file name.
+          cpack -C Release -G "NSIS;ZIP" --verbose
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::cpack failed"; exit $LASTEXITCODE }
+          Pop-Location
+          $pkgs = Get-ChildItem -Path build -Recurse -Include *.exe,*.zip |
+                  Where-Object { $_.Name -like "$env:TENJIN_APP_NAME-*windows*" }
+          if (-not $pkgs) { Write-Host "::error::No CPack artifacts produced"; exit 1 }
+          $pkgs | ForEach-Object { Write-Host "  packaged: $($_.FullName)" }
+
+      # Sign the NSIS installer .exe itself, gated identically.
+      - name: Sign NSIS installer
+        if: ${{ env.HAS_CERT == 'true' }}
+        shell: pwsh
+        env:
+          HAS_CERT: ${{ secrets.WINDOWS_CERT_PFX_BASE64 != '' }}
+          WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $pfx = "$env:RUNNER_TEMP\cert.pfx"
+          if (-not (Test-Path $pfx)) {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_PFX_BASE64))
+          }
+          Get-ChildItem build -Recurse -Include *.exe |
+            Where-Object { $_.Name -like "$env:TENJIN_APP_NAME-*windows*" } | ForEach-Object {
+              & signtool sign /f $pfx /p $env:WINDOWS_CERT_PASSWORD /fd SHA256 `
+                /tr http://timestamp.digicert.com /td SHA256 $_.FullName
+            }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: tenjin-windows
-          path: ${{ env.TENJIN_ZIP }}
+          path: |
+            build/${{ env.TENJIN_APP_NAME }}-*windows*.exe
+            build/${{ env.TENJIN_APP_NAME }}-*windows*.zip
           if-no-files-found: error
           retention-days: 7

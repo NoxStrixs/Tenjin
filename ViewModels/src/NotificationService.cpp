@@ -6,6 +6,7 @@
 
 #include <limits>
 
+
 NotificationService::NotificationService(QObject* parent) : QObject(parent)
 {
     loadSettings();
@@ -25,7 +26,7 @@ NotificationService::NotificationService(QObject* parent) : QObject(parent)
 
 NotificationService::~NotificationService() = default;
 
-// ── Immediate ─────────────────────────────────────────────────────────────────
+// Immediate
 void NotificationService::toast(const QString& message, int level)
 {
     emit toastRequested(message, level);
@@ -41,7 +42,7 @@ void NotificationService::localPush(const QString& title, const QString& body)
     deliverLocalPush(title, body);
 }
 
-// ── Permission ────────────────────────────────────────────────────────────────
+// Permission
 void NotificationService::requestPermission()
 {
     // Platform backend performs the real request (Android 13+ runtime prompt;
@@ -54,7 +55,7 @@ void NotificationService::requestPermission()
     emit permissionResult(ok);
 }
 
-// ── Ad-hoc scheduled reminders ────────────────────────────────────────────────
+// Ad-hoc scheduled reminders
 int NotificationService::scheduleReminder(const QString& title, const QString& body, qint64 epochMs)
 {
     const int    id      = m_nextId++;
@@ -108,7 +109,7 @@ void NotificationService::cancelAllReminders()
     }
 }
 
-// ── Daily review reminder ─────────────────────────────────────────────────────
+// Daily review reminder
 void NotificationService::setReminderEnabled(bool v)
 {
     if (m_reminderEnabled == v)
@@ -195,7 +196,7 @@ void NotificationService::saveSettings()
     s.setValue("reminders/dailyMinute", m_reminderMinute);
 }
 
-// ── Delivery (no-op default; platform backends override) ──────────────────────
+// Delivery (no-op default; platform backends override)
 void NotificationService::deliverLocalPush(const QString&     title,
                                            const QString&     body,
                                            const QVariantMap& payload)
@@ -208,12 +209,11 @@ void NotificationService::deliverLocalPush(const QString&     title,
     emit toastRequested(title + QStringLiteral(": ") + body, 0);
 }
 
-// ── Native surface: base defaults (desktop) ──────────────────────────────────
+// Native surface: base defaults (desktop)
 // Platform subclasses override these; the base provides safe desktop behaviour
 // so the app runs everywhere. Base delivery does nothing at the OS level (the
 // caller falls back to an in-app toast); base permission is auto-granted.
-bool NotificationService::deliverNative(const QString& /*title*/,
-                                        const QString& /*body*/,
+bool NotificationService::deliverNative(const QString& /*title*/, const QString& /*body*/,
                                         const QVariantMap& /*payload*/)
 {
     return false;

@@ -21,10 +21,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang-format clang-tidy cppcheck
 
-      - name: Install Qt 6.8.3 (for qmllint / compile db)
+      - name: Install Qt 6.9.3 (for qmllint / compile db)
         uses: jurplel/install-qt-action@v4
         with:
-          version: 6.8.3
+          version: 6.9.3
           host: linux
           target: desktop
           arch: linux_gcc_64
@@ -36,10 +36,18 @@ jobs:
       - name: Configure (compile_commands.json)
         run: cmake --preset linux-release -DTENJIN_BUILD_GUI=OFF
 
-      - name: clang-tidy
+      - name: clang-tidy (changed lines blocking; backlog report-only)
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          EVENT: ${{ github.event_name }}
         run: |
           run-clang-tidy -p build/linux-release \
             $(git ls-files 'Service/**/*.cpp' 'ViewModels/**/*.cpp') || true
+          if [ "$EVENT" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            git diff -U0 "origin/$BASE_REF" -- '*.cpp' '*.h' \
+              | clang-tidy-diff.py -p1 -path build/linux-release -use-color
+          fi
 
       - name: cppcheck
         run: |

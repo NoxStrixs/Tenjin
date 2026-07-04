@@ -28,6 +28,7 @@
 
 #include <ViewModels/PlatformHooks.h>
 
+
 AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
 {
     const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -160,9 +161,7 @@ void AppViewModel::setDocumentPicker(DocumentPickerService* picker)
         return;
     m_documentPicker = picker;
     if (m_documentPicker) {
-        connect(m_documentPicker,
-                &DocumentPickerService::documentPicked,
-                this,
+        connect(m_documentPicker, &DocumentPickerService::documentPicked, this,
                 [this](const QString& path) { importFromPath(path); });
     }
 }
@@ -514,8 +513,7 @@ bool AppViewModel::importAnki(const QString& fileUrl, const QString& intoDeck)
     return true;
 }
 
-// ── FileDialog-free import/export ─────────────────────────────────────
-
+// FileDialog-free import/export
 QString AppViewModel::documentsFolder() const
 {
     // DocumentsLocation maps to ~/Documents on desktop and the app's iOS
@@ -657,8 +655,7 @@ QString AppViewModel::appDataLocation() const
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
 }
 
-// ── Tag delete companion + danger zone ──────────────────────────────
-
+// Tag delete companion + danger zone
 QVariantList AppViewModel::smartDecksUsingTag(qint64 tagId) const
 {
     QVariantList out;

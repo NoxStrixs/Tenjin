@@ -114,7 +114,7 @@ jobs:
       - name: Install Qt (macOS host)
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.8.3"
+          version: "6.9.3"
           host: "mac"
           target: "desktop"
           arch: "clang_64"
@@ -127,7 +127,7 @@ jobs:
       - name: Install Qt (iOS target)
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.8.3"
+          version: "6.9.3"
           host: "mac"
           target: "ios"
           modules: "qtmultimedia"
@@ -138,7 +138,7 @@ jobs:
 
       - name: Verify Qt Linguist tools on host (lupdate/lrelease)
         run: |
-          QT_HOST="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
+          QT_HOST="${{ github.workspace }}/Qt/Qt/6.9.3/macos"
           for t in lupdate lrelease; do
             if [ ! -x "$QT_HOST/bin/$t" ]; then
               echo "::error::Qt $t missing at $QT_HOST/bin/$t"
@@ -161,8 +161,8 @@ jobs:
 
       - name: Configure (qt-cmake, Xcode generator)
         run: |
-          QT_IOS="${{ github.workspace }}/Qt/Qt/6.8.3/ios"
-          QT_HOST="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
+          QT_IOS="${{ github.workspace }}/Qt/Qt/6.9.3/ios"
+          QT_HOST="${{ github.workspace }}/Qt/Qt/6.9.3/macos"
           "$QT_IOS/bin/qt-cmake" -G Xcode -S . -B build-ios \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="$TENJIN_IOS_DEPLOYMENT_TARGET" \
             -DQT_HOST_PATH="$QT_HOST" \

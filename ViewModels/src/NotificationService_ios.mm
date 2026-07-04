@@ -1,9 +1,5 @@
-// NotificationService_ios.mm — iOS notification backend.
-//
-// Posts an immediate local notification via UserNotifications. Permission is
-// requested lazily on first delivery; requestPermissionNative() also asks
-// proactively when reminders are enabled. Daily scheduling is driven by the
-// Qt/C++ timer in the base. Compiled only on iOS.
+// iOS notification backend (UserNotifications). Lazy auth on first delivery;
+// daily scheduling driven by the base timer. Compiled only on iOS.
 
 #include <ViewModels/NotificationService.h>
 

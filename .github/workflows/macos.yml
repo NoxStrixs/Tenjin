@@ -86,7 +86,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.8.3"
+          version: "6.9.3"
           host: "mac"
           target: "desktop"
           arch: "clang_64"
@@ -98,7 +98,7 @@ jobs:
 
       - name: Verify Qt Linguist tools (lupdate/lrelease)
         run: |
-          QT_MAC="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
+          QT_MAC="${{ github.workspace }}/Qt/Qt/6.9.3/macos"
           for t in lupdate lrelease; do
             if [ ! -x "$QT_MAC/bin/$t" ]; then
               echo "::error::Qt $t missing at $QT_MAC/bin/$t"
@@ -129,7 +129,7 @@ jobs:
 
       - name: Configure (CMake, Ninja)
         run: |
-          QT_MAC="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
+          QT_MAC="${{ github.workspace }}/Qt/Qt/6.9.3/macos"
           export PATH="$QT_MAC/bin:$PATH"
           cmake -G Ninja -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -164,7 +164,7 @@ jobs:
 
       - name: macdeployqt
         run: |
-          QT_MAC="${{ github.workspace }}/Qt/Qt/6.8.3/macos"
+          QT_MAC="${{ github.workspace }}/Qt/Qt/6.9.3/macos"
           "$QT_MAC/bin/macdeployqt" "$TENJIN_APP_BUNDLE" -verbose=1 -always-overwrite
 
       - name: Ad-hoc codesign

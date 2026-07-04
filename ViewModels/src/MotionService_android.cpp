@@ -5,9 +5,9 @@
 // that float from Settings.Global and treat 0 as reduced-motion-on. Compiled
 // only on Android.
 
+#include <ViewModels/PlatformHooks.h>
 #include <QJniObject>
 #include <QtCore/qnativeinterface.h>
-#include <ViewModels/PlatformHooks.h>
 
 namespace tenjin {
 

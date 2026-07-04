@@ -41,7 +41,7 @@ endif()
 # binary even when configure reports the file as found.
 #
 # Resource paths (RESOURCE_PREFIX defaults to /qt/qml via QTP0001 from
-# qt_standard_project_setup(REQUIRES 6.8)):
+# qt_standard_project_setup(REQUIRES 6.9)):
 #   qrc:/qt/qml/TenjinView/fonts/MaterialSymbolsOutlined.ttf
 #   qrc:/qt/qml/TenjinView/fonts/JetBrainsMono-Regular.ttf
 #   qrc:/qt/qml/TenjinView/fonts/JetBrainsMono-Bold.ttf

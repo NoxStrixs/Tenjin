@@ -1,19 +1,6 @@
-// DocumentPickerService_ios.mm — native Files/iCloud picker (iOS).
-//
-// Presents UIDocumentPickerViewController for opening a collection (JSON /
-// .apkg). asCopy:YES hands back a sandbox-local copy, so the path is directly
-// readable with no security-scoped access dance. The delegate marshals the
-// async result back via std::function callbacks that emit the service's Qt
-// signals. Compiled only on iOS. Verified against iOS 16+
-// UIDocumentPickerViewController / UniformTypeIdentifiers.
-//
-// Threading: UIDocumentPickerDelegate callbacks arrive on the main thread,
-// which is the Qt GUI thread, so emitting the signal from them is safe.
-//
-// The delegate holds std::function callbacks rather than a pointer to the C++
-// subclass: an ObjC @property referencing a namespace-scoped C++ type is
-// fragile across Clang/Xcode versions, whereas std::function is a plain value
-// type ObjC++ handles cleanly.
+// Native Files/iCloud picker (iOS). UIDocumentPickerViewController asCopy:YES
+// -> sandbox-local path. Delegate uses std::function callbacks (ObjC @property
+// can't hold a namespace-scoped C++ type) and emits on the main/GUI thread.
 
 #include <ViewModels/DocumentPickerService.h>
 

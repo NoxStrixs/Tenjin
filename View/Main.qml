@@ -10,8 +10,11 @@ ApplicationWindow {
     // Mobile: oversized constants — with the Info_plist.in UILaunchScreen
     // fix in place iOS now reports the real native resolution to QQuickView
     // and clamps these down. Combined with visibility:FullScreen below.
-    width:  Platform.isMobile ? 1080 : 1280
-    height: Platform.isMobile ? 1920 : 820
+    // Desktop sizes the window explicitly; on mobile the FullScreen window
+    // takes the screen's logical size (setting width/height in logical
+    // points here would magnify the whole UI -- Qt bug-trap).
+    width:  Platform.isMobile ? Screen.width  : 1280
+    height: Platform.isMobile ? Screen.height : 820
     minimumWidth:  Platform.isMobile ? 0 : Platform.minWindowWidth
     minimumHeight: Platform.isMobile ? 0 : Platform.minWindowHeight
     title: qsTr("Tenjin")
@@ -20,6 +23,21 @@ ApplicationWindow {
 
     // Keep the width-aware layout switch current (drives iPad split-view).
     onWidthChanged: Platform.currentWidth = width
+
+    // Feed the platform-wide safe-area tokens from this window's SafeArea
+    // attached property (Qt 6.9). Platform is a context-free singleton, so the
+    // attached property must be read here, where an ApplicationWindow exists.
+    // Existing consumers (header height, page margins) already read these
+    // tokens; this supplies their live source. Insets update reactively on
+    // rotation / notch / keyboard changes.
+    // LIMITATION: SafeArea under QtQuick.Controls.Basic on the iOS 26.5 SDK is
+    // unverified in-session; validate on a device build. If it fails to
+    // resolve, replace these four bindings with a C++ QGuiApplication
+    // safe-area helper exposed to QML (token consumers stay unchanged).
+    Binding { target: Platform; property: "safeAreaTop";    value: root.SafeArea.margins.top }
+    Binding { target: Platform; property: "safeAreaBottom"; value: root.SafeArea.margins.bottom }
+    Binding { target: Platform; property: "safeAreaLeft";   value: root.SafeArea.margins.left }
+    Binding { target: Platform; property: "safeAreaRight";  value: root.SafeArea.margins.right }
 
     // Page indices — must match AppViewModel::Page_t.
     readonly property int _pageWords:    0
@@ -121,13 +139,6 @@ ApplicationWindow {
             }
         } catch (e) {
             console.warn("globalStats at startup failed:", e)
-        }
-        // Read safe area from Qt 6.6+ SafeArea attached property.
-        if (typeof SafeArea !== "undefined") {
-            Platform.safeAreaTop    = SafeArea.margins.top
-            Platform.safeAreaBottom = SafeArea.margins.bottom
-            Platform.safeAreaLeft   = SafeArea.margins.left
-            Platform.safeAreaRight  = SafeArea.margins.right
         }
         Platform.theme = appVM.theme
         root._pushCustomTheme()

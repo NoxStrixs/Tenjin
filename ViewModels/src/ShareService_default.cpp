@@ -2,8 +2,8 @@
 // (desktop, and Android until a FileProvider is wired). Returning false makes
 // the caller fall back to the exported-to-Documents toast.
 
-#include <QString>
 #include <ViewModels/PlatformHooks.h>
+#include <QString>
 
 namespace tenjin {
 

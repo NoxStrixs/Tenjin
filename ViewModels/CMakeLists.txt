@@ -101,6 +101,6 @@ endif()
 
 # Android: runtime notification permission + JNI use QtAndroidPrivate/CorePrivate.
 if(ANDROID)
-    find_package(Qt6 6.8 REQUIRED COMPONENTS CorePrivate)
+    find_package(Qt6 6.9 REQUIRED COMPONENTS CorePrivate)
     target_link_libraries(TenjinViewModels PRIVATE Qt6::CorePrivate)
 endif()

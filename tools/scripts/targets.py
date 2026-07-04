@@ -2,7 +2,7 @@
 # CMake presets (no Docker). Windows (MSVC), macOS, iOS, and Android build in
 # CI only — trigger their workflows with `gh workflow run`.
 
-QT_VERSION = "6.8.3"
+QT_VERSION = "6.9.3"
 
 # Maps a local target to its CMake configure/build preset (CMakePresets.json).
 LOCAL_TARGETS = {

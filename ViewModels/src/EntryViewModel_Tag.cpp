@@ -185,8 +185,7 @@ void EntryViewModel::reloadAfterDataChange()
     emit selectedEntryRelationsChanged();
 }
 
-// ── kV2 multi-language ─────────────────────────────────────────────
-
+// kV2 multi-language
 void EntryViewModel::setCurrentLanguageFilter(const QString& code)
 {
     if (m_languageFilter == code)

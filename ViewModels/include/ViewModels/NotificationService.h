@@ -82,8 +82,8 @@ protected:
     // are desktop behaviour: no OS delivery, permission auto-granted.
     // Return true from deliverNative() if a real OS notification was posted;
     // false falls back to an in-app toast.
-    virtual bool
-    deliverNative(const QString& title, const QString& body, const QVariantMap& payload);
+    virtual bool deliverNative(const QString& title, const QString& body,
+                               const QVariantMap& payload);
     virtual bool requestPermissionNative();
 
 private:

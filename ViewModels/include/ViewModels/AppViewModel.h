@@ -2,10 +2,10 @@
 #include <DeckService/DeckService.h>
 #include <EntryService/EntryService.h>
 #include <ViewModels/DeckViewModel.h>
-#include <ViewModels/DocumentPickerService.h>
 #include <ViewModels/EntryViewModel.h>
 #include <ViewModels/ReviewViewModel.h>
 #include <ViewModels/SidebarViewModel.h>
+#include <ViewModels/DocumentPickerService.h>
 
 #include <QObject>
 #include <QQmlEngine>
@@ -394,8 +394,8 @@ public:
     // Injected by main.cpp (owns the platform service). AppViewModel wires
     // documentPicked -> importFromPath and drives the picker from
     // openNativeImportPicker(). Not owned.
-    void        setDocumentPicker(DocumentPickerService* picker);
-    QStringList supportedUiLanguages() const;
+    void setDocumentPicker(DocumentPickerService* picker);
+    QStringList      supportedUiLanguages() const;
 
     // Wired from main.cpp after engine construction so the VM can call
     // retranslate() on language switch.
@@ -454,6 +454,6 @@ private:
     QString                      m_uiLanguage = QStringLiteral("en");
     QStringList                  m_customLanguages;
     std::unique_ptr<QTranslator> m_uiTranslator;
-    QQmlEngine*                  m_qmlEngine      = nullptr;
-    DocumentPickerService*       m_documentPicker = nullptr; // not owned
+    QQmlEngine*                  m_qmlEngine = nullptr;
+    DocumentPickerService* m_documentPicker = nullptr; // not owned
 };

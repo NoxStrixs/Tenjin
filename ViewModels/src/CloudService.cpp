@@ -148,7 +148,7 @@ QByteArray CloudService::buildReportPayload(const QVariantMap& details,
     return QJsonDocument(obj).toJson(QJsonDocument::Compact);
 }
 
-// ── Factory seat ──────────────────────────────────────────────────────────────
+// Factory seat
 // No platform variance yet: return the concrete base. When a native cloud
 // backend is added, introduce CloudService_<plat>.cpp subclasses and select one
 // in ViewModels/CMakeLists.txt, exactly like the other platform services.
