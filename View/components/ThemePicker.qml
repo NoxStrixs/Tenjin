@@ -141,7 +141,7 @@ ColumnLayout {
                             text: root._hexFor(modelData.key)
                             color: Platform.textPrimary
                             font.pixelSize: Platform.fontBase
-                            font.family: "monospace"
+                            font.family: Platform.fontMono
                             selectByMouse: true
                             maximumLength: 7
                             onEditingFinished: appVM.setCustomColor(modelData.key, text)

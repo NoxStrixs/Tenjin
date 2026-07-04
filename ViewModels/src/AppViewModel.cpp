@@ -8,6 +8,8 @@
 #include <ViewModels/ReviewViewModel.h>
 #include <ViewModels/SidebarViewModel.h>
 
+#include <TenjinConfig.h>
+
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -514,6 +516,11 @@ bool AppViewModel::importAnki(const QString& fileUrl, const QString& intoDeck)
 }
 
 // FileDialog-free import/export
+QString AppViewModel::appVersion() const
+{
+    return QString::fromLatin1(Tenjin::Config::kVersionString);
+}
+
 QString AppViewModel::documentsFolder() const
 {
     // DocumentsLocation maps to ~/Documents on desktop and the app's iOS

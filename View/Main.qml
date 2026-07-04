@@ -18,6 +18,11 @@ ApplicationWindow {
     minimumWidth:  Platform.isMobile ? 0 : Platform.minWindowWidth
     minimumHeight: Platform.isMobile ? 0 : Platform.minWindowHeight
     title: qsTr("Tenjin")
+
+    // Root font: every Text and Control inherits this family (one binding →
+    // consistent glyphs across all platforms). Empty until the loaders are
+    // Ready, so first paint uses the system font rather than racing.
+    font.family: Platform.fontFamily !== "" ? Platform.fontFamily : font.family
     color: Platform.bg
     visibility: Platform.isMobile ? Window.FullScreen : Window.AutomaticVisibility
 

@@ -81,7 +81,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Python build deps (Pillow for the .ico)
-        run: python -m pip install --upgrade pillow
+        run: python -m pip install --upgrade pillow fonttools
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4

@@ -59,6 +59,7 @@ QtObject {
     readonly property string decks:    "\uea19"        // menu_book
     readonly property string tags:     "\ue893"        // label
     readonly property string news:     "\ueb81"        // newspaper
+    readonly property string stats:    "\uf092"        // insights
     readonly property string settings: "\ue8b8"        // settings
     readonly property string help:     "\ue8fd"        // help
     readonly property string info:     "\ue88e"        // info

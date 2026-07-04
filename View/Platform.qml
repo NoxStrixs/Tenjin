@@ -74,11 +74,38 @@ QtObject {
 
     // Bundled monospace family (JetBrainsMono, loaded in main.cpp via
     // QFontDatabase). Used for timestamps, code, and formula source.
-    readonly property string fontMono: "JetBrains Mono"
+    readonly property string fontMono: _monoName !== "" ? _monoName : "monospace"
 
     readonly property int fontTiny:   isMobile ? 12 : 10
     readonly property int fontSmall:  isMobile ? 14 : 11
     readonly property int fontBase:   isMobile ? 16 : 13
+
+    // ── Font families ─────────────────────────────────────────────────────────
+    // Subsetted Noto Sans (Latin/Cyrillic/Greek/Arabic/…) with a CJK fallback,
+    // both generated from committed masters and bundled by the QML module.
+    // FontLoaders are non-visual, so they live in this singleton. `fontFamily`
+    // is the cascade string applied at the root ApplicationWindow.font so every
+    // Text inherits it — one binding, consistent glyphs on all platforms. Until
+    // the loaders are Ready the family falls back to the system font (avoids a
+    // first-paint race). Mono (JetBrainsMono) is used for code/formula contexts.
+    readonly property FontLoader _uiRegular: FontLoader {
+        source: "qrc:/qt/qml/TenjinView/fonts/NotoSansTenjin-Regular.ttf"
+    }
+    readonly property FontLoader _uiCjk: FontLoader {
+        source: "qrc:/qt/qml/TenjinView/fonts/NotoSansTenjinCJK-Regular.otf"
+    }
+    readonly property FontLoader _monoRegular: FontLoader {
+        source: "qrc:/qt/qml/TenjinView/fonts/JetBrainsMono-Regular.ttf"
+    }
+
+    readonly property string _uiName:   _uiRegular.status === FontLoader.Ready ? _uiRegular.font.family : ""
+    readonly property string _cjkName:  _uiCjk.status === FontLoader.Ready ? _uiCjk.font.family : ""
+    readonly property string _monoName: _monoRegular.status === FontLoader.Ready ? _monoRegular.font.family : ""
+
+    // Cascade: primary UI family, then CJK for han/kana/hangul glyph matching.
+    readonly property string fontFamily:
+        _uiName === "" ? ""
+        : (_cjkName === "" ? _uiName : _uiName + ", " + _cjkName)
     readonly property int fontLarge:  isMobile ? 20 : 15
     readonly property int fontTitle:  isMobile ? 26 : 20
 

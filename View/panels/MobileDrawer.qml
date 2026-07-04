@@ -127,7 +127,7 @@ Rectangle {
             // the content rows; routing in Main.qml just sets appVM.currentPage.
             Repeater {
                 model: [
-                    { label: qsTr("Statistics"), glyph: TenjinIcons.autoAwesome, page: 6 },
+                    { label: qsTr("Statistics"), glyph: TenjinIcons.stats,       page: 6 },
                     { label: qsTr("Help"),       glyph: TenjinIcons.help,        page: 3 },
                     { label: qsTr("News"),       glyph: TenjinIcons.news,        page: 4 },
                     { label: qsTr("Settings"),   glyph: TenjinIcons.settings,    page: 5 }
@@ -153,9 +153,9 @@ Rectangle {
                         spacing: 14
                         Text {
                             text: utilItem.modelData.glyph
+                            font.family: TenjinIcons.family
                             color: Platform.textMuted
                             font.pixelSize: Platform.fontLarge
-                            font.weight: utilItem.modelData.glyph === "?" ? Font.Bold : Font.Normal
                         }
                         Text {
                             Layout.fillWidth: true
@@ -299,7 +299,7 @@ Rectangle {
                     spacing: 3
                     Text { text: qsTr("Tenjin"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
                     Text { text: qsTr("Vocabulary & spaced-repetition study"); color: Platform.textMuted; font.pixelSize: Platform.fontBase - 2; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                    Text { text: qsTr("Version 1.0"); color: Platform.textMuted; font.pixelSize: Platform.fontBase - 2 }
+                    Text { text: qsTr("Version %1").arg(appVM.appVersion); color: Platform.textMuted; font.pixelSize: Platform.fontBase - 2; elide: Text.ElideRight; Layout.fillWidth: true }
                 }
             }
             Rectangle {
@@ -310,8 +310,26 @@ Rectangle {
                 Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: Platform.border }
                 RowLayout {
                     anchors { fill: parent; leftMargin: 20; rightMargin: 16; bottomMargin: Platform.safeAreaBottom }
-                    Text { text: TenjinIcons.info + "  " + qsTr("About"); font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontBase; Layout.fillWidth: true }
-                    Text { text: drawerRoot.aboutExpanded ? TenjinIcons.expandLess : TenjinIcons.expandMore; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontBase }
+                    spacing: 8
+                    Text {
+                        text: TenjinIcons.info
+                        font.family: TenjinIcons.family
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontBase
+                    }
+                    Text {
+                        text: qsTr("About")
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontBase
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        text: drawerRoot.aboutExpanded ? TenjinIcons.expandLess : TenjinIcons.expandMore
+                        font.family: TenjinIcons.family
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontBase
+                    }
                 }
                 MouseArea {
                     id: aboutArea

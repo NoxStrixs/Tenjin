@@ -349,6 +349,12 @@ public:
     Q_PROPERTY(QVariantList builtinLanguages READ builtinLanguages CONSTANT)
     QVariantList builtinLanguages() const;
 
+
+    // Display version string (major.minor.patch+<git-hash>) from the generated
+    // config header. Single source of truth: project(VERSION)/git describe.
+    Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
+    QString appVersion() const;
+
     Q_PROPERTY(QString documentsFolder READ documentsFolder CONSTANT)
     QString documentsFolder() const;
     // Writes a timestamped JSON backup of all data before a destructive bulk

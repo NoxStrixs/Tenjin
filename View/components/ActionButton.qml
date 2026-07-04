@@ -38,6 +38,9 @@ Button {
     contentItem: Text {
         text: control.text
         color: control._fg
+        // Honor a font.family set on the control (icon glyphs need the icon
+        // font); fall back to size/weight defaults otherwise.
+        font.family: control.font.family
         font.pixelSize: Platform.fontBase
         font.bold: true
         horizontalAlignment: Text.AlignHCenter

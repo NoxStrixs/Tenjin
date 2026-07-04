@@ -1114,8 +1114,7 @@ Rectangle {
             spacing: 4
             Text {
                 Layout.fillWidth: true
-                text: TenjinIcons.link + "  " + root.blockContent
-                font.family: TenjinIcons.family
+                text: root.blockContent
                 color: Platform.accentDark
                 font.pixelSize: Platform.fontBase
                 font.underline: true

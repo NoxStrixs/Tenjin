@@ -42,13 +42,21 @@ ColumnLayout {
         }
 
         // Audio placeholder
-        Text {
+        RowLayout {
             anchors.centerIn: parent
             visible: !mpRoot.isVideo
-            text: TenjinIcons.audioFile + "  " + qsTr("Audio")
-            text.font.family: TenjinIcons.family
-            color: Platform.textOnDark
-            font.pixelSize: Platform.fontBase
+            spacing: 8
+            Text {
+                text: TenjinIcons.audioFile
+                font.family: TenjinIcons.family
+                color: Platform.textOnDark
+                font.pixelSize: Platform.fontBase
+            }
+            Text {
+                text: qsTr("Audio")
+                color: Platform.textOnDark
+                font.pixelSize: Platform.fontBase
+            }
         }
 
         // Big center play overlay when paused/stopped (video only).
@@ -242,8 +250,21 @@ ColumnLayout {
                 anchors { top: parent.top; right: parent.right; margins: 16 }
                 width: Platform.touchTarget + 30; height: Platform.touchTarget
                 radius: Platform.radius; color: Qt.rgba(0, 0, 0, 0.6)
-                Text { anchors.centerIn: parent; text: TenjinIcons.close + "  " + qsTr("Close")
-                text.font.family: TenjinIcons.family; color: "#ffffff"; font.pixelSize: Platform.fontBase }
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
+                    Text {
+                        text: TenjinIcons.close
+                        font.family: TenjinIcons.family
+                        color: Platform.textOnDark
+                        font.pixelSize: Platform.fontBase
+                    }
+                    Text {
+                        text: qsTr("Close")
+                        color: Platform.textOnDark
+                        font.pixelSize: Platform.fontBase
+                    }
+                }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     onClicked: mpRoot.fullscreen = false }
             }
