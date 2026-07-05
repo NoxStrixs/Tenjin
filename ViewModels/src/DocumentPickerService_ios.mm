@@ -4,6 +4,8 @@
 
 #include <ViewModels/DocumentPickerService.h>
 
+#include <QString>
+
 #import <UIKit/UIKit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <PhotosUI/PhotosUI.h>
@@ -207,12 +209,9 @@ protected:
             NSArray<UTType*>* types = @[ UTTypeImage, UTTypeMovie, UTTypeAudio ];
             UIDocumentPickerViewController* picker =
                 [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:types asCopy:YES];
-            // Reuse the import delegate but route to mediaPicked by temporarily
-            // swapping its callback is unsafe; instead give the media delegate a
-            // document-picker conformance is heavier — simplest correct path:
-            // present with a dedicated file callback via the media delegate's
-            // document handling below.
-            picker.delegate = (id<UIDocumentPickerDelegate>)m_mediaFileDelegate();
+            // A dedicated document-picker delegate routes file picks to
+            // mediaPicked (distinct from the import delegate's documentPicked).
+            picker.delegate = mediaFileDelegate();
             [rootVc presentViewController:picker animated:YES completion:nil];
             break;
         }
@@ -222,7 +221,7 @@ protected:
 private:
     // A doc-picker delegate that routes to mediaPicked (distinct from the import
     // delegate which routes to documentPicked).
-    TenjinDocPickerDelegate* m_mediaFileDelegate()
+    TenjinDocPickerDelegate* mediaFileDelegate()
     {
         if (!m_mediaFileDel) {
             m_mediaFileDel = [TenjinDocPickerDelegate new];

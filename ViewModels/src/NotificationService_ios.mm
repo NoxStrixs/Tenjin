@@ -3,9 +3,15 @@
 
 #include <ViewModels/NotificationService.h>
 
+#include <QString>
+
 #import <UserNotifications/UserNotifications.h>
 
 namespace {
+
+// Stable identifier for the repeating daily reminder request, so scheduling
+// replaces (not stacks) prior reminders and cancel can target it.
+NSString* const kDailyId = @"tenjin.dailyReminder";
 
 class NotificationServiceIos final : public NotificationService
 {
@@ -68,8 +74,6 @@ protected:
     // The OS delivers this at hour:minute every day even when the app is
     // suspended or terminated — the fix for background delivery that an
     // in-process QTimer cannot provide.
-    static NSString* kDailyId = @"tenjin.dailyReminder";
-
     bool scheduleDailyNative(int hour, int minute, const QString& title,
                              const QString& body) override
     {
