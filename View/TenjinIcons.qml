@@ -98,6 +98,7 @@ QtObject {
     readonly property string audioFile:  "\ueb82"      // audio_file
     readonly property string videoFile:  "\ueb87"      // video_file
     readonly property string image:      "\ue3f4"      // image
+    readonly property string camera:     "\ue412"      // photo_camera
     readonly property string attach:     "\ue226"      // attach_file
     readonly property string document:   "\ue873"      // description
     readonly property string folder:     "\ue2c7"      // folder

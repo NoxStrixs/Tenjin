@@ -86,6 +86,16 @@ protected:
                                const QVariantMap& payload);
     virtual bool requestPermissionNative();
 
+    // Schedule a repeating daily OS notification at hour:minute. Returns true if
+    // the platform scheduled it with the OS (so it fires even when the app is
+    // suspended/killed — iOS UNCalendarNotificationTrigger, Android
+    // AlarmManager). Returns false on desktop, where the base falls back to an
+    // in-process QTimer (only fires while running). cancelDailyNative() clears
+    // any OS-scheduled daily reminder.
+    virtual bool scheduleDailyNative(int hour, int minute, const QString& title,
+                                     const QString& body);
+    virtual void cancelDailyNative();
+
 private:
     void
     deliverLocalPush(const QString& title, const QString& body, const QVariantMap& payload = {});

@@ -29,6 +29,10 @@ Item {
     // depends on edit mode: enough for the "+ Add relation" button +
     // header in edit mode, just one chip-row in read mode.
     property real _relationsHeight: -1
+    // Relations section collapse state, toggled by tapping the drag handle.
+    // Collapsed hides the section entirely (height 0); the handle stays visible
+    // as the expand affordance.
+    property bool _relationsCollapsed: false
     readonly property real _relationsMinHeight:
         appVM.entryVM.editMode ? 110 : 70
     readonly property real _effectiveRelationsHeight:
@@ -277,7 +281,9 @@ Item {
                                    ? -(height + 4)
                                    : below
                         }
-                        width: 240
+                        // Cap to available width so the popup never overflows a
+                        // narrow phone screen.
+                        width: Math.min(240, (Overlay.overlay ? Overlay.overlay.width : 240) - 32)
                         // Explicit height: with an assigned contentItem and no
                         // height, the Popup can resolve to zero and the
                         // background renders with no area (transparent).
@@ -765,6 +771,7 @@ Item {
                 width: 96
                 height: 6
                 radius: 3
+                visible: !detailRoot._relationsCollapsed
                 color: relationsDragger.active
                        ? Platform.accent
                        : relHandleHover.hovered
@@ -775,14 +782,32 @@ Item {
                 Behavior on opacity { NumberAnimation { duration: Platform.effDurationFast } }
             }
 
+            // Chevron shown when collapsed (tap to expand). Uses the icon font.
+            Text {
+                anchors.centerIn: parent
+                visible: detailRoot._relationsCollapsed
+                text: TenjinIcons.expandLess
+                font.family: TenjinIcons.family
+                font.pixelSize: Platform.fontBase
+                color: relHandleHover.hovered ? Platform.accent : Platform.textMuted
+            }
+
+            // Tap toggles collapse; drag (below) resizes when expanded. TapHandler
+            // and DragHandler coexist: a tap that doesn't move fires the toggle,
+            // a drag beyond the threshold engages the resizer.
+            TapHandler {
+                onTapped: detailRoot._relationsCollapsed = !detailRoot._relationsCollapsed
+            }
+
             HoverHandler {
                 id: relHandleHover
-                cursorShape: Qt.SplitVCursor
+                cursorShape: detailRoot._relationsCollapsed ? Qt.PointingHandCursor : Qt.SplitVCursor
             }
 
             DragHandler {
                 id: relationsDragger
                 target: null               // we don't move the handle itself
+                enabled: !detailRoot._relationsCollapsed
                 cursorShape: Qt.SplitVCursor
                 property real heightAtPress: 0
                 onActiveChanged: {
@@ -811,12 +836,13 @@ Item {
             id: relationsRoot
             Layout.fillWidth: true
             Layout.fillHeight: false
-            Layout.minimumHeight: detailRoot._relationsMinHeight
-            Layout.preferredHeight: detailRoot._effectiveRelationsHeight
-            Layout.maximumHeight: detailRoot._effectiveRelationsHeight
-            visible: appVM.entryVM.selectedEntryId > 0
+            Layout.minimumHeight: detailRoot._relationsCollapsed ? 0 : detailRoot._relationsMinHeight
+            Layout.preferredHeight: detailRoot._relationsCollapsed ? 0 : detailRoot._effectiveRelationsHeight
+            Layout.maximumHeight: detailRoot._relationsCollapsed ? 0 : detailRoot._effectiveRelationsHeight
+            visible: appVM.entryVM.selectedEntryId > 0 && !detailRoot._relationsCollapsed
             spacing: 10
             clip: true
+            Behavior on Layout.preferredHeight { NumberAnimation { duration: Platform.effDurationFast } }
 
             // _grouped is rebuilt whenever selectedEntryRelations changes,
             // yielding { synonym: [...], antonym: [...], ... }. The
@@ -846,6 +872,7 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 Text {
+                    elide: Text.ElideRight
                     Layout.fillWidth: true
                     text: qsTr("Related words")
                     color: Platform.textPrimary

@@ -72,6 +72,22 @@ foreach(_mono JetBrainsMono-Regular.ttf JetBrainsMono-Bold.ttf)
     endif()
 endforeach()
 
+# Primary UI font: subsetted Noto Sans (Latin+Arabic) + Noto Sans CJK, generated
+# at configure time from committed masters (single source of truth; consistent
+# glyphs across all platforms/locales). Emitted to the build dir, so each needs
+# an explicit in-resource alias fonts/<name>.
+include(${CMAKE_SOURCE_DIR}/cmake/GenerateFonts.cmake)
+tenjin_generate_ui_fonts(
+    "${CMAKE_CURRENT_SOURCE_DIR}/fonts"
+    "${CMAKE_BINARY_DIR}/generated/fonts"
+    _TENJIN_UI_FONT_FILES)
+foreach(_uf ${_TENJIN_UI_FONT_FILES})
+    get_filename_component(_uf_name "${_uf}" NAME)
+    set_source_files_properties("${_uf}" PROPERTIES
+        QT_RESOURCE_ALIAS "fonts/${_uf_name}")
+    list(APPEND _TENJIN_BUNDLED_RESOURCES "${_uf}")
+endforeach()
+
 # Flag SVGs (lipis/flag-icons, MIT) — only the mapped subset placed in
 # View/flags/. Repo-relative; aliased as flags/<iso2>.svg implicitly.
 file(GLOB _TENJIN_FLAG_SVGS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -108,6 +124,7 @@ qt_add_qml_module(TenjinView
         LanguageFlags.qml
         # ── components ──
         components/ActionButton.qml
+        components/AppText.qml
         components/StyledComboBox.qml
         components/LanguageFlagRow.qml
         components/LoadingState.qml
@@ -115,10 +132,12 @@ qt_add_qml_module(TenjinView
         components/PressScale.qml
         components/ToggleSwitch.qml
         components/ThemePicker.qml
+        components/MediaSourceChooser.qml
         components/SheetPopup.qml
         components/AgeGateDialog.qml
         components/ColorPickerPopup.qml
         components/Stepper.qml
+        components/TimePicker.qml
         ${_TENJIN_DESKTOP_ONLY_QML}
         components/ChartCard.qml
         components/ContentBlock.qml

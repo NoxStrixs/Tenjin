@@ -91,13 +91,13 @@ QString EntryViewModel::importMedia(const QString& sourceUrl)
         srcPath = sourceUrl;
 
     if (srcPath.isEmpty()) {
-        emit errorOccurred(QStringLiteral("Empty media path."));
+        emit errorOccurred(tr("Empty media path."));
         return {};
     }
 
     const QFileInfo info(srcPath);
     if (!info.exists() || !info.isReadable()) {
-        emit errorOccurred(QStringLiteral("Cannot read media file: %1").arg(srcPath));
+        emit errorOccurred(tr("Cannot read media file: %1").arg(srcPath));
         return {};
     }
 
@@ -146,7 +146,7 @@ QString EntryViewModel::importMedia(const QString& sourceUrl)
         info.suffix().isEmpty() ? QString() : QStringLiteral(".") + info.suffix();
 
     if (!QDir().mkpath(mediaDir())) {
-        emit errorOccurred(QStringLiteral("Could not create media directory."));
+        emit errorOccurred(tr("Could not create media directory."));
         return {};
     }
 
@@ -162,7 +162,7 @@ QString EntryViewModel::importMedia(const QString& sourceUrl)
     // chunk loop we had before, and avoids the multi-second UI freeze
     // on multi-MB imports.
     if (!QFile::copy(srcPath, dest)) {
-        emit errorOccurred(QStringLiteral("Failed to copy media file to %1").arg(dest));
+        emit errorOccurred(tr("Failed to copy media file to %1").arg(dest));
         return {};
     }
     return fileName;

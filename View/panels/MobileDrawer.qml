@@ -61,6 +61,7 @@ Rectangle {
                         }
                     }
                     Text {
+                        elide: Text.ElideRight
                         Layout.fillWidth: true
                         text: qsTr("Tenjin")
                         color: Platform.textPrimary
@@ -104,6 +105,7 @@ Rectangle {
                             color: navItem.current ? Platform.accent : Platform.textMuted
                         }
                         Text {
+                            elide: Text.ElideRight
                             Layout.fillWidth: true
                             text: navItem.modelData.label
                             color: navItem.current ? Platform.accent : Platform.textPrimary
@@ -158,6 +160,7 @@ Rectangle {
                             font.pixelSize: Platform.fontLarge
                         }
                         Text {
+                            elide: Text.ElideRight
                             Layout.fillWidth: true
                             text: utilItem.modelData.label
                             color: utilItem.current ? Platform.accent : Platform.textPrimary
@@ -188,6 +191,7 @@ Rectangle {
                     spacing: 14
                     Text { text: Platform.isDark ? TenjinIcons.lightMode : TenjinIcons.darkMode; font.family: TenjinIcons.family; font.pixelSize: Platform.fontLarge; color: Platform.textMuted }
                     Text {
+                        elide: Text.ElideRight
                         Layout.fillWidth: true
                         text: Platform.isDark ? qsTr("Light theme") : qsTr("Dark theme")
                         color: Platform.textPrimary

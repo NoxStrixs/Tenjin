@@ -90,6 +90,8 @@
          even local-file playback can probe these. -->
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Tenjin can attach images and videos to your word cards.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Tenjin can take a photo to attach to your word cards.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Tenjin can record audio for pronunciation notes.</string>
     <key>NSAppleMusicUsageDescription</key>

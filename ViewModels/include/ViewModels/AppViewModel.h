@@ -298,6 +298,14 @@ public:
     // Save to Files from another app); they then show up here.
     Q_INVOKABLE QVariantList availableMediaFiles() const;
 
+    // Native media attach picker for entry content. `source` maps to
+    // DocumentPickerService::MediaSource (0=Files, 1=Photos, 2=Camera). The
+    // QML custom chooser (SheetPopup) selects the source; the result arrives
+    // via the entryMediaPicked() signal (wired in setDocumentPicker). Returns
+    // false if no picker is injected so QML can fall back to the in-app
+    // MediaPickerDialog (desktop / no native picker).
+    Q_INVOKABLE bool pickEntryMedia(int source);
+
     // -- Tag-delete companion + danger zone --------------------------
     //
     // smartDecksUsingTag(tagId) returns [{ id, name }] for smart decks
@@ -412,6 +420,9 @@ public:
 
 signals:
     void currentPageChanged();
+    // Emitted when the native media picker returns a file for entry attachment.
+    // QML connects this to import the path into the active content block.
+    void entryMediaPicked(const QString& path);
     void statusMessageChanged();
     void availableLanguagesChanged();
     void customLanguagesChanged();

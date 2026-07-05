@@ -96,7 +96,9 @@ if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
     target_link_libraries(TenjinViewModels PRIVATE
         "-framework UserNotifications"
         "-framework UIKit"
-        "-framework UniformTypeIdentifiers")
+        "-framework UniformTypeIdentifiers"
+        "-framework PhotosUI"
+        "-framework Photos")
 endif()
 
 # Android: runtime notification permission + JNI use QtAndroidPrivate/CorePrivate.

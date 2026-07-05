@@ -23,15 +23,25 @@ public:
 
     static std::unique_ptr<DocumentPickerService> create(QObject* parent = nullptr);
 
-    // Present the native picker for a collection import (JSON / .apkg). The
-    // result arrives asynchronously via documentPicked() with an app-readable
-    // local path, or pickCancelled() if the user dismissed / no native picker
-    // is available (caller then shows the in-app Documents picker).
+    // Collection import picker (JSON/.apkg). Result via documentPicked().
     Q_INVOKABLE void pickImportDocument();
+
+    // Media source for pickMedia(). Kept in sync with the QML chooser.
+    enum class MediaSource { Files = 0, Photos = 1, Camera = 2 };
+    Q_ENUM(MediaSource)
+
+    // Media attach picker (image/audio/video for entry content). The QML layer
+    // presents the custom chooser (file/photo/camera) and calls this with the
+    // chosen source; each routes to the platform-native picker. Result arrives
+    // via mediaPicked() with a sandbox-local, directly-readable path, or
+    // pickCancelled(). Desktop supports Files only (photo/camera fall back to
+    // the native file dialog filtered to media types).
+    Q_INVOKABLE void pickMedia(MediaSource source);
 
 signals:
     // path is a sandbox-local, directly-readable file path.
     void documentPicked(const QString& path);
+    void mediaPicked(const QString& path);
     void pickCancelled();
 
 protected:
@@ -39,4 +49,8 @@ protected:
     // caller falls back to the in-app picker. Platform subclasses override to
     // present the OS picker and emit documentPicked() on completion.
     virtual void pickImportDocumentNative();
+
+    // Native media pick per source. Base default emits pickCancelled(); desktop
+    // and platform subclasses override. Emits mediaPicked() on completion.
+    virtual void pickMediaNative(MediaSource source);
 };

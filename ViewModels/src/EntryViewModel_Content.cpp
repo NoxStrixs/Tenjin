@@ -76,7 +76,7 @@ bool EntryViewModel::updateContentBlockText(qint64 id, const QString& content)
     // Not editing: persist immediately, preserving type/position.
     const auto* existing = m_contentModel->findById(id);
     if (!existing) {
-        emit errorOccurred(QStringLiteral("Cannot update: block %1 not found.").arg(id));
+        emit errorOccurred(tr("Cannot update: block %1 not found.").arg(id));
         return false;
     }
     Service::ContentBlock_t block = *existing;

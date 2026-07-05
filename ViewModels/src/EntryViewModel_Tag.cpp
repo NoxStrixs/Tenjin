@@ -242,7 +242,7 @@ bool EntryViewModel::renameEntry(qint64 entryId, const QString& newName)
         return false;
     const QString trimmed = newName.trimmed();
     if (trimmed.isEmpty()) {
-        emit errorOccurred(QStringLiteral("Entry name cannot be empty."));
+        emit errorOccurred(tr("Entry name cannot be empty."));
         return false;
     }
     auto r =
@@ -266,7 +266,7 @@ bool EntryViewModel::renameTag(qint64 tagId, const QString& name)
 {
     const QString trimmed = name.trimmed();
     if (trimmed.isEmpty()) {
-        emit errorOccurred(QStringLiteral("Tag name cannot be empty."));
+        emit errorOccurred(tr("Tag name cannot be empty."));
         return false;
     }
     auto result = m_entryService->RenameTag(tagId, trimmed.toStdString());

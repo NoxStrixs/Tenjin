@@ -254,7 +254,7 @@ Rectangle {
                     required property var modelData
                     required property int index
                     width: posCombo.width
-                    height: 30
+                    height: Platform.isMobile ? Platform.touchTarget : 30
                     contentItem: Text {
                         text: modelData.length === 0 ? "—" : modelData
                         color: Platform.textPrimary
@@ -931,7 +931,12 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: mediaFileDialog.open()
+                        onClicked: {
+                            if (Platform.isMobile)
+                                mediaChooser.open()
+                            else
+                                mediaFileDialog.open()
+                        }
                     }
                 }
 
@@ -1063,6 +1068,28 @@ Rectangle {
                 // "file://C:/..." on Windows (missing third slash) and
                 // QUrl::toLocalFile() returns empty for malformed URLs.
                 onPicked: (path) => {
+                    const stored = appVM.entryVM.importMedia(path)
+                    if (stored.length > 0)
+                        root.contentEdited(root.blockId, stored)
+                }
+            }
+
+            // Mobile: native Files/Photos/Camera chooser. Falls back to the
+            // in-app dialog if no native picker is available on the platform.
+            MediaSourceChooser {
+                id: mediaChooser
+                onNativeUnavailable: mediaFileDialog.open()
+            }
+
+            // Native media result (from appVM.pickEntryMedia) → import + store.
+            Connections {
+                target: appVM
+                function onEntryMediaPicked(path) {
+                    // Only the media block currently in edit mode consumes the
+                    // pick. (Simultaneous edit of two media blocks is not a
+                    // supported flow.)
+                    if (!root.editMode || !root.isMedia)
+                        return
                     const stored = appVM.entryVM.importMedia(path)
                     if (stored.length > 0)
                         root.contentEdited(root.blockId, stored)

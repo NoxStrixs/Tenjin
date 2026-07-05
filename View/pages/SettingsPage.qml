@@ -25,6 +25,7 @@ Item {
     signal backRequested()
 
     component SectionHeader: Text {
+        elide: Text.ElideRight
         Layout.fillWidth: true
         Layout.leftMargin: Platform.spacingLg
         Layout.topMargin: Platform.spacingLg
@@ -135,6 +136,7 @@ Item {
                 }
 
                 Text {
+                    elide: Text.ElideRight
                     Layout.fillWidth: true
                     text: qsTr("Settings")
                     color: Platform.textPrimary
@@ -581,21 +583,19 @@ Item {
                     spacing: Platform.spacingMd
                     Text { text: TenjinIcons.news; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     Text {
+                        elide: Text.ElideRight
                         Layout.fillWidth: true
                         text: qsTr("Remind me at")
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontBase
                     }
-                    Stepper {
-                        from: 0; to: 23
-                        value: notifService.reminderHour
-                        onValueModified: (newValue) => notifService.reminderHour = newValue
-                    }
-                    Text { text: ":"; color: Platform.textPrimary; font.pixelSize: Platform.fontLarge }
-                    Stepper {
-                        from: 0; to: 59
-                        value: notifService.reminderMinute
-                        onValueModified: (newValue) => notifService.reminderMinute = newValue
+                    TimePicker {
+                        hour: notifService.reminderHour
+                        minute: notifService.reminderMinute
+                        onTimeModified: (h, m) => {
+                            notifService.reminderHour = h
+                            notifService.reminderMinute = m
+                        }
                     }
                 }
             }
@@ -766,6 +766,7 @@ Item {
                     spacing: Platform.spacingMd
                     Text { text: TenjinIcons.info; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     Text {
+                        elide: Text.ElideRight
                         Layout.fillWidth: true
                         text: qsTr("Privacy policy")
                         color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true
@@ -791,6 +792,7 @@ Item {
                     spacing: Platform.spacingMd
                     Text { text: TenjinIcons.document; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     Text {
+                        elide: Text.ElideRight
                         Layout.fillWidth: true
                         text: qsTr("Terms of service")
                         color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true

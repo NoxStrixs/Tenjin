@@ -50,7 +50,7 @@ void CloudService::fetchNews()
         }
         const auto doc = QJsonDocument::fromJson(reply->readAll());
         if (!doc.isArray()) {
-            emit networkError(QStringLiteral("News response is not a JSON array."));
+            emit networkError(tr("News response is not a JSON array."));
             return;
         }
         QVariantList items;

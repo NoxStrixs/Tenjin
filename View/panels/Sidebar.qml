@@ -362,6 +362,7 @@ Rectangle {
                     color: Platform.textPrimary
                 }
                 Text {
+                    elide: Text.ElideRight
                     Layout.fillWidth: true
                     text: qsTr("Filter by language")
                     color: Platform.textPrimary
@@ -415,6 +416,7 @@ Rectangle {
                     font.pixelSize: 14
                 }
                 Text {
+                    elide: Text.ElideRight
                     Layout.fillWidth: true
                     text: qsTr("Manage tags")
                     color: parent.parent._active ? Platform.accent : Platform.textPrimary

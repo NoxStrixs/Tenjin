@@ -169,16 +169,32 @@ void NotificationService::rescheduleDaily()
     if (!m_dailyTimer)
         return;
     m_dailyTimer->stop();
+    cancelDailyNative();
     if (!m_reminderEnabled)
         return;
+
+    // Prefer the OS scheduler so the reminder fires even when the app is
+    // suspended or killed (mobile). If the platform scheduled it natively, no
+    // in-process timer is needed. Desktop returns false and falls back to the
+    // QTimer, which only fires while the app runs.
+    const QString title = tr("Time to review");
+    if (scheduleDailyNative(m_reminderHour, m_reminderMinute, title, m_reminderBody))
+        return;
+
     const qint64 delay = nextDailyEpochMs() - QDateTime::currentMSecsSinceEpoch();
-    // QTimer interval is a 32-bit int (ms). A day fits comfortably (~86.4M ms),
-    // but clamp defensively in case of clock skew.
     const qint64 clamped =
         qBound(static_cast<qint64>(0), delay, static_cast<qint64>(std::numeric_limits<int>::max()));
     m_dailyTimer->setInterval(static_cast<int>(clamped));
     m_dailyTimer->start();
 }
+
+// Base defaults: desktop has no OS daily scheduler (falls back to QTimer).
+bool NotificationService::scheduleDailyNative(int, int, const QString&, const QString&)
+{
+    return false;
+}
+
+void NotificationService::cancelDailyNative() {}
 
 void NotificationService::loadSettings()
 {

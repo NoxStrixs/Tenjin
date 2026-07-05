@@ -63,6 +63,46 @@ protected:
                               completionHandler:^(BOOL /*granted*/, NSError* _Nullable /*error*/) {}];
         return true;
     }
+
+    // Repeating daily reminder via UNCalendarNotificationTrigger(repeats:YES).
+    // The OS delivers this at hour:minute every day even when the app is
+    // suspended or terminated — the fix for background delivery that an
+    // in-process QTimer cannot provide.
+    static NSString* kDailyId = @"tenjin.dailyReminder";
+
+    bool scheduleDailyNative(int hour, int minute, const QString& title,
+                             const QString& body) override
+    {
+        UNUserNotificationCenter* center =
+            [UNUserNotificationCenter currentNotificationCenter];
+
+        UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
+        content.title = title.toNSString();
+        content.body  = body.isEmpty() ? @" " : body.toNSString();
+        content.sound = [UNNotificationSound defaultSound];
+
+        NSDateComponents* when = [[NSDateComponents alloc] init];
+        when.hour   = hour;
+        when.minute = minute;
+
+        UNCalendarNotificationTrigger* trigger =
+            [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:when repeats:YES];
+
+        UNNotificationRequest* request =
+            [UNNotificationRequest requestWithIdentifier:kDailyId content:content trigger:trigger];
+
+        // Replace any prior daily reminder, then add the new one.
+        [center removePendingNotificationRequestsWithIdentifiers:@[ kDailyId ]];
+        [center addNotificationRequest:request withCompletionHandler:nil];
+        return true;
+    }
+
+    void cancelDailyNative() override
+    {
+        UNUserNotificationCenter* center =
+            [UNUserNotificationCenter currentNotificationCenter];
+        [center removePendingNotificationRequestsWithIdentifiers:@[ kDailyId ]];
+    }
 };
 
 } // namespace

@@ -165,7 +165,19 @@ void AppViewModel::setDocumentPicker(DocumentPickerService* picker)
     if (m_documentPicker) {
         connect(m_documentPicker, &DocumentPickerService::documentPicked, this,
                 [this](const QString& path) { importFromPath(path); });
+        // Native media picker result → relay to QML for attachment to the
+        // active content block.
+        connect(m_documentPicker, &DocumentPickerService::mediaPicked, this,
+                [this](const QString& path) { emit entryMediaPicked(path); });
     }
+}
+
+bool AppViewModel::pickEntryMedia(int source)
+{
+    if (!m_documentPicker)
+        return false;
+    m_documentPicker->pickMedia(static_cast<DocumentPickerService::MediaSource>(source));
+    return true;
 }
 
 bool AppViewModel::shareFile(const QString& absPath)
@@ -463,11 +475,11 @@ bool AppViewModel::exportData(const QString& fileUrl)
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
     auto          result = m_entryService->ExportToJson(path);
     if (!result) {
-        setStatusMessage(QStringLiteral("Export failed: ") +
+        setStatusMessage(tr("Export failed: ") +
                          QString::fromStdString(result.error()));
         return false;
     }
-    setStatusMessage(QStringLiteral("Exported collection to ") + path);
+    setStatusMessage(tr("Exported collection to %1").arg(path));
     return true;
 }
 
@@ -476,13 +488,13 @@ bool AppViewModel::importData(const QString& fileUrl)
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
     auto          result = m_entryService->ImportFromJson(path);
     if (!result) {
-        setStatusMessage(QStringLiteral("Import failed: ") +
+        setStatusMessage(tr("Import failed: ") +
                          QString::fromStdString(result.error()));
         return false;
     }
     m_sidebarVM->reload();
     m_deckVM->reloadDecks();
-    setStatusMessage(QStringLiteral("Import complete."));
+    setStatusMessage(tr("Import complete."));
     return true;
 }
 
@@ -505,13 +517,13 @@ bool AppViewModel::importAnki(const QString& fileUrl, const QString& intoDeck)
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
     auto          result = m_entryService->ImportFromAnki(path, intoDeck);
     if (!result) {
-        setStatusMessage(QStringLiteral("Anki import failed: ") +
+        setStatusMessage(tr("Anki import failed: ") +
                          QString::fromStdString(result.error()));
         return false;
     }
     m_sidebarVM->reload();
     m_deckVM->reloadDecks();
-    setStatusMessage(QStringLiteral("Imported %1 cards from Anki.").arg(result.value()));
+    setStatusMessage(tr("Imported %1 cards from Anki.").arg(result.value()));
     return true;
 }
 
@@ -688,7 +700,7 @@ bool AppViewModel::deleteTagAndAffectedDecks(qint64 tagId)
     // Delete the tag first; cascade handles deck_tag_filter cleanup.
     auto tagRes = m_entryService->DeleteTag(static_cast<Service::ID_t>(tagId));
     if (!tagRes) {
-        setStatusMessage("Could not delete tag: " + QString::fromStdString(tagRes.error()));
+        setStatusMessage(tr("Could not delete tag: %1").arg(QString::fromStdString(tagRes.error())));
         return false;
     }
 
@@ -717,7 +729,7 @@ int AppViewModel::deleteAllWords()
     autoBackupBeforeDestructive(QStringLiteral("delete-words"));
     auto r = m_entryService->DeleteAllEntries();
     if (!r) {
-        setStatusMessage("Could not delete words: " + QString::fromStdString(r.error()));
+        setStatusMessage(tr("Could not delete words: %1").arg(QString::fromStdString(r.error())));
         return 0;
     }
     m_entryVM->reloadAfterDataChange();
@@ -735,7 +747,7 @@ int AppViewModel::deleteAllWords()
         QDir(mediaDirPath).removeRecursively();
     }
 
-    setStatusMessage(QStringLiteral("Deleted %1 word(s).").arg(r.value()));
+    setStatusMessage(tr("Deleted %1 word(s).").arg(r.value()));
     return r.value();
 }
 
@@ -744,13 +756,13 @@ int AppViewModel::deleteAllTags()
     autoBackupBeforeDestructive(QStringLiteral("delete-tags"));
     auto r = m_entryService->DeleteAllTags();
     if (!r) {
-        setStatusMessage("Could not delete tags: " + QString::fromStdString(r.error()));
+        setStatusMessage(tr("Could not delete tags: %1").arg(QString::fromStdString(r.error())));
         return 0;
     }
     m_entryVM->reloadAfterDataChange();
     m_sidebarVM->reload();
     m_deckVM->reloadDecks(); // smart decks lose all their filters
-    setStatusMessage(QStringLiteral("Deleted %1 tag(s).").arg(r.value()));
+    setStatusMessage(tr("Deleted %1 tag(s).").arg(r.value()));
     return r.value();
 }
 
@@ -759,11 +771,11 @@ int AppViewModel::deleteAllDecks()
     autoBackupBeforeDestructive(QStringLiteral("delete-decks"));
     auto r = m_deckService->DeleteAllDecks();
     if (!r) {
-        setStatusMessage("Could not delete decks: " + QString::fromStdString(r.error()));
+        setStatusMessage(tr("Could not delete decks: %1").arg(QString::fromStdString(r.error())));
         return 0;
     }
     m_deckVM->reloadDecks();
-    setStatusMessage(QStringLiteral("Deleted %1 deck(s).").arg(r.value()));
+    setStatusMessage(tr("Deleted %1 deck(s).").arg(r.value()));
     return r.value();
 }
 
