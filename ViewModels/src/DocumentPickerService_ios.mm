@@ -40,9 +40,14 @@
 
     NSItemProvider* provider = results.firstObject.itemProvider;
     NSArray<NSString*>* types = provider.registeredTypeIdentifiers;
-    NSString* typeId = types.firstObject ?: (NSString*)UTTypeImage.identifier;
+    NSString* typeId = types.firstObject
+        ? types.firstObject
+        : static_cast<NSString*>(UTTypeImage.identifier);
 
-    __weak TenjinMediaPickerDelegate* weakSelf = self;
+    // This TU is compiled without ARC (manual reference counting), so __weak is
+    // unavailable. The delegate is owned by the service for its whole lifetime
+    // and outlives this async callback, so an unretained back-reference is safe.
+    __block __unsafe_unretained TenjinMediaPickerDelegate* weakSelf = self;
     [provider loadFileRepresentationForTypeIdentifier:typeId
                                     completionHandler:^(NSURL* _Nullable url, NSError* _Nullable error) {
         // This completion runs off the main thread; marshal back for the emit.
@@ -51,7 +56,8 @@
             if (!s) return;
             if (!url || error) { if (s.onCancelled) s.onCancelled(); return; }
 
-            NSString* fileName = url.lastPathComponent ?: @"media";
+            NSString* fileName = url.lastPathComponent
+                ? url.lastPathComponent : @"media";
             NSURL* tmp = [[NSFileManager.defaultManager temporaryDirectory]
                 URLByAppendingPathComponent:
                     [NSString stringWithFormat:@"tenjin-%@-%@",
@@ -91,6 +97,8 @@
 }
 
 @end
+
+@implementation TenjinDocPickerDelegate
 - (void)documentPicker:(UIDocumentPickerViewController*)controller
     didPickDocumentsAtURLs:(NSArray<NSURL*>*)urls
 {

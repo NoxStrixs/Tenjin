@@ -16,7 +16,7 @@ void EntryViewModel::addTagFilter(qint64 tagId)
 
 void EntryViewModel::removeTagFilter(qint64 tagId)
 {
-    for (int i = m_tagFilters.size() - 1; i >= 0; i--)
+    for (qsizetype i = m_tagFilters.size() - 1; i >= 0; i--)
         if (m_tagFilters.at(i).toLongLong() == tagId)
             m_tagFilters.removeAt(i);
     rebuildActiveTagIds();

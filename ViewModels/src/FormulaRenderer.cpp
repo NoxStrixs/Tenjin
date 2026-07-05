@@ -222,7 +222,7 @@ QString convert(const QString& in)
 {
     QString   out;
     int       i = 0;
-    const int n = in.size();
+    const qsizetype n = in.size();
 
     while (i < n) {
         const QChar c = in[i];

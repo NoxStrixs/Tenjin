@@ -60,7 +60,7 @@ void EntryViewModel::rebuildSearchResults()
                     if (auto blocks = m_entryService->GetContentForEntry(w.id)) {
                         for (const auto& b : *blocks) {
                             const QString c   = QString::fromStdString(b.content);
-                            const int     idx = c.toLower().indexOf(ql);
+                            const qsizetype idx = c.toLower().indexOf(ql);
                             if (idx >= 0) {
                                 const int start = std::max(0, idx - 20);
                                 snippet         = (start > 0 ? QStringLiteral("…") : QString()) +

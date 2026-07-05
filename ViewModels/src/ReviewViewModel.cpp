@@ -76,10 +76,10 @@ QString ReviewViewModel::currentAnswer() const
         QString html = QString::fromStdString(b.content);
 
         // Pull out the <body>…</body> inner fragment if present.
-        const int bodyOpen = html.indexOf("<body", Qt::CaseInsensitive);
+        const qsizetype bodyOpen = html.indexOf("<body", Qt::CaseInsensitive);
         if (bodyOpen >= 0) {
-            const int gt        = html.indexOf('>', bodyOpen);
-            const int bodyClose = html.indexOf("</body>", Qt::CaseInsensitive);
+            const qsizetype gt        = html.indexOf('>', bodyOpen);
+            const qsizetype bodyClose = html.indexOf("</body>", Qt::CaseInsensitive);
             if (gt >= 0 && bodyClose > gt)
                 html = html.mid(gt + 1, bodyClose - gt - 1);
         }
