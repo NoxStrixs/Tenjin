@@ -1108,9 +1108,13 @@ ApplicationWindow {
         MobileDrawer {
             anchors.fill: parent
             onNavigate: (page) => {
+                sidebarDrawer.close()
+                // Help and News are pop-outs, not StackLayout pages (their slots
+                // are empty placeholders). Route their nav to the popups.
+                if (page === root._pageHelp) { helpPopup.open(); return }
+                if (page === root._pageNews) { newsPopup.open(); return }
                 if (page === root._pageWords) appVM.entryVM.clearSelection()
                 appVM.currentPage = page
-                sidebarDrawer.close()
             }
             onImportRequested: { sidebarDrawer.close(); root.openImportDialog() }
             onExportRequested: { sidebarDrawer.close(); root.openExportDialog() }

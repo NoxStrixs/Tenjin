@@ -67,27 +67,12 @@ Item {
         }
     }
 
-    // Reserve bottom inset when the OS keyboard is up so the focused
-    // field doesn't get covered. iOS's automatic content-inset works
-    // poorly with our Flickable-inside-ColumnLayout layout, so we drive
-    // it explicitly from Qt.inputMethod.keyboardRectangle. Item #7.
-    readonly property real _keyboardInset: Qt.inputMethod.visible
-        ? Math.max(0, Qt.inputMethod.keyboardRectangle.height
-                   - (Platform.safeAreaBottom || 0))
-        : 0
-
     ColumnLayout {
         anchors {
             fill: parent
             margins: Platform.pagePadding
-            // Animate the keyboard inset so the layout slides rather
-            // than snapping when the IME shows/hides.
-            bottomMargin: Platform.pagePadding + detailRoot._keyboardInset
         }
         spacing: 16
-        Behavior on anchors.bottomMargin {
-            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
-        }
 
         // Header: title and actions
         ColumnLayout {
