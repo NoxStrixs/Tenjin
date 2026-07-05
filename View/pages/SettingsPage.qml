@@ -572,43 +572,43 @@ Item {
                 }
             }
 
-            // Time picker — only visible when reminders are on. On mobile the
-            // Tumbler needs vertical room, so the row is taller and the picker
-            // sits on its own line below the label.
-            Rectangle {
+            // Time picker — only visible when reminders are on. The TimePicker
+            // has an explicit implicitHeight (tall on mobile for the wheels), so
+            // the container sizes to it. Label above the picker on mobile.
+            ColumnLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: visible
-                    ? (Platform.isMobile ? 200 : Platform.touchTarget + 16)
-                    : 0
                 visible: notifService.reminderEnabled
-                color: "transparent"
-                GridLayout {
-                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
-                    columns: Platform.isMobile ? 1 : 3
-                    rowSpacing: Platform.spacingMd
-                    columnSpacing: Platform.spacingMd
-                    flow: GridLayout.LeftToRight
+                spacing: Platform.spacingSm
 
-                    RowLayout {
-                        spacing: Platform.spacingMd
-                        Layout.fillWidth: !Platform.isMobile
-                        Text { text: TenjinIcons.news; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
-                        Text {
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                            text: qsTr("Remind me at")
-                            color: Platform.textPrimary
-                            font.pixelSize: Platform.fontBase
-                        }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Platform.spacingLg
+                    Layout.rightMargin: Platform.spacingLg
+                    spacing: Platform.spacingMd
+                    Text {
+                        text: TenjinIcons.news
+                        font.family: TenjinIcons.family
+                        color: Platform.textMuted
+                        font.pixelSize: Platform.fontLarge
                     }
-                    TimePicker {
-                        Layout.alignment: Platform.isMobile ? Qt.AlignHCenter : Qt.AlignRight
-                        hour: notifService.reminderHour
-                        minute: notifService.reminderMinute
-                        onTimeModified: (h, m) => {
-                            notifService.reminderHour = h
-                            notifService.reminderMinute = m
-                        }
+                    Text {
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        text: qsTr("Remind me at")
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontBase
+                    }
+                }
+
+                TimePicker {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: Platform.spacingSm
+                    Layout.bottomMargin: Platform.spacingMd
+                    hour: notifService.reminderHour
+                    minute: notifService.reminderMinute
+                    onTimeModified: (h, m) => {
+                        notifService.reminderHour = h
+                        notifService.reminderMinute = m
                     }
                 }
             }

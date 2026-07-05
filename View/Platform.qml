@@ -64,7 +64,7 @@ QtObject {
     readonly property color overlayDim:  "#80000000"
 
     // ── Sizing ────────────────────────────────────────────────────────────────
-    readonly property int touchTarget:  isMobile ? 48 : 36
+    readonly property int touchTarget:  isMobile ? 44 : 36
     readonly property int iconSize:     isMobile ? 24 : 16
     readonly property int iconSizeLg:    isMobile ? 32 : 24
     readonly property int iconSizeXl:    isMobile ? 44 : 36
@@ -76,9 +76,9 @@ QtObject {
     // QFontDatabase). Used for timestamps, code, and formula source.
     readonly property string fontMono: _monoName !== "" ? _monoName : "monospace"
 
-    readonly property int fontTiny:   isMobile ? 12 : 10
-    readonly property int fontSmall:  isMobile ? 14 : 11
-    readonly property int fontBase:   isMobile ? 16 : 13
+    readonly property int fontTiny:   isMobile ? 11 : 10
+    readonly property int fontSmall:  isMobile ? 12 : 11
+    readonly property int fontBase:   isMobile ? 14 : 13
 
     // ── Font families ─────────────────────────────────────────────────────────
     // Subsetted Noto Sans (Latin/Cyrillic/Greek/Arabic/…) with a CJK fallback,
@@ -106,15 +106,15 @@ QtObject {
     readonly property string fontFamily:
         _uiName === "" ? ""
         : (_cjkName === "" ? _uiName : _uiName + ", " + _cjkName)
-    readonly property int fontLarge:  isMobile ? 20 : 15
-    readonly property int fontTitle:  isMobile ? 26 : 20
+    readonly property int fontLarge:  isMobile ? 17 : 15
+    readonly property int fontTitle:  isMobile ? 22 : 20
 
     readonly property int spacingXs:   isMobile ?  3 :  2
     readonly property int spacingSm:   isMobile ?  6 :  4
     readonly property int spacingMd:   isMobile ? 10 :  8
     readonly property int spacingLg:   isMobile ? 16 : 12
     readonly property int spacingXl:   isMobile ? 24 : 18
-    readonly property int pagePadding: isMobile ? 16 : 24
+    readonly property int pagePadding: isMobile ? 12 : 24
 
     // Softer, rounder shape language: larger radii + a slightly heavier
     // border read as "bubbly" rather than flat/stiff.
