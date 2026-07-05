@@ -44,10 +44,14 @@ function(_tenjin_instance_subset IN OUT WGHT UNICODES SUCCESS_VAR)
         return()
     endif()
     set(_tmp "${OUT}.instance.ttf")
-    # Instance the weight axis (drops variation, yields a static instance).
+    # Instance the weight axis AND drop the width axis to its default so the
+    # result is a fully static instance (the Noto masters are [wdth,wght]
+    # two-axis VFs; pinning only wght would leave a partial VF with wdth still
+    # variable, shipping unnecessary fvar/gvar tables). wdth=100 is the Noto
+    # default (normal width).
     execute_process(
         COMMAND "${Python3_EXECUTABLE}" -m fontTools.varLib.instancer
-            "${IN}" "wght=${WGHT}" "--output=${_tmp}"
+            "${IN}" "wght=${WGHT}" "wdth=100" "--output=${_tmp}"
         RESULT_VARIABLE _irc ERROR_VARIABLE _ierr)
     if(NOT _irc EQUAL 0)
         message(WARNING "Font instancing failed for ${IN} @wght=${WGHT}: ${_ierr}")
