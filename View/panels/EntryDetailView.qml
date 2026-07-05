@@ -108,8 +108,8 @@ Item {
                 Rectangle {
                     visible: appVM.entryVM.editMode
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.max(Platform.touchTarget + 8,
-                                                     titleEdit.implicitHeight + 12)
+                    Layout.preferredHeight: Math.max(Platform.touchTarget,
+                                                     titleEdit.implicitHeight + 6)
                     radius: Platform.radius
                     color: Platform.bg
                     border.color: titleEdit.activeFocus ? Platform.accent : Platform.border
@@ -192,9 +192,9 @@ Item {
                 visible: appVM.entryVM.editMode && Platform.isMobile
                 Layout.fillWidth: true
                 spacing: 8
-                ActionButton { Layout.fillWidth: true; text: qsTr("Save");   variant: "success"; onClicked: appVM.entryVM.saveEdit() }
-                ActionButton { Layout.fillWidth: true; text: qsTr("Cancel"); variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
-                ActionButton { Layout.fillWidth: true; text: qsTr("Delete"); variant: "danger";  onClicked: deleteEntryConfirm.open() }
+                ActionButton { Layout.fillWidth: true; compact: true; text: qsTr("Save");   variant: "success"; onClicked: appVM.entryVM.saveEdit() }
+                ActionButton { Layout.fillWidth: true; compact: true; text: qsTr("Cancel"); variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
+                ActionButton { Layout.fillWidth: true; compact: true; text: qsTr("Delete"); variant: "danger";  onClicked: deleteEntryConfirm.open() }
             }
         }
 
@@ -457,10 +457,10 @@ Item {
             ComboBox {
                 id: entryLangCombo
                 visible: appVM.entryVM.editMode
-                Layout.preferredWidth: 220
+                Layout.preferredWidth: 180
                 Layout.preferredHeight: Platform.touchTarget
-                leftPadding: 12
-                rightPadding: 8
+                leftPadding: 10
+                rightPadding: 6
                 font.pixelSize: Platform.fontBase
                 model: langRow.options
                 textRole: "name"
@@ -858,12 +858,12 @@ Item {
                 Layout.fillWidth: true
                 Text {
                     elide: Text.ElideRight
-                    Layout.fillWidth: true
                     text: qsTr("Related words")
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontLarge
                     font.bold: true
                 }
+                Item { Layout.fillWidth: true }
                 Rectangle {
                     visible: appVM.entryVM.editMode
                     implicitHeight: Platform.touchTarget * 0.85

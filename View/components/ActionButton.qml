@@ -6,12 +6,15 @@ Button {
     id: control
 
     property string variant: "neutral"
+    // Compact trims the button box (height + font) for dense action rows.
+    property bool compact: false
 
     // Button maps `text` to Accessible.name automatically.
     Accessible.role: Accessible.Button
     Accessible.name: control.text
 
-    implicitHeight: Platform.touchTarget
+    implicitHeight: compact ? Math.round(Platform.touchTarget * 0.82)
+                            : Platform.touchTarget
 
     readonly property color _bg: variant === "primary" ? Platform.accent
                                : variant === "success" ? Platform.success
@@ -41,7 +44,7 @@ Button {
         // Honor a font.family set on the control (icon glyphs need the icon
         // font); fall back to size/weight defaults otherwise.
         font.family: control.font.family
-        font.pixelSize: Platform.fontBase
+        font.pixelSize: control.compact ? Platform.fontSmall : Platform.fontBase
         font.bold: true
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter

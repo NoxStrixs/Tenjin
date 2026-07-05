@@ -430,7 +430,7 @@ Flickable {
         DropArea {
             id: newRowDrop
             width: parent.width
-            height: 40
+            height: 28
             visible: root.editMode
             keys: ["content-block"]
 

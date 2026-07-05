@@ -106,7 +106,7 @@ Rectangle {
     clip: true
 
     implicitWidth: parent ? parent.width : 0
-    implicitHeight: layout.implicitHeight + 20
+    implicitHeight: layout.implicitHeight + 12
 
     Behavior on color { ColorAnimation { duration: 120 } }
 

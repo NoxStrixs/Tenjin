@@ -28,6 +28,7 @@ ApplicationWindow {
 
     // Keep the width-aware layout switch current (drives iPad split-view).
     onWidthChanged: Platform.currentWidth = width
+    Component.onCompleted: Platform.screenPixelDensity = Screen.pixelDensity
 
     // Feed the platform-wide safe-area tokens from this window's SafeArea
     // attached property (Qt 6.9). Platform is a context-free singleton, so the

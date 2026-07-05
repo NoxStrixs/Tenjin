@@ -12,6 +12,30 @@ QtObject {
     // while the same iPad in narrow split-view falls back to single-column.
     // `currentWidth` is updated by Main.qml from the window width.
     property int currentWidth: 0
+
+    // Screen physical density (device-independent pixels). Populated from
+    // Main.qml (Screen.pixelDensity, dots/mm). Falls back to ~96dpi.
+    property real screenPixelDensity: 3.78
+
+    // Responsive UI scale — Material-3-style window size classes computed from
+    // density-independent width. widthDp = px / (pixelDensity / 3.78), where
+    // 3.78 dots/mm ≈ 96dpi (1dp = 1px baseline). Tiers (discrete, so this is a
+    // stepped value, not a continuous reactive loop): Compact < 600dp phones,
+    // Medium 600–840 small tablets, Expanded ≥ 840 large tablets/desktop.
+    readonly property real _widthDp:
+        currentWidth / Math.max(0.1, screenPixelDensity / 3.78)
+    readonly property int sizeClassCompact:  0
+    readonly property int sizeClassMedium:   1
+    readonly property int sizeClassExpanded: 2
+    readonly property int sizeClass:
+        _widthDp < 600 ? sizeClassCompact
+                       : (_widthDp < 840 ? sizeClassMedium : sizeClassExpanded)
+    // Per-tier UI multiplier applied to size tokens below. Compact (phones) is
+    // the 1.0 baseline; larger classes scale up modestly for readability at
+    // greater viewing distance.
+    readonly property real uiScale:
+        sizeClass === sizeClassCompact ? 1.0
+                                       : (sizeClass === sizeClassMedium ? 1.08 : 1.15)
     readonly property int wideLayoutThreshold: 760
     readonly property bool useWideLayout: currentWidth >= wideLayoutThreshold
 
@@ -64,8 +88,8 @@ QtObject {
     readonly property color overlayDim:  "#80000000"
 
     // ── Sizing ────────────────────────────────────────────────────────────────
-    readonly property int touchTarget:  isMobile ? 44 : 36
-    readonly property int iconSize:     isMobile ? 24 : 16
+    readonly property int touchTarget:  Math.round((isMobile ? 44 : 36) * uiScale)
+    readonly property int iconSize:     Math.round((isMobile ? 22 : 16) * uiScale)
     readonly property int iconSizeLg:    isMobile ? 32 : 24
     readonly property int iconSizeXl:    isMobile ? 44 : 36
     readonly property int iconSizeHero:  isMobile ? 64 : 56
@@ -76,9 +100,9 @@ QtObject {
     // QFontDatabase). Used for timestamps, code, and formula source.
     readonly property string fontMono: _monoName !== "" ? _monoName : "monospace"
 
-    readonly property int fontTiny:   isMobile ? 11 : 10
-    readonly property int fontSmall:  isMobile ? 12 : 11
-    readonly property int fontBase:   isMobile ? 14 : 13
+    readonly property int fontTiny:   Math.round((isMobile ? 11 : 10) * uiScale)
+    readonly property int fontSmall:  Math.round((isMobile ? 12 : 11) * uiScale)
+    readonly property int fontBase:   Math.round((isMobile ? 14 : 13) * uiScale)
 
     // ── Font families ─────────────────────────────────────────────────────────
     // Subsetted Noto Sans (Latin/Cyrillic/Greek/Arabic/…) with a CJK fallback,
@@ -106,8 +130,8 @@ QtObject {
     readonly property string fontFamily:
         _uiName === "" ? ""
         : (_cjkName === "" ? _uiName : _uiName + ", " + _cjkName)
-    readonly property int fontLarge:  isMobile ? 17 : 15
-    readonly property int fontTitle:  isMobile ? 22 : 20
+    readonly property int fontLarge:  Math.round((isMobile ? 17 : 15) * uiScale)
+    readonly property int fontTitle:  Math.round((isMobile ? 22 : 20) * uiScale)
 
     readonly property int spacingXs:   isMobile ?  3 :  2
     readonly property int spacingSm:   isMobile ?  6 :  4

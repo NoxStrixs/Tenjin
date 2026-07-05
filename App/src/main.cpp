@@ -61,6 +61,7 @@ Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 #include <ViewModels/LogViewModel.h>
 #include <ViewModels/NotificationService.h>
 #include <ViewModels/DocumentPickerService.h>
+#include <ViewModels/TimePickerService.h>
 
 static LogViewModel*    g_logModel        = nullptr;
 static QtMessageHandler g_previousHandler = nullptr;
@@ -243,10 +244,12 @@ int main(int argc, char* argv[])
     auto cloudServicePtr = CloudService::create();
     auto hapticsPtr      = HapticsService::create();
     auto pickerPtr       = DocumentPickerService::create();
+    auto timePickerPtr   = TimePickerService::create();
     NotificationService&   notifService = *notifServicePtr;
     CloudService&          cloudService = *cloudServicePtr;
     HapticsService&        haptics      = *hapticsPtr;
     DocumentPickerService& picker       = *pickerPtr;
+    TimePickerService&     timePicker   = *timePickerPtr;
 
     // Inject the picker so AppViewModel can drive native import and receive the
     // async documentPicked() result.
@@ -277,6 +280,7 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("notifService"), &notifService);
     engine.rootContext()->setContextProperty(QStringLiteral("cloudService"), &cloudService);
     engine.rootContext()->setContextProperty(QStringLiteral("haptics"), &haptics);
+    engine.rootContext()->setContextProperty(QStringLiteral("timePicker"), &timePicker);
 
     // Capture QML warnings/errors so a load failure writes the real cause to
     // fatal.log instead of crashing silently before the window appears.
