@@ -69,6 +69,7 @@ qt_add_library(TenjinViewModels STATIC
     include/ViewModels/NotificationService.h
     include/ViewModels/HapticsService.h
     include/ViewModels/DocumentPickerService.h
+    include/ViewModels/TimePickerService.h
     include/ViewModels/CloudService.h
     include/ViewModels/PlatformHooks.h
 )
