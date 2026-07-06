@@ -1,21 +1,17 @@
 #pragma once
 
 #include <QObject>
-#include <QtQmlIntegration>
 
 #include <memory>
 
 // Native time picker. On iOS a UIDatePicker (.time) modal sheet; on Android a
 // TimePickerDialog; on desktop no native picker (QML uses inline text entry).
 // Follows the DocumentPickerService pattern: abstract base + per-platform
-// backend + compile-time create() factory. Presentation-only; no business
-// logic. QML calls pickTime(hour, minute); the result arrives asynchronously
-// via timePicked(hour, minute), or pickCancelled().
+// backend + compile-time create() factory. Exposed to QML as a context
+// property (not a QML-module type), so no QML_ELEMENT registration.
 class TimePickerService : public QObject
 {
     Q_OBJECT
-    QML_ELEMENT
-    QML_UNCREATABLE("Created in C++ via TimePickerService::create()")
 
 public:
     explicit TimePickerService(QObject* parent = nullptr) : QObject(parent) {}
