@@ -71,6 +71,7 @@ qt_add_library(TenjinViewModels STATIC
     include/ViewModels/DocumentPickerService.h
     include/ViewModels/CloudService.h
     include/ViewModels/PlatformHooks.h
+    include/ViewModels/TimePickerService.h
 )
 
 target_include_directories(TenjinViewModels PUBLIC
