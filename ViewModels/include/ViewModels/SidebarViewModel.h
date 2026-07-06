@@ -28,7 +28,7 @@ public:
 
     using EntryFetcher_t = std::function<std::vector<Service::Entry_t>(Service::ID_t)>;
 
-    void setData(const std::vector<Service::Tag_t>& tags, EntryFetcher_t wordFetcher);
+    void loadData(const std::vector<Service::Tag_t>& tags, EntryFetcher_t wordFetcher);
 
     int                    rowCount(const QModelIndex& parent = {}) const override;
     QVariant               data(const QModelIndex& index, int role) const override;

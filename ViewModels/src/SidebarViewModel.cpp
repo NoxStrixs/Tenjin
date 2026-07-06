@@ -60,7 +60,7 @@ void SidebarViewModel::reload()
     if (hasUntagged)
         filtered.push_back(Service::Tag_t{.id = kUntaggedId, .name = "Untagged"});
 
-    m_model->setData(filtered, [this](Service::ID_t tagId) -> std::vector<Service::Entry_t> {
+    m_model->loadData(filtered, [this](Service::ID_t tagId) -> std::vector<Service::Entry_t> {
         if (tagId == -1) {
             auto result = m_entryService->GetUntaggedEntries();
             return result ? *result : std::vector<Service::Entry_t>{};

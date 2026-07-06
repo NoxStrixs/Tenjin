@@ -7,6 +7,7 @@ if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_ios.mm)
     set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_ios.mm)
     set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_ios.mm)
+    set(_TENJIN_TIME_BACKEND     src/TimePickerService_ios.mm)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_ios.mm)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_ios.mm)
 elseif(ANDROID)
@@ -15,12 +16,14 @@ elseif(ANDROID)
     # Android document picking (Storage Access Framework) and share (FileProvider)
     # are not yet implemented; the default backends keep the in-app fallbacks.
     set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_default.cpp)
+    set(_TENJIN_TIME_BACKEND     src/TimePickerService_android.cpp)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_android.cpp)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
 else()
     set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_default.cpp)
     set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_default.cpp)
     set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_default.cpp)
+    set(_TENJIN_TIME_BACKEND     src/TimePickerService_default.cpp)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_default.cpp)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
 endif()
@@ -48,6 +51,8 @@ qt_add_library(TenjinViewModels STATIC
     ${_TENJIN_HAPTICS_BACKEND}
     src/DocumentPickerService.cpp
     ${_TENJIN_PICKER_BACKEND}
+    src/TimePickerService.cpp
+    ${_TENJIN_TIME_BACKEND}
     src/CloudService.cpp
 
     # Stateless platform hooks (free functions; one TU each).

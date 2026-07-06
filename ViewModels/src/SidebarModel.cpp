@@ -15,7 +15,7 @@ void SidebarModel::rebuildRows()
     }
 }
 
-void SidebarModel::setData(const std::vector<Service::Tag_t>&                          tags,
+void SidebarModel::loadData(const std::vector<Service::Tag_t>&                          tags,
                            std::function<std::vector<Service::Entry_t>(Service::ID_t)> wordFetcher)
 {
     beginResetModel();
