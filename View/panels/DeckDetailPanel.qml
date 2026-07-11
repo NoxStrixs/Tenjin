@@ -318,7 +318,7 @@ Item {
                     // Chevron — affordance for "tap opens the word".
                     Text {
                         Layout.alignment: Qt.AlignVCenter
-                        text: TenjinIcons.chevronRight
+                        text: TenjinIcons.chevronForward
                         font.family: TenjinIcons.family
                         color: Platform.textMuted
                         font.pixelSize: Platform.fontTitle

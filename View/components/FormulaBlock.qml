@@ -55,7 +55,7 @@ Rectangle {
     implicitWidth: parent ? parent.width : 0
     implicitHeight: layout.implicitHeight + 20
 
-    Behavior on color { ColorAnimation { duration: 120 } }
+    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
     // Insert `snippet` at the caret of the editor, positioning the caret at the
     // "$1" placeholder if one is present.

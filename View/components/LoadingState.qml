@@ -62,7 +62,7 @@ Item {
                 RotationAnimator {
                     target: arc
                     from: 0; to: 360
-                    duration: 900
+                    duration: Platform.reducedMotion ? 0 : 900
                     loops: Animation.Infinite
                     running: !Platform.reducedMotion && root.visible
                 }

@@ -1,91 +1,74 @@
+"""Docker-based reproducible builders for Tenjin packaging.
+
+Docker is the preferred build method: a pinned image per target makes local
+builds identical to CI and sidesteps host dependency drift ("dependency hell").
+This module builds the images and runs the packaging scripts inside them.
+
+Images:
+  linux-appimage   Ubuntu 22.04 (glibc 2.35 baseline) + Qt 6.9.3 -> AppImage
+
+Flatpak is NOT built here: its bubblewrap sandbox does not nest reliably inside
+Docker-in-WSL2, so package.py builds Flatpak on the host instead.
+"""
+
 import logging
-import os
+import shutil
 import subprocess
 from pathlib import Path
 
-from scripts.config import ROOT
-
 logger = logging.getLogger(__name__)
 
+ROOT = Path(__file__).resolve().parents[2]
+DOCKER_DIR = ROOT / "docker"
 
-def _image_exists(image: str) -> bool:
-    result = subprocess.run(
-        ["docker", "image", "inspect", image],
-        capture_output=True,
-    )
-    return result.returncode == 0
+IMAGES = {
+    "linux-appimage": {
+        "dockerfile": "linux-appimage.Dockerfile",
+        "tag": "tenjin-appimage:latest",
+        "script": "build-appimage.sh",
+    },
+}
 
 
-def build_image(image: str, dockerfile: str) -> None:
-    logger.warning(f"Building image '{image}' from {dockerfile}...")
+def _require_docker() -> None:
+    if shutil.which("docker") is None:
+        raise RuntimeError(
+            "docker not found on PATH. Install Docker (Desktop or engine) and "
+            "ensure it is running. Docker is the supported build method.")
+
+
+def build_image(name: str) -> None:
+    """Build the builder image if the Dockerfile changed (Docker layer-caches)."""
+    _require_docker()
+    spec = IMAGES[name]
+    dockerfile = DOCKER_DIR / spec["dockerfile"]
+    if not dockerfile.exists():
+        raise FileNotFoundError(f"Missing {dockerfile}")
+    logger.info("Building image %s (cached layers reused)…", spec["tag"])
     subprocess.run(
-        ["docker", "build", "-f", dockerfile, "-t", image, "."],
-        cwd   = ROOT,
-        check = True,
-    )
+        ["docker", "build", "-f", str(dockerfile), "-t", spec["tag"], str(DOCKER_DIR)],
+        check=True)
 
 
-def ensure_image(image: str, dockerfile: str) -> None:
-    """Build image if absent. Idempotent."""
-    if not _image_exists(image):
-        build_image(image, dockerfile)
-
-
-def _ensure_dep_volume(image: str, volume: str) -> None:
-    """Create the dependency-cache volume and chown it to the build user once.
-
-    A fresh named volume is root-owned; the non-root build user could not write
-    FetchContent output into it. A single root-run mkdir+chown fixes ownership
-    for all subsequent non-root runs. Idempotent and cheap.
-    """
+def run_packaging(name: str) -> None:
+    """Run the in-container packaging script against the mounted source tree."""
+    _require_docker()
+    spec = IMAGES[name]
+    script = f"/work/docker/{spec['script']}"
+    logger.info("Running %s in %s…", spec["script"], spec["tag"])
+    # Mount the repo read-write at /work; artifacts land in /work/dist. --rm so
+    # the container is discarded; the image (with Qt) persists for reuse.
     subprocess.run(
         [
             "docker", "run", "--rm",
-            "-v", f"{volume}:/deps",
-            image,
-            "sh", "-c",
-            f"mkdir -p /deps/fetchcontent && chown -R {os.getuid()}:{os.getgid()} /deps",
+            # AppImage's FUSE mount needs this; --appimage-extract fallback is
+            # used inside the script for validation regardless.
+            "--device", "/dev/fuse",
+            "--cap-add", "SYS_ADMIN",
+            "--security-opt", "apparmor:unconfined",
+            "-v", f"{ROOT}:/work",
+            spec["tag"],
+            "bash", script, "/work",
         ],
-        check = True,
-    )
-
-
-def run(image: str,
-        cmd: list[str],
-        *,
-        interactive: bool = False,
-        as_root:     bool = False,
-        env:         dict[str, str] | None = None) -> None:
-    """Run cmd inside image with the repo bind-mounted at /workspace."""
-    docker_flags = ["-it"] if interactive else ["--rm"]
-    user_flags   = [] if as_root else ["--user", f"{os.getuid()}:{os.getgid()}"]
-    env_flags    = []
-    for k, v in (env or {}).items():
-        env_flags += ["-e", f"{k}={v}"]
-
-    # A named volume for dependency downloads/builds (FetchContent: miniz, etc.).
-    # Keeping these off the bind-mounted workspace avoids host/VM clock-skew
-    # confusing Ninja ("build.ninja still dirty") and caches deps across runs.
-    dep_cache_volume = f"tenjin-deps-{image}"
-    if not as_root:
-        _ensure_dep_volume(image, dep_cache_volume)
-
-    subprocess.run(
-        [
-            "docker", "run",
-            *docker_flags,
-            *user_flags,
-            *env_flags,
-            "-v", f"{ROOT}:/workspace",
-            "-v", f"{dep_cache_volume}:/deps",
-            "-e", "FETCHCONTENT_BASE_DIR=/deps/fetchcontent",
-            "-w", "/workspace",
-            image,
-            *cmd,
-        ],
-        check = True,
-    )
-
-
-def shell(image: str) -> None:
-    run(image, ["bash"], interactive=True)
+        check=True)
+    logger.info("Artifacts in %s", ROOT / "dist")

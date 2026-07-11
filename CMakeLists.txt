@@ -36,6 +36,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Build options
 option(MEDIA_SUPPORT    "Enable audio/video playback (QtMultimedia)" ON)
 option(WEBVIEW_SUPPORT  "Enable web/YouTube embeds (QtWebView)"      OFF)
+option(TTS_SUPPORT      "Enable text-to-speech (QtTextToSpeech)"       ON)
 option(TENJIN_DEBUG_UI  "Include debug console drawer in the build"  OFF)
 option(TENJIN_BUILD_GUI "Build the QML GUI application"              ON)
 
@@ -62,6 +63,9 @@ if(TENJIN_BUILD_GUI AND MEDIA_SUPPORT)
 endif()
 if(TENJIN_BUILD_GUI AND WEBVIEW_SUPPORT)
     find_package(Qt6 6.9 REQUIRED COMPONENTS WebView)
+endif()
+if(TENJIN_BUILD_GUI AND TTS_SUPPORT)
+    find_package(Qt6 6.9 REQUIRED COMPONENTS TextToSpeech)
 endif()
 
 qt_standard_project_setup(REQUIRES 6.9)

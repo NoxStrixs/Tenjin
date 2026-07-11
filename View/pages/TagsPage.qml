@@ -115,7 +115,7 @@ Item {
                 Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 Text {
                     anchors.centerIn: parent
-                    text: TenjinIcons.chevronLeft
+                    text: TenjinIcons.chevronBack
                     font.family: TenjinIcons.family
                     color: Platform.textPrimary
                     font.pixelSize: Platform.fontTitle
@@ -246,8 +246,8 @@ Item {
                 SequentialAnimation on scale {
                     running: tagRow._pulsing
                     loops: 3
-                    NumberAnimation { from: 1.0; to: 1.03; duration: 200; easing.type: Easing.OutCubic }
-                    NumberAnimation { from: 1.03; to: 1.0; duration: 200; easing.type: Easing.InCubic }
+                    NumberAnimation { from: 1.0; to: 1.03; duration: Platform.effDurationMed; easing.type: Easing.OutCubic }
+                    NumberAnimation { from: 1.03; to: 1.0; duration: Platform.effDurationMed; easing.type: Easing.InCubic }
                 }
 
                 RowLayout {

@@ -274,7 +274,7 @@ Rectangle {
                             spacing: 8
                             Text { text: extraItem.modelData.glyph; font.family: TenjinIcons.family; color: Platform.accentDark; font.pixelSize: Platform.fontBase }
                             Text { Layout.fillWidth: true; text: extraItem.modelData.label; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
-                            Text { text: TenjinIcons.chevronRight; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                            Text { text: TenjinIcons.chevronForward; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                         }
                         MouseArea {
                             id: extraArea

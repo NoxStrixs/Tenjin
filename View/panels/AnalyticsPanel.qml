@@ -42,7 +42,7 @@ Item {
         running: false
         from: 0
         to: 1
-        duration: 700
+        duration: Platform.reducedMotion ? 0 : 700
         easing.type: Easing.OutCubic
     }
 

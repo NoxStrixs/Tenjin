@@ -20,6 +20,11 @@ Item {
 
     signal valueModified(int newValue)
 
+    // Screen readers announce this as a spin button with its current value.
+    Accessible.role: Accessible.SpinBox
+    Accessible.name: qsTr("Value")
+    Accessible.description: String(value)
+
     function _wrap(v) {
         const span = root.to - root.from + 1
         if (v > root.to)   return root.from + ((v - root.from) % span)

@@ -7,6 +7,14 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: root
     visible: true
+
+    // Right-to-left support (Arabic, Hebrew, …). Mirroring at the root, with
+    // `inherit`, flips anchors and RowLayout/GridLayout ordering for the whole
+    // tree automatically — the standard Qt Quick approach. Items positioned by
+    // explicit `x:` (rather than anchors/layouts) are NOT mirrored by Qt and
+    // must be handled individually if any are found in RTL testing.
+    LayoutMirroring.enabled: appVM.uiLayoutRightToLeft
+    LayoutMirroring.childrenInherit: true
     // Mobile: oversized constants — with the Info_plist.in UILaunchScreen
     // fix in place iOS now reports the real native resolution to QQuickView
     // and clamps these down. Combined with visibility:FullScreen below.
@@ -102,15 +110,7 @@ ApplicationWindow {
     }
     function openExportDialog() {
         if (Platform.isMobile) {
-            const path = appVM.exportToDocuments()
-            if (path.length > 0) {
-                // Native share sheet where available (iOS); otherwise fall
-                // back to a toast naming the sandboxed Documents path.
-                if (!appVM.shareFile(path))
-                    notifService.toast(qsTr("Exported to: ") + path)
-            } else {
-                notifService.toast(qsTr("Export failed — see logs."))
-            }
+            exportFormatChooser.open()
         } else if (desktopFileDialogsLoader.item) {
             desktopFileDialogsLoader.item.openExport()
         }
@@ -222,7 +222,7 @@ ApplicationWindow {
                 Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 Text {
                     anchors.centerIn: parent
-                    text: appVM.sidebarVM.collapsed ? TenjinIcons.chevronRight : TenjinIcons.chevronLeft
+                    text: appVM.sidebarVM.collapsed ? TenjinIcons.chevronForward : TenjinIcons.chevronBack
                     font.family: TenjinIcons.family
                     font.pixelSize: Platform.fontLarge
                     color: Platform.textMuted
@@ -460,6 +460,56 @@ ApplicationWindow {
         HelpPage {
             anchors.fill: parent
             onBackRequested: helpPopup.close()
+        }
+    }
+
+    // Export format chooser (mobile). JSON is the full round-trip backup; CSV
+    // is a flat spreadsheet projection (lossy — no relations/decks/structure).
+    SheetPopup {
+        id: exportFormatChooser
+        title: qsTr("Export as")
+
+        function _finish(path) {
+            exportFormatChooser.close()
+            if (path.length > 0) {
+                if (!appVM.shareFile(path))
+                    notifService.toast(qsTr("Exported to: ") + path)
+            } else {
+                notifService.toast(qsTr("Export failed — see logs."))
+            }
+        }
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 8
+            Repeater {
+                model: [
+                    { label: qsTr("JSON (full backup)"), fmt: "json" },
+                    { label: qsTr("CSV (spreadsheet)"),   fmt: "csv" }
+                ]
+                delegate: Rectangle {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    implicitHeight: Platform.touchTarget + 8
+                    radius: Platform.radius
+                    color: fmtArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                    AppText {
+                        anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
+                        text: parent.modelData.label
+                        font.pixelSize: Platform.fontBase
+                    }
+                    MouseArea {
+                        id: fmtArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: exportFormatChooser._finish(
+                            parent.modelData.fmt === "csv"
+                                ? appVM.exportToDocumentsCsv()
+                                : appVM.exportToDocuments())
+                    }
+                }
+            }
         }
     }
 
@@ -1139,7 +1189,12 @@ ApplicationWindow {
                 if (s.endsWith(".apkg")) appVM.importAnki(f)
                 else appVM.importData(f)
             })
-            item.exportAccepted.connect(function(f) { appVM.exportData(f) })
+            item.exportAccepted.connect(function(f) {
+                if (f.toString().toLowerCase().endsWith(".csv"))
+                    appVM.exportDataCsv(f)
+                else
+                    appVM.exportData(f)
+            })
         }
     }
 
@@ -1192,11 +1247,11 @@ ApplicationWindow {
         SequentialAnimation {
             id: toastAnim
             ParallelAnimation {
-                NumberAnimation { target: toast; property: "opacity"; to: 1; duration: 180; easing.type: Easing.OutCubic }
-                NumberAnimation { target: toast; property: "anchors.bottomMargin"; to: 32 + Platform.safeAreaBottom; duration: 220; easing.type: Easing.OutBack }
+                NumberAnimation { target: toast; property: "opacity"; to: 1; duration: Platform.effDurationFast; easing.type: Easing.OutCubic }
+                NumberAnimation { target: toast; property: "anchors.bottomMargin"; to: 32 + Platform.safeAreaBottom; duration: Platform.effDurationMed; easing.type: Easing.OutBack }
             }
             PauseAnimation  { duration: 2500 }
-            NumberAnimation { target: toast; property: "opacity"; to: 0; duration: 300 }
+            NumberAnimation { target: toast; property: "opacity"; to: 0; duration: Platform.effDurationMed }
             ScriptAction    { script: toast.visible = false }
         }
     }

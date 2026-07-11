@@ -85,7 +85,7 @@ Item {
 
                 ActionButton {
                     visible: detailRoot.showBack
-                    text: TenjinIcons.chevronLeft
+                    text: TenjinIcons.chevronBack
                     font.family: TenjinIcons.family
                     variant: "neutral"
                     onClicked: detailRoot.backRequested()
@@ -104,6 +104,36 @@ Item {
                     font.bold: true
                     Layout.fillWidth: true
                     elide: Text.ElideRight
+                }
+
+                // Speak the word using the platform TTS engine, voiced in the
+                // entry's language. Hidden when no engine is available or in
+                // edit mode.
+                Rectangle {
+                    visible: !appVM.entryVM.editMode && tts.hasTts()
+                             && appVM.entryVM.selectedWord.length > 0
+                    Layout.preferredWidth: Platform.touchTarget
+                    Layout.preferredHeight: Platform.touchTarget
+                    radius: Platform.radius
+                    color: speakArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                    Text {
+                        anchors.centerIn: parent
+                        text: TenjinIcons.volumeUp
+                        font.family: TenjinIcons.family
+                        font.pixelSize: Platform.iconSize
+                        color: Platform.accent
+                    }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Speak word")
+                    MouseArea {
+                        id: speakArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: tts.speak(
+                            appVM.entryVM.selectedWord,
+                            appVM.entryVM.entryLanguage(appVM.entryVM.selectedEntryId))
+                    }
                 }
                 Rectangle {
                     visible: appVM.entryVM.editMode
@@ -780,6 +810,9 @@ Item {
             // Tap toggles collapse; drag (below) resizes when expanded. TapHandler
             // and DragHandler coexist: a tap that doesn't move fires the toggle,
             // a drag beyond the threshold engages the resizer.
+            Accessible.role: Accessible.Button
+            Accessible.name: detailRoot._relationsCollapsed
+                ? qsTr("Expand related words") : qsTr("Collapse related words")
             TapHandler {
                 onTapped: detailRoot._relationsCollapsed = !detailRoot._relationsCollapsed
             }

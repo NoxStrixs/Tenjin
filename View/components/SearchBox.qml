@@ -127,6 +127,9 @@ Item {
                 Layout.fillWidth: true
                 text: root.queryText
                 placeholderText: qsTr("Search words, tags, decks\u2026")
+                Accessible.role: Accessible.EditableText
+                Accessible.name: qsTr("Search")
+                Accessible.description: placeholderText
                 font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
                 background: Rectangle { color: "transparent" }

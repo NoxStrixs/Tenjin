@@ -12,6 +12,15 @@
     <!-- Notifications (review reminders). Runtime-requested on Android 13+. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- Exact daily reminder via AlarmManager. USE_EXACT_ALARM (API 33+) is
+         granted at install for alarm-clock-style apps; SCHEDULE_EXACT_ALARM
+         (API 31–32) is the older equivalent. AlarmScheduler falls back to an
+         inexact alarm if neither is available. RECEIVE_BOOT_COMPLETED lets the
+         reminder survive a reboot. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
     <!-- Media attachments are picked via the system photo picker / SAF,
          which grants scoped access without broad storage permissions.
          No READ_EXTERNAL_STORAGE is requested — modern scoped storage only. -->
@@ -71,5 +80,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/qtprovider_paths"/>
         </provider>
+
+        <!-- Daily reminder alarm receiver. Not exported (only our own
+             AlarmManager PendingIntent and the system boot broadcast target
+             it). Handles the alarm fire and re-arms after reboot. -->
+        <receiver
+            android:name=".ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="app.tenjin.Tenjin.ACTION_REMINDER"/>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

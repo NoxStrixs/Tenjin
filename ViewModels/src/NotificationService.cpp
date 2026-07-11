@@ -178,7 +178,9 @@ void NotificationService::rescheduleDaily()
     // in-process timer is needed. Desktop returns false and falls back to the
     // QTimer, which only fires while the app runs.
     const QString title = tr("Time to review");
-    if (scheduleDailyNative(m_reminderHour, m_reminderMinute, title, m_reminderBody))
+    const QString body  = m_reminderBody.isEmpty()
+        ? tr("You have cards ready to review.") : m_reminderBody;
+    if (scheduleDailyNative(m_reminderHour, m_reminderMinute, title, body))
         return;
 
     const qint64 delay = nextDailyEpochMs() - QDateTime::currentMSecsSinceEpoch();

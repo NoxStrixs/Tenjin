@@ -122,6 +122,7 @@ public:
 
     // Import / export
     Result_t<bool> ExportToJson(const QString& path);
+    Result_t<bool> ExportToCsv(const QString& path);
     Result_t<bool> ImportFromJson(const QString& path);
 
     // Import notes from an Anki .apkg package. Returns the number of words

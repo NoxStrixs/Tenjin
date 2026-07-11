@@ -71,7 +71,7 @@ ThemedDialog {
                         color: Platform.bg
                         border.color: Platform.border
                         border.width: 1
-                        Behavior on x { NumberAnimation { duration: 120 } }
+                        Behavior on x { NumberAnimation { duration: Platform.effDurationFast } }
                     }
                 }
             }
@@ -97,7 +97,7 @@ ThemedDialog {
                         color: Platform.bg
                         border.color: Platform.border
                         border.width: 1
-                        Behavior on x { NumberAnimation { duration: 120 } }
+                        Behavior on x { NumberAnimation { duration: Platform.effDurationFast } }
                     }
                 }
             }

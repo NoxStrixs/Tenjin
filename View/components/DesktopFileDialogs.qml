@@ -36,7 +36,7 @@ Item {
         title: qsTr("Export collection")
         fileMode: FileDialog.SaveFile
         currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
-        nameFilters: [qsTr("Tenjin export (*.json)")]
+        nameFilters: [qsTr("Tenjin export (*.json)"), qsTr("CSV spreadsheet (*.csv)")]
         defaultSuffix: "json"
         onAccepted: root.exportAccepted(selectedFile)
     }

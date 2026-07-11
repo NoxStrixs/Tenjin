@@ -37,7 +37,7 @@ Rectangle {
             NumberAnimation {
                 from: -band.width
                 to:   skel.width + band.width
-                duration: 1100
+                duration: Platform.reducedMotion ? 0 : 1100
                 easing.type: Easing.InOutQuad
             }
             PauseAnimation { duration: 350 }

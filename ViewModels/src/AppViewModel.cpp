@@ -107,6 +107,10 @@ AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
                 m_uiTranslator = std::move(t);
             }
         }
+        // Apply the locale's direction at startup so RTL languages come up
+        // mirrored on first paint rather than after a language change.
+        if (auto* gui = qobject_cast<QGuiApplication*>(QCoreApplication::instance()))
+            gui->setLayoutDirection(QLocale(m_uiLanguage).textDirection());
     }
 
     loadBundledNews();
@@ -227,6 +231,13 @@ void AppViewModel::setUiLanguage(const QString& code)
     }
 
     QSettings().setValue("ui/language", m_uiLanguage);
+
+    // Drive the global layout direction from the active locale. The root
+    // ApplicationWindow's LayoutMirroring and the direction-aware icons in
+    // TenjinIcons read this (singletons cannot see appVM), so both flip
+    // together for RTL languages.
+    if (auto* gui = qobject_cast<QGuiApplication*>(QCoreApplication::instance()))
+        gui->setLayoutDirection(QLocale(m_uiLanguage).textDirection());
 
     // Live-swap: tell the QML engine to re-evaluate every qsTr() binding.
     // Without this the change only shows after restart.
@@ -483,6 +494,19 @@ bool AppViewModel::exportData(const QString& fileUrl)
     return true;
 }
 
+bool AppViewModel::exportDataCsv(const QString& fileUrl)
+{
+    const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
+    auto          result = m_entryService->ExportToCsv(path);
+    if (!result) {
+        setStatusMessage(tr("Export failed: ") +
+                         QString::fromStdString(result.error()));
+        return false;
+    }
+    setStatusMessage(tr("Exported CSV to %1").arg(path));
+    return true;
+}
+
 bool AppViewModel::importData(const QString& fileUrl)
 {
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
@@ -561,6 +585,23 @@ void AppViewModel::autoBackupBeforeDestructive(const QString& reason)
         setStatusMessage(tr("Backup saved before deleting: %1").arg(path));
     else
         setStatusMessage(tr("Warning: automatic backup failed before delete."));
+
+    pruneAutoBackups(dir);
+}
+
+// Keep only the N most recent auto-backups. Only files matching the
+// auto-backup name pattern are considered — user-initiated manual exports
+// (different name) are never touched.
+void AppViewModel::pruneAutoBackups(const QString& dir)
+{
+    constexpr int kKeep = 5;
+    QDir d(dir);
+    // Auto-backups are named "tenjin-backup-<reason>-<stamp>.json".
+    QStringList backups =
+        d.entryList(QStringList{ QStringLiteral("tenjin-backup-*.json") },
+                    QDir::Files, QDir::Time); // newest first
+    for (int i = kKeep; i < backups.size(); ++i)
+        QFile::remove(d.filePath(backups.at(i)));
 }
 
 QString AppViewModel::exportToDocuments()
@@ -570,6 +611,17 @@ QString AppViewModel::exportToDocuments()
     const QString stamp = QDateTime::currentDateTime().toString("yyyy-MM-dd-HHmmss");
     const QString path  = dir + "/tenjin-export-" + stamp + ".json";
     if (!exportData(QUrl::fromLocalFile(path).toString()))
+        return {};
+    return path;
+}
+
+QString AppViewModel::exportToDocumentsCsv()
+{
+    const QString dir = documentsFolder();
+    QDir().mkpath(dir);
+    const QString stamp = QDateTime::currentDateTime().toString("yyyy-MM-dd-HHmmss");
+    const QString path  = dir + "/tenjin-export-" + stamp + ".csv";
+    if (!exportDataCsv(QUrl::fromLocalFile(path).toString()))
         return {};
     return path;
 }

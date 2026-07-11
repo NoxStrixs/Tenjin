@@ -39,34 +39,49 @@
     }
 
     NSItemProvider* provider = results.firstObject.itemProvider;
-    NSArray<NSString*>* types = provider.registeredTypeIdentifiers;
-    NSString* typeId = types.firstObject
-        ? types.firstObject
-        : static_cast<NSString*>(UTTypeImage.identifier);
 
-    // This TU is compiled without ARC (manual reference counting), so __weak is
-    // unavailable. The delegate is owned by the service for its whole lifetime
-    // and outlives this async callback, so an unretained back-reference is safe.
+    // Choose a type identifier we can actually load as a file. Prefer movie for
+    // video and image for stills; fall back to the first registered type. Using
+    // the wrong identifier (or one that isn't a file representation) makes
+    // loadFileRepresentation fail — the cause of "video picked, nothing shows".
+    NSString* typeId = nil;
+    if ([provider hasItemConformingToTypeIdentifier:UTTypeMovie.identifier])
+        typeId = UTTypeMovie.identifier;
+    else if ([provider hasItemConformingToTypeIdentifier:UTTypeImage.identifier])
+        typeId = UTTypeImage.identifier;
+    else
+        typeId = provider.registeredTypeIdentifiers.firstObject;
+
+    if (!typeId) { if (self.onCancelled) self.onCancelled(); return; }
+
     __block __unsafe_unretained TenjinMediaPickerDelegate* weakSelf = self;
     [provider loadFileRepresentationForTypeIdentifier:typeId
                                     completionHandler:^(NSURL* _Nullable url, NSError* _Nullable error) {
-        // This completion runs off the main thread; marshal back for the emit.
+        // CRITICAL: `url` is a temporary the system reclaims as soon as this
+        // handler returns. We must COPY it out synchronously here — before any
+        // main-queue hop — then marshal only the resulting stable path.
+        if (!url || error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                TenjinMediaPickerDelegate* s = weakSelf;
+                if (s && s.onCancelled) s.onCancelled();
+            });
+            return;
+        }
+
+        NSString* fileName = url.lastPathComponent ? url.lastPathComponent : @"media";
+        NSURL* tmp = [[NSFileManager.defaultManager temporaryDirectory]
+            URLByAppendingPathComponent:
+                [NSString stringWithFormat:@"tenjin-%@-%@", [[NSUUID UUID] UUIDString], fileName]];
+        [NSFileManager.defaultManager removeItemAtURL:tmp error:nil];
+        NSError* copyErr = nil;
+        [NSFileManager.defaultManager copyItemAtURL:url toURL:tmp error:&copyErr];
+
+        NSString* outPath = copyErr ? nil : tmp.path;
         dispatch_async(dispatch_get_main_queue(), ^{
             TenjinMediaPickerDelegate* s = weakSelf;
             if (!s) return;
-            if (!url || error) { if (s.onCancelled) s.onCancelled(); return; }
-
-            NSString* fileName = url.lastPathComponent
-                ? url.lastPathComponent : @"media";
-            NSURL* tmp = [[NSFileManager.defaultManager temporaryDirectory]
-                URLByAppendingPathComponent:
-                    [NSString stringWithFormat:@"tenjin-%@-%@",
-                        [[NSUUID UUID] UUIDString], fileName]];
-            [NSFileManager.defaultManager removeItemAtURL:tmp error:nil];
-            NSError* copyErr = nil;
-            [NSFileManager.defaultManager copyItemAtURL:url toURL:tmp error:&copyErr];
-            if (copyErr) { if (s.onCancelled) s.onCancelled(); return; }
-            if (s.onPicked) s.onPicked(QString::fromNSString(tmp.path));
+            if (outPath) { if (s.onPicked) s.onPicked(QString::fromNSString(outPath)); }
+            else         { if (s.onCancelled) s.onCancelled(); }
         });
     }];
 }

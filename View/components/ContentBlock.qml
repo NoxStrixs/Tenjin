@@ -91,8 +91,8 @@ Rectangle {
     SequentialAnimation on scale {
         running: root._isNewlyAdded
         loops: 3
-        NumberAnimation { from: 1.0;  to: 1.02; duration: 200; easing.type: Easing.OutCubic }
-        NumberAnimation { from: 1.02; to: 1.0;  duration: 200; easing.type: Easing.InCubic }
+        NumberAnimation { from: 1.0;  to: 1.02; duration: Platform.effDurationMed; easing.type: Easing.OutCubic }
+        NumberAnimation { from: 1.02; to: 1.0;  duration: Platform.effDurationMed; easing.type: Easing.InCubic }
     }
     // Clear the pulse after ~2s so a second add of a different block
     // pulses cleanly. Triggered by the binding becoming true.
@@ -108,7 +108,7 @@ Rectangle {
     implicitWidth: parent ? parent.width : 0
     implicitHeight: layout.implicitHeight + 12
 
-    Behavior on color { ColorAnimation { duration: 120 } }
+    Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
     ColumnLayout {
         id: layout
@@ -297,7 +297,7 @@ Rectangle {
             // for fine control; this is the discoverable, mobile-
             // friendly counterpart.
             RowLayout {
-                visible: root.editMode
+                visible: root.editMode && !Platform.isMobile
                 Layout.alignment: Qt.AlignVCenter
                 spacing: 4
 

@@ -76,7 +76,50 @@ if(WIN32)
         set(_tenjin_rc "${CMAKE_BINARY_DIR}/generated/tenjin.rc")
         file(TO_NATIVE_PATH "${_tenjin_ico}" _tenjin_ico_native)
         string(REPLACE "\\" "\\\\" _tenjin_ico_rc "${_tenjin_ico_native}")
-        file(WRITE "${_tenjin_rc}" "IDI_ICON1 ICON \"${_tenjin_ico_rc}\"\n")
+
+        # VERSIONINFO populates the Explorer "Details" tab and helps SmartScreen
+        # reputation. Version fields come from the project version; the comma
+        # form (a,b,c,0) is required by the binary FILEVERSION/PRODUCTVERSION.
+        set(_v_major ${PROJECT_VERSION_MAJOR})
+        set(_v_minor ${PROJECT_VERSION_MINOR})
+        set(_v_patch ${PROJECT_VERSION_PATCH})
+        set(_v_comma "${_v_major},${_v_minor},${_v_patch},0")
+        set(_v_dot   "${_v_major}.${_v_minor}.${_v_patch}.0")
+
+        file(WRITE "${_tenjin_rc}"
+"IDI_ICON1 ICON \"${_tenjin_ico_rc}\"
+
+#include <winver.h>
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION ${_v_comma}
+ PRODUCTVERSION ${_v_comma}
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS VOS__WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK \"StringFileInfo\"
+    BEGIN
+        BLOCK \"040904b0\"
+        BEGIN
+            VALUE \"CompanyName\", \"Tenjin Maintainers\"
+            VALUE \"FileDescription\", \"Tenjin — spaced-repetition vocabulary\"
+            VALUE \"FileVersion\", \"${_v_dot}\"
+            VALUE \"InternalName\", \"Tenjin\"
+            VALUE \"OriginalFilename\", \"Tenjin.exe\"
+            VALUE \"ProductName\", \"Tenjin\"
+            VALUE \"ProductVersion\", \"${_v_dot}\"
+            VALUE \"LegalCopyright\", \"Copyright (c) 2026 Tenjin Maintainers\"
+        END
+    END
+    BLOCK \"VarFileInfo\"
+    BEGIN
+        VALUE \"Translation\", 0x409, 1200
+    END
+END
+")
         target_sources(Tenjin PRIVATE "${_tenjin_rc}")
     else()
         message(WARNING

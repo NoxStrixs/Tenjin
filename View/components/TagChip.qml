@@ -22,6 +22,11 @@ Rectangle {
     readonly property int  _fontPx: compact ? Platform.fontTiny : Platform.fontSmall
     readonly property bool _hovered: interactive && bodyArea.containsMouse
 
+    // Screen readers: the chip is a button when tappable, otherwise a label.
+    Accessible.role: interactive ? Accessible.Button : Accessible.StaticText
+    Accessible.name: tagName
+    Accessible.description: interactive ? qsTr("Filter by this tag") : ""
+
     implicitHeight: _h
     implicitWidth:  row.implicitWidth + 2 * Platform.chipPaddingH
     radius: _h / 2
@@ -72,6 +77,8 @@ Rectangle {
                 id: removeText
                 anchors.centerIn: parent
                 text: "✕"
+                Accessible.role: Accessible.Button
+                Accessible.name: qsTr("Remove tag %1").arg(chip.tagName)
                 color: chip.active ? Platform.textOnDark : Platform.danger
                 font.pixelSize: chip._fontPx
                 font.bold: true

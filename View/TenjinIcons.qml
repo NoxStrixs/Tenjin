@@ -48,6 +48,19 @@ QtObject {
     // ── Navigation ────────────────────────────────────────────────────────────
     readonly property string chevronLeft:  "\ue5cb"   // chevron_left
     readonly property string chevronRight: "\ue5cc"   // chevron_right
+
+    // Direction-aware aliases: "back"/"forward" follow the UI text direction,
+    // so they flip automatically under RTL (Arabic, Hebrew). Use these for
+    // navigation affordances; use chevronLeft/Right only for literal
+    // left/right meanings (e.g. a physical arrow in a diagram).
+    //
+    // Reads Qt.application.layoutDirection (a global Qt property) rather than
+    // appVM — this is a pragma Singleton, and singletons cannot access context
+    // properties. main.cpp sets the application layout direction alongside the
+    // translator when the UI language changes.
+    readonly property bool _rtl: Qt.application.layoutDirection === Qt.RightToLeft
+    readonly property string chevronBack:    _rtl ? chevronRight : chevronLeft
+    readonly property string chevronForward: _rtl ? chevronLeft  : chevronRight
     readonly property string menu:         "\ue5d2"   // menu
     readonly property string close:        "\ue5cd"   // close
     readonly property string expandMore:   "\ue5cf"   // expand_more

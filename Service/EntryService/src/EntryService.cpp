@@ -66,6 +66,11 @@ Result_t<bool> EntryService::ExportToJson(const QString& path)
     return m_db->ExportToJson(path);
 }
 
+Result_t<bool> EntryService::ExportToCsv(const QString& path)
+{
+    return m_db->ExportToCsv(path);
+}
+
 Result_t<bool> EntryService::ImportFromJson(const QString& path)
 {
     return m_db->ImportFromJson(path);

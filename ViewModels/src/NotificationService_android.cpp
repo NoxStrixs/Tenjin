@@ -54,6 +54,42 @@ protected:
         QtAndroidPrivate::requestPermission(perm);
         return true;
     }
+
+    // Schedule the repeating daily reminder with AlarmManager (via the
+    // AlarmScheduler Java helper) so it fires even when the app is not running.
+    bool scheduleDailyNative(int hour, int minute, const QString& title,
+                             const QString& body) override
+    {
+        QJniObject context = QNativeInterface::QAndroidApplication::context();
+        if (!context.isValid())
+            return false;
+
+        QJniObject jTitle = QJniObject::fromString(title);
+        QJniObject jBody  = QJniObject::fromString(body);
+
+        QJniObject::callStaticMethod<void>(
+            "app/tenjin/Tenjin/AlarmScheduler",
+            "schedule",
+            "(Landroid/content/Context;IILjava/lang/String;Ljava/lang/String;)V",
+            context.object(),
+            static_cast<jint>(hour),
+            static_cast<jint>(minute),
+            jTitle.object<jstring>(),
+            jBody.object<jstring>());
+        return true;
+    }
+
+    void cancelDailyNative() override
+    {
+        QJniObject context = QNativeInterface::QAndroidApplication::context();
+        if (!context.isValid())
+            return;
+        QJniObject::callStaticMethod<void>(
+            "app/tenjin/Tenjin/AlarmScheduler",
+            "cancel",
+            "(Landroid/content/Context;)V",
+            context.object());
+    }
 };
 
 } // namespace

@@ -94,6 +94,39 @@ function(_tenjin_subset_static IN OUT UNICODES SUCCESS_VAR)
     set(${SUCCESS_VAR} TRUE PARENT_SCOPE)
 endfunction()
 
+# Rewrite the OpenType `name` table so the internal family is NOT "Noto Sans".
+# OFL 1.1's Reserved Font Name clause forbids modified versions from using the
+# reserved name ("Noto"); our instanced+subset+merged fonts are modified, so
+# they must carry an independent family name. QML resolves the family from the
+# loaded font (FontLoader.font.family), so the app picks this up automatically.
+#   name IDs rewritten: 1/16 (family), 4 (full), 6 (postscript), 3 (unique).
+function(_tenjin_rename_family FONT NEWFAMILY)
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" -c "
+import sys
+from fontTools.ttLib import TTFont
+path, fam = sys.argv[1], sys.argv[2]
+f = TTFont(path)
+name = f['name']
+ps = fam.replace(' ', '')
+for rec in name.names:
+    nid = rec.nameID
+    if nid in (1, 16):
+        rec.string = fam
+    elif nid == 4:
+        rec.string = fam
+    elif nid == 6:
+        rec.string = ps
+    elif nid == 3:
+        rec.string = ps
+f.save(path)
+" "${FONT}" "${NEWFAMILY}"
+        RESULT_VARIABLE _rc ERROR_VARIABLE _err)
+    if(NOT _rc EQUAL 0)
+        message(WARNING "Font family rename failed for ${FONT}: ${_err}")
+    endif()
+endfunction()
+
 function(tenjin_generate_ui_fonts SRC_DIR OUT_DIR OUT_LIST)
     set(_generated "")
     find_package(Python3 COMPONENTS Interpreter QUIET)
@@ -134,14 +167,17 @@ function(tenjin_generate_ui_fonts SRC_DIR OUT_DIR OUT_LIST)
                     "${_latin_sub}" "${_arabic_sub}" "--output-file=${_merged}"
                 RESULT_VARIABLE _mrc ERROR_VARIABLE _merr)
             if(_mrc EQUAL 0)
+                _tenjin_rename_family("${_merged}" "TenjinSans")
                 list(APPEND _generated "${_merged}")
             else()
                 message(WARNING "Font merge failed (${_w}): ${_merr}; Latin-only.")
                 file(RENAME "${_latin_sub}" "${_merged}")
+                _tenjin_rename_family("${_merged}" "TenjinSans")
                 list(APPEND _generated "${_merged}")
             endif()
         elseif(_latin_ok)
             file(RENAME "${_latin_sub}" "${_merged}")
+            _tenjin_rename_family("${_merged}" "TenjinSans")
             list(APPEND _generated "${_merged}")
         endif()
     endforeach()
@@ -152,6 +188,7 @@ function(tenjin_generate_ui_fonts SRC_DIR OUT_DIR OUT_LIST)
         set(_cjk_out "${OUT_DIR}/NotoSansTenjinCJK-${_w}.otf")
         _tenjin_subset_static("${_cjk_in}" "${_cjk_out}" "${_TENJIN_CJK_UNICODES}" _cjk_ok)
         if(_cjk_ok)
+            _tenjin_rename_family("${_cjk_out}" "TenjinSansCJK")
             list(APPEND _generated "${_cjk_out}")
         endif()
     endforeach()

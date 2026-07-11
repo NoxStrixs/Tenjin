@@ -369,7 +369,7 @@ Rectangle {
                     font.pixelSize: 12
                 }
                 Text {
-                    text: TenjinIcons.chevronRight
+                    text: TenjinIcons.chevronForward
                     font.family: TenjinIcons.family
                     color: Platform.textMuted
                     font.pixelSize: Platform.fontLarge
@@ -425,7 +425,7 @@ Rectangle {
                     Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 }
                 Text {
-                    text: TenjinIcons.chevronRight
+                    text: TenjinIcons.chevronForward
                     font.family: TenjinIcons.family
                     color: Platform.textMuted
                     font.pixelSize: Platform.fontLarge

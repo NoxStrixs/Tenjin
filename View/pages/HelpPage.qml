@@ -129,7 +129,7 @@ Item {
 
                     Text {
                         anchors.centerIn: parent
-                        text: TenjinIcons.chevronLeft
+                        text: TenjinIcons.chevronBack
                         font.family: TenjinIcons.family
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontTitle

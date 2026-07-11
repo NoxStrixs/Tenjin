@@ -151,6 +151,10 @@ Flickable {
                             id: cell
                             required property var modelData
                             required property int index
+                            // Clip so no child (fixed-width control, long text,
+                            // block header row) can bleed past the cell's
+                            // proportional width and overflow the page.
+                            clip: true
 
                             // Proportional width by colSpan, minus gaps.
                             width: {
@@ -334,62 +338,9 @@ Flickable {
                                 }
                             }
 
-                            // Resize handle (bottom-right corner), edit mode only.
-                            MouseArea {
-                                id: spanHandle
-                                z: 10
-                                width: 24
-                                height: 24
-                                anchors { right: parent.right; bottom: parent.bottom }
-                                enabled: root.editMode && cell.modelData.type !== 3
-                                visible: enabled
-                                cursorShape: Qt.SizeFDiagCursor
-                                property real accum: 0
-                                property int  startSpan: 1
-                                property int  lastSpan: 1
-                                onPressed: {
-                                    accum = 0
-                                    startSpan = Math.max(1, cell.modelData.colSpan)
-                                    lastSpan = startSpan
-                                }
-                                onPositionChanged: (m) => {
-                                    if (!pressed) return
-                                    // mouseX is relative to this handle (12px wide),
-                                    // so offset from center accumulates drag distance.
-                                    accum += (m.x - width / 2)
-                                    const delta = Math.round(accum / 120)
-                                    const newSpan = Math.max(1, startSpan + delta)
-                                    if (newSpan !== lastSpan) {
-                                        lastSpan = newSpan
-                                        appVM.entryVM.setBlockSpan(cell.modelData.id, 1, newSpan)
-                                    }
-                                }
-                                Rectangle {
-                                    id: grabPad
-                                    width: 18
-                                    height: 18
-                                    radius: 3
-                                    anchors { right: parent.right; bottom: parent.bottom; margins: 2 }
-                                    color: spanHandle.pressed ? Platform.accent : Platform.surfaceAlt
-                                    border.color: Platform.accentDark
-                                    border.width: 1
-                                    visible: spanHandle.enabled
-                                    Rectangle {
-                                        width: 10; height: 1.5
-                                        color: Platform.accentDark
-                                        x: parent.width - 13; y: parent.height - 5
-                                        rotation: -45
-                                        transformOrigin: Item.Center
-                                    }
-                                    Rectangle {
-                                        width: 6; height: 1.5
-                                        color: Platform.accentDark
-                                        x: parent.width - 9; y: parent.height - 4
-                                        rotation: -45
-                                        transformOrigin: Item.Center
-                                    }
-                                }
-                            }
+                            // (Bottom-right drag-resize handle removed — the
+                            // -/+ span chips in the block header are the
+                            // discoverable, non-janky replacement.)
 
                             // Drop target: dropping block B onto this cell places
                             // B into the SAME band, beside the target.
@@ -430,8 +381,10 @@ Flickable {
         DropArea {
             id: newRowDrop
             width: parent.width
-            height: 28
-            visible: root.editMode
+            // Drag-to-reorder is a desktop interaction; hide the new-row drop
+            // target on mobile where there's no drag affordance.
+            height: (root.editMode && !Platform.isMobile) ? 28 : 0
+            visible: root.editMode && !Platform.isMobile
             keys: ["content-block"]
 
             Rectangle {

@@ -7,6 +7,7 @@
 #include <ViewModels/SidebarViewModel.h>
 #include <ViewModels/DocumentPickerService.h>
 
+#include <QLocale>
 #include <QObject>
 #include <QQmlEngine>
 #include <QSet>
@@ -253,6 +254,7 @@ public slots:
 
 public:
     Q_INVOKABLE bool exportData(const QString& fileUrl);
+    Q_INVOKABLE bool exportDataCsv(const QString& fileUrl);
     Q_INVOKABLE bool importData(const QString& fileUrl);
     // Import an Anki .apkg package. fileUrl may be a file:// URL or raw path.
     // Returns true on success and posts a status message with the count.
@@ -284,6 +286,7 @@ public:
     //   importFromPath(path) -- imports a file by absolute path; used
     //   when the user taps a row in the picker.
     Q_INVOKABLE QString      exportToDocuments();
+    Q_INVOKABLE QString      exportToDocumentsCsv();
     Q_INVOKABLE QVariantList availableExports() const;
     // Like availableExports but also lists *.apkg (Anki) files so the mobile
     // import picker can offer both formats.
@@ -368,6 +371,7 @@ public:
     // Writes a timestamped JSON backup of all data before a destructive bulk
     // delete (recoverable via import). Best effort; never blocks the delete.
     void autoBackupBeforeDestructive(const QString& reason);
+    void pruneAutoBackups(const QString& dir);
 
     // -- UI language (separate from content-language filter) ----------
     //
@@ -387,6 +391,16 @@ public:
     // file is present in the qrc -- this drives the picker so we
     // only offer locales that actually have translations.
     Q_PROPERTY(QString uiLanguage READ uiLanguage WRITE setUiLanguage NOTIFY uiLanguageChanged)
+
+    // True when the active UI language is written right-to-left (Arabic,
+    // Hebrew, Persian, Urdu). The root ApplicationWindow binds LayoutMirroring
+    // to this so anchors and RowLayouts mirror automatically. Derived from
+    // QLocale rather than a hardcoded list so new locales work unchanged.
+    Q_PROPERTY(bool uiLayoutRightToLeft READ uiLayoutRightToLeft NOTIFY uiLanguageChanged)
+    bool uiLayoutRightToLeft() const
+    {
+        return QLocale(uiLanguage()).textDirection() == Qt::RightToLeft;
+    }
     Q_PROPERTY(QStringList supportedUiLanguages READ supportedUiLanguages CONSTANT)
     QString uiLanguage() const
     {

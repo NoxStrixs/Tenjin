@@ -51,7 +51,7 @@ Dialog {
     readonly property real _avail: (parent ? parent.height : 0) - _kb - Platform.headerHeight * 2
     height: Math.min(implicitHeight, _avail > 120 ? _avail : implicitHeight)
 
-    Behavior on y { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+    Behavior on y { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
 
     // Snappy fade-and-rise enter / fade-and-sink exit. Subclasses inherit this
     // automatically — every Add*/Confirm/Rename dialog now lands the same way.

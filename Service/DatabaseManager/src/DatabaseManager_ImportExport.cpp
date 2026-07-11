@@ -11,6 +11,8 @@
 #include <QJsonObject>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStringConverter>
+#include <QTextStream>
 #include <QUuid>
 #include <QVariant>
 
@@ -138,6 +140,73 @@ Result_t<bool> DatabaseManager::ExportToJson(const QString& path)
     if (!f.open(QIODevice::WriteOnly))
         return std::unexpected("Cannot open file for writing: " + path.toStdString());
     f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    f.close();
+    return true;
+}
+
+// CSV export: one row per entry (word, language, tags, text). A flat
+// projection for spreadsheets — unlike the JSON export it is lossy (no
+// relations, deck membership, or block structure), by design. Fields are
+// escaped per RFC 4180: any field containing a comma, quote, or newline is
+// wrapped in double quotes with internal quotes doubled.
+namespace {
+QString csvEscape(const QString& in)
+{
+    if (in.contains(',') || in.contains('"') || in.contains('\n') || in.contains('\r')) {
+        QString v = in;
+        v.replace('"', "\"\"");
+        return '"' + v + '"';
+    }
+    return in;
+}
+} // namespace
+
+Result_t<bool> DatabaseManager::ExportToCsv(const QString& path)
+{
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text))
+        return std::unexpected("Cannot open file for writing: " + path.toStdString());
+
+    QTextStream out(&f);
+    out.setEncoding(QStringConverter::Utf8);
+    // BOM so Excel opens UTF-8 correctly.
+    out << QChar(0xFEFF);
+    out << "word,language,tags,text\r\n";
+
+    QSqlQuery eq(m_db);
+    eq.exec("SELECT id, title, language FROM entry ORDER BY title;");
+    while (eq.next()) {
+        const qlonglong eid = eq.value(0).toLongLong();
+        const QString    title = eq.value(1).toString();
+        const QString    lang  = eq.value(2).toString();
+
+        QStringList tags;
+        QSqlQuery tq(m_db);
+        tq.prepare("SELECT t.name FROM tag t JOIN entry_tag et ON et.tag_id = t.id "
+                   "WHERE et.entry_id = :eid ORDER BY t.name;");
+        tq.bindValue(":eid", eid);
+        tq.exec();
+        while (tq.next())
+            tags << tq.value(0).toString();
+
+        QStringList blocks;
+        QSqlQuery cq(m_db);
+        cq.prepare("SELECT content FROM entry_content WHERE entry_id = :eid "
+                   "ORDER BY row, col;");
+        cq.bindValue(":eid", eid);
+        cq.exec();
+        while (cq.next()) {
+            const QString c = cq.value(0).toString().trimmed();
+            if (!c.isEmpty())
+                blocks << c;
+        }
+
+        out << csvEscape(title) << ','
+            << csvEscape(lang) << ','
+            << csvEscape(tags.join("; ")) << ','
+            << csvEscape(blocks.join(" | ")) << "\r\n";
+    }
+
     f.close();
     return true;
 }
