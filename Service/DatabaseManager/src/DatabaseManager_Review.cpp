@@ -447,6 +447,8 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetFilteredReviews(
     }
     return reviews;
 }
+
+Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
 {
     DeckStats_t stats;
 

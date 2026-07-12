@@ -372,11 +372,11 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
                 QDir().mkpath(mdir);
                 const QString mpath = mdir + "/" + bContent;
                 if (!QFile::exists(mpath)) {
-                    QByteArray bytes =
+                    QByteArray mediaBytes =
                         QByteArray::fromBase64(b.value("mediaData").toString().toLatin1());
                     QFile out(mpath);
                     if (out.open(QIODevice::WriteOnly)) {
-                        out.write(bytes);
+                        out.write(mediaBytes);
                         out.close();
                     }
                 }
