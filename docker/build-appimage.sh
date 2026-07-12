@@ -41,8 +41,21 @@ DESKTOP="$(find "${APPDIR}" -name 'tenjin.desktop' | head -1)"
 ICON="$(find "${APPDIR}" -name 'tenjin.png' -o -name 'Tenjin.png' | head -1)"
 
 echo "==> Running linuxdeploy (bundling Qt runtime + QML imports)"
+# Strip unused Qt SQL driver plugins before deployment. linuxdeploy-plugin-qt
+# bundles every .so under plugins/sqldrivers; the aqt Qt kit ships mimer/mysql
+# drivers linking third-party client libs absent from this image, which aborts
+# the deploy ("Could not find dependency: libmimerapi.so"). Tenjin only loads
+# QSQLITE. Same workaround the CI workflow uses
+# (linuxdeploy/linuxdeploy-plugin-qt#153).
+QT_PREFIX="$(dirname "$(dirname "${QMAKE}")")"
+SQLDRIVERS_DIR="${QT_PREFIX}/plugins/sqldrivers"
+if [ -d "${SQLDRIVERS_DIR}" ]; then
+    find "${SQLDRIVERS_DIR}" -maxdepth 1 -name '*.so' ! -name 'libqsqlite.so' -delete
+fi
+
 # The Qt plugin needs QML_SOURCES_PATHS to trace QML imports for a QtQuick app.
 export QML_SOURCES_PATHS="${ROOT}/View"
+export QMAKE
 linuxdeploy-x86_64.AppImage \
     --appdir "${APPDIR}" \
     --plugin qt \

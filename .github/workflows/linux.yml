@@ -46,7 +46,8 @@ jobs:
            libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
            libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
            libxcb-xkb1 libxkbcommon0 libfontconfig1 \
-           libfuse2t64 patchelf wget file librsvg2-bin
+           libfuse2t64 patchelf wget file librsvg2-bin \
+           libspeechd2
           # Fail fast if the toolchain lacks C++23 <expected> (Result_t<T>).
           echo '#include <expected>' | g++ -std=c++23 -E -xc++ - >/dev/null \
             || { echo "::error::C++23 <expected> unavailable"; exit 1; }

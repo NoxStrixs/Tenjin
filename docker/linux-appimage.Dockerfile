@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxcb-shape0 libxcb-xinerama0 libxcb-xkb-dev libfontconfig1 \
         libdbus-1-3 libnss3 libasound2 \
         fuse libfuse2 file desktop-file-utils zsync \
+        libspeechd2 \
         libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
