@@ -58,6 +58,26 @@ QString ReviewViewModel::currentWord() const
     return {};
 }
 
+QString ReviewViewModel::currentClozeText() const
+{
+    const qint64 wid = currentWordId();
+    if (wid < 0)
+        return {};
+    auto blocks = m_entryService->GetContentForEntry(wid);
+    if (!blocks)
+        return {};
+    for (const auto& b : *blocks) {
+        if (b.type == Service::ContentType_t::Cloze && !b.content.empty())
+            return QString::fromStdString(b.content);
+    }
+    return {};
+}
+
+bool ReviewViewModel::currentHasCloze() const
+{
+    return !currentClozeText().isEmpty();
+}
+
 QString ReviewViewModel::currentAnswer() const
 {
     qint64 wid = currentWordId();
@@ -112,6 +132,65 @@ QString ReviewViewModel::currentAnswer() const
         out += QStringLiteral("<li>") + it + QStringLiteral("</li>");
     out += QStringLiteral("</ol>");
     return out;
+}
+
+void ReviewViewModel::startFilteredSession(int mode, const QVariantList& tagIds,
+                                           const QString& language, qint64 deckId,
+                                           int aheadDays, int limit)
+{
+    Service::StudyFilter_t filter;
+    filter.mode      = static_cast<Service::StudyMode_t>(mode);
+    filter.language  = language.toStdString();
+    filter.deckId    = deckId;
+    filter.aheadDays = aheadDays > 0 ? aheadDays : 3;
+    filter.limit     = limit > 0 ? limit : 100;
+    for (const QVariant& v : tagIds)
+        filter.tagIds.push_back(v.toLongLong());
+
+    auto result = m_deckService->StartFilteredSession(filter);
+    if (!result) {
+        emit errorOccurred(QString::fromStdString(result.error()));
+        return;
+    }
+    m_session          = std::move(*result);
+    m_showingAnswer    = false;
+    m_sessionCorrect   = 0;
+    m_sessionIncorrect = 0;
+    m_sessionStartMs   = QDateTime::currentMSecsSinceEpoch();
+    emit sessionChanged();
+    emit showingAnswerChanged();
+}
+
+namespace {
+
+// Normalize for forgiving comparison: NFD-decompose, drop combining marks
+// (accents), casefold, and strip surrounding whitespace/punctuation. "Café" and
+// "cafe " both become "cafe".
+QString normalizeAnswer(const QString& in)
+{
+    QString s = in.normalized(QString::NormalizationForm_D);
+    QString out;
+    out.reserve(s.size());
+    for (const QChar c : s) {
+        if (c.category() == QChar::Mark_NonSpacing) continue; // combining accents
+        if (c.isLetterOrNumber() || c.isSpace()) out.append(c.toCaseFolded());
+        // punctuation dropped
+    }
+    return out.simplified(); // collapse internal whitespace + trim
+}
+
+} // namespace
+
+QString ReviewViewModel::normalizedWord() const
+{
+    return normalizeAnswer(currentWord());
+}
+
+bool ReviewViewModel::checkTypedAnswer(const QString& typed) const
+{
+    const QString a = normalizeAnswer(typed);
+    const QString b = normalizeAnswer(currentWord());
+    return !b.isEmpty() && a == b;
 }
 
 void ReviewViewModel::startSession(qint64 deckId)

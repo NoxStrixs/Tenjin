@@ -4,6 +4,7 @@
 
 #include <QDate>
 #include <QDateTime>
+#include <QDir>
 #include <QFile>
 #include <QHash>
 #include <QJsonArray>
@@ -11,6 +12,7 @@
 #include <QJsonObject>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStandardPaths>
 #include <QStringConverter>
 #include <QTextStream>
 #include <QUuid>
@@ -19,6 +21,18 @@
 #include <cmath>
 
 namespace Service {
+
+// The managed media directory, resolved identically to the ViewModels layer
+// (AppDataLocation/media). Computed here rather than injected to keep the DB
+// layer free of an upward dependency — the location is a stable, well-known
+// standard path.
+namespace {
+QString tenjinMediaDir()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+           + QStringLiteral("/media");
+}
+} // namespace
 
 Result_t<bool> DatabaseManager::ExportToJson(const QString& path)
 {
@@ -53,15 +67,34 @@ Result_t<bool> DatabaseManager::ExportToJson(const QString& path)
             cq.exec();
             while (cq.next()) {
                 QJsonObject b;
+                const int   blockType = cq.value(1).toInt();
+                const QString blockContent = cq.value(2).toString();
                 b["guid"]      = cq.value(0).toString();
-                b["type"]      = cq.value(1).toInt();
-                b["content"]   = cq.value(2).toString();
+                b["type"]      = blockType;
+                b["content"]   = blockContent;
                 b["row"]       = cq.value(3).toInt();
                 b["col"]       = cq.value(4).toInt();
                 b["rowSpan"]   = cq.value(5).toInt();
                 b["colSpan"]   = cq.value(6).toInt();
                 b["pos"]       = cq.value(7).toString();
                 b["updatedAt"] = cq.value(8).toLongLong();
+
+                // Media blocks (type 1) store a filename under the managed media
+                // dir; the file itself lives outside the DB. Embed its bytes as
+                // base64 so the export is self-contained and survives a move to
+                // another device. Oversized files are skipped (path-only) to
+                // keep the JSON manageable — a warning is not fatal.
+                if (blockType == 1 && !blockContent.isEmpty()) {
+                    const QString mpath = tenjinMediaDir() + "/" + blockContent;
+                    QFile mf(mpath);
+                    constexpr qint64 kMaxEmbed = 25 * 1024 * 1024; // 25 MB/file
+                    if (mf.exists() && mf.size() <= kMaxEmbed
+                        && mf.open(QIODevice::ReadOnly)) {
+                        b["mediaData"]     = QString::fromLatin1(mf.readAll().toBase64());
+                        b["mediaEncoding"] = "base64";
+                        mf.close();
+                    }
+                }
                 blocks.append(b);
             }
             w["blocks"] = blocks;
@@ -329,6 +362,26 @@ Result_t<bool> DatabaseManager::ImportFromJson(const QString& path)
                 continue;
             qint64 bExisting = 0;
             qint64 bid       = findByGuid("entry_content", bg, bExisting);
+
+            // Restore embedded media (base64) into the managed media dir before
+            // inserting/updating the block, so the file the content field names
+            // exists on this device. Skips if the file is already present.
+            const QString bContent = b.value("content").toString();
+            if (b.contains("mediaData") && !bContent.isEmpty()) {
+                const QString mdir = tenjinMediaDir();
+                QDir().mkpath(mdir);
+                const QString mpath = mdir + "/" + bContent;
+                if (!QFile::exists(mpath)) {
+                    QByteArray bytes =
+                        QByteArray::fromBase64(b.value("mediaData").toString().toLatin1());
+                    QFile out(mpath);
+                    if (out.open(QIODevice::WriteOnly)) {
+                        out.write(bytes);
+                        out.close();
+                    }
+                }
+            }
+
             if (bid < 0) {
                 QSqlQuery ins(m_db);
                 ins.prepare("INSERT INTO entry_content "

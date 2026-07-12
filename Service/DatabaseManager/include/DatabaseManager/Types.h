@@ -23,6 +23,8 @@ enum class ContentType_t : int {
     Tense      = 6, // Verb conjugation table; body is JSON object of
                     // tense → form pairs ({"present":"go","past":"went",
                     // "future":"will go","conditional":"would go"})
+    Cloze      = 7, // Fill-in-the-blank text with Anki-style {{cN::answer::hint}}
+                    // markers. Masked on the review front, revealed on answer.
 };
 
 inline std::string ToKindString(ContentType_t t)
@@ -42,6 +44,8 @@ inline std::string ToKindString(ContentType_t t)
         return "header";
     case ContentType_t::Tense:
         return "tense";
+    case ContentType_t::Cloze:
+        return "cloze";
     }
     return "note";
 }
@@ -60,11 +64,13 @@ inline ContentType_t FromKindString(std::string_view s)
         return ContentType_t::Header;
     if (s == "tense")
         return ContentType_t::Tense;
+    if (s == "cloze")
+        return ContentType_t::Cloze;
     return ContentType_t::Note;
 }
 
 // Convert an untrusted integer (e.g. from an imported file) into a valid
-// ContentType_t, clamping anything out of the known 0..6 range to Note. Using
+// ContentType_t, clamping anything out of the known 0..7 range to Note. Using
 // static_cast<ContentType_t> directly on external data would store an invalid
 // enum value that later switch statements don't handle.
 inline ContentType_t ValidContentType(int raw)
@@ -77,6 +83,7 @@ inline ContentType_t ValidContentType(int raw)
     case ContentType_t::Formula:
     case ContentType_t::Header:
     case ContentType_t::Tense:
+    case ContentType_t::Cloze:
         return static_cast<ContentType_t>(raw);
     }
     return ContentType_t::Note;
@@ -130,6 +137,8 @@ struct Deck_t {
     FilterMode_t filterMode = FilterMode_t::And;
     std::string  createdAt;
     int          newCardsPerDay = 20;
+    std::string  scheduler = "sm2";   // "sm2" or "fsrs"
+    double       fsrsRetention = 0.9; // FSRS desired retention (0.7..0.97)
 };
 
 // SM-2 scheduling state for one (deck, word) pair.

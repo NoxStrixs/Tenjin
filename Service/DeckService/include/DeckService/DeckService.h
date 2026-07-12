@@ -12,6 +12,26 @@ struct ReviewSession_t {
     ID_t                  deckId = -1;
     std::vector<Review_t> queue;
     int                   currentIndex = 0;
+    // When false, SubmitCard logs the review for stats but does NOT advance the
+    // SRS schedule — used by cram / study-ahead filtered sessions so practice
+    // doesn't disturb real scheduling. Normal due sessions leave this true.
+    bool                  reschedule = true;
+};
+
+// Custom-study filter. Mode selects which cards; tag/language narrow them.
+enum class StudyMode_t {
+    Due = 0,      // normally-due cards (default review)
+    Ahead = 1,    // cards due within the next few days, pulled early
+    Cram = 2      // any matching cards regardless of schedule (pure practice)
+};
+
+struct StudyFilter_t {
+    StudyMode_t          mode = StudyMode_t::Due;
+    std::vector<ID_t>    tagIds;          // empty = any tag
+    std::string          language;        // empty = any language
+    ID_t                 deckId = -1;     // -1 = all decks
+    int                  aheadDays = 3;   // for Ahead mode
+    int                  limit = 100;     // cap the queue
 };
 
 class DeckService
@@ -25,6 +45,7 @@ public:
     Result_t<std::vector<Deck_t>> GetAllDecks() const;
     Result_t<bool>                DeleteDeck(ID_t deckId);
     Result_t<bool>                SetNewCardsPerDay(ID_t deckId, int perDay);
+    Result_t<bool>                SetScheduler(ID_t deckId, const std::string& scheduler, double retention);
 
     // Bulk wipe + tag-impact query. Used by the Settings danger zone and
     // by the tag-delete confirmation popup (which warns the user when
@@ -50,6 +71,7 @@ public:
 
     // Review session
     Result_t<ReviewSession_t> StartSession(ID_t deckId);
+    Result_t<ReviewSession_t> StartFilteredSession(const StudyFilter_t& filter);
     Result_t<Review_t>        SubmitCard(ReviewSession_t& session, int quality);
     bool                      IsComplete(const ReviewSession_t& session) const;
     const Review_t*           CurrentCard(const ReviewSession_t& session) const;

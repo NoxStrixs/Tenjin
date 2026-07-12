@@ -92,7 +92,11 @@ const Step kV1 = {
     "created_at  TEXT DEFAULT (datetime('now')),"
     "guid TEXT DEFAULT '',"
     "updated_at INTEGER DEFAULT 0,"
-    "new_cards_per_day INTEGER NOT NULL DEFAULT 20);",
+    "new_cards_per_day INTEGER NOT NULL DEFAULT 20,"
+    // Scheduler per deck: 'sm2' (default, unchanged for existing decks) or
+    // 'fsrs'. fsrs_retention is the FSRS desired-recall target (0.7..0.97).
+    "scheduler TEXT NOT NULL DEFAULT 'sm2',"
+    "fsrs_retention REAL NOT NULL DEFAULT 0.9);",
 
     "CREATE TABLE IF NOT EXISTS deck_entry ("
     "deck_id  INTEGER REFERENCES deck(id)  ON DELETE CASCADE,"
@@ -113,6 +117,11 @@ const Step kV1 = {
     "repetitions      INTEGER DEFAULT 0,"
     "lapses           INTEGER NOT NULL DEFAULT 0,"
     "is_leech         INTEGER NOT NULL DEFAULT 0,"
+    // FSRS-5 memory state. stability/difficulty are 0 until a card's first FSRS
+    // review; SM-2 cards leave them untouched. These coexist with the SM-2
+    // columns so a deck can switch schedulers without losing history.
+    "stability        REAL NOT NULL DEFAULT 0,"
+    "difficulty       REAL NOT NULL DEFAULT 0,"
     "next_review_date TEXT,"
     "last_review_date TEXT,"
     "UNIQUE (deck_id, entry_id));",

@@ -36,42 +36,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Load .env into environment
-        run: |
-          echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"
-          if [ -f .env ]; then
-            awk -F= '
-              /^[[:space:]]*#/ { next } /^[[:space:]]*$/ { next } NF < 2 { next }
-              { k=$1; $1=""; v=substr($0,2);
-                sub(/^[[:space:]]+/,"",k); sub(/[[:space:]]+$/,"",k);
-                sub(/^[[:space:]]+/,"",v); sub(/[[:space:]]+$/,"",v);
-                if (v ~ /^".*"$/ || v ~ /^'\''.*'\''$/) v=substr(v,2,length(v)-2);
-                print k "=" v
-              }
-            ' .env >> "$GITHUB_ENV"
-          fi
-
-      # Seed empty translations/*.ts files if the user hasn't committed
-      # any yet. Avoids "no rule to make target tenjin_ja.ts" errors from
-      # qt_add_translations on a fresh clone. The .ts file list mirrors
-      # TENJIN_UI_LANGUAGES in cmake/Translations.cmake.
-      - name: Seed translation .ts files if missing
-        run: |
-          mkdir -p translations
-          for lang in ja es fr de zh_CN pt ko it ru ar; do
-            f="translations/tenjin_${lang}.ts"
-            if [ ! -f "$f" ]; then
-              cat > "$f" <<EOF
-          <?xml version="1.0" encoding="utf-8"?>
-          <!DOCTYPE TS>
-          <TS version="2.1" language="${lang}">
-          </TS>
-          EOF
-              echo "  seeded empty $f"
-            fi
-          done
-          ls -la translations/ | head
-
       - name: Install system packages
         run: |
           sudo apt-get update
@@ -83,32 +47,17 @@ jobs:
            libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 \
            libxcb-xkb1 libxkbcommon0 libfontconfig1 \
            libfuse2t64 patchelf wget file librsvg2-bin
-          echo "===== compiler versions ====="
-          gcc --version
-          g++ --version
-          echo "===== <expected> available? ====="
-          echo '#include <expected>' | g++ -std=c++23 -E -xc++ - >/dev/null && echo "OK" || (echo "MISSING — abort" && exit 1)
+          # Fail fast if the toolchain lacks C++23 <expected> (Result_t<T>).
+          echo '#include <expected>' | g++ -std=c++23 -E -xc++ - >/dev/null \
+            || { echo "::error::C++23 <expected> unavailable"; exit 1; }
 
-      - name: Set up Python (for aqtinstall)
-        uses: actions/setup-python@v5
+      - name: Tenjin setup (Python, fonts, Qt, ccache)
+        uses: ./.github/actions/tenjin-setup
         with:
-          python-version: "3.12"
-
-      - name: Install Python build deps (font subsetting + icon)
-        run: python -m pip install --upgrade fonttools pillow
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: "6.9.3"
-          host: "linux"
-          target: "desktop"
-          arch: "linux_gcc_64"
-          modules: "qtmultimedia"
-          dir: ${{ github.workspace }}/Qt
-          cache: true
-          cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-linux
-          setup-python: false
+          qt-host: linux
+          qt-arch: linux_gcc_64
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-linux
+          extra-defaults: echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"
 
       - name: Verify Qt Linguist tools (lupdate/lrelease)
         run: |
@@ -154,10 +103,7 @@ jobs:
       - name: Build
         run: |
           ccache --max-size=$CCACHE_MAXSIZE
-          ccache --zero-stats
           cmake --build build --config Release
-          echo "===== ccache stats ====="
-          ccache --show-stats
 
       - name: Locate built binary
         run: |
@@ -221,11 +167,7 @@ jobs:
           # ever reaches libqsqlite.so. Removing the drivers we don't ship
           # is the documented workaround (see linuxdeploy/linuxdeploy-plugin-qt#153).
           SQLDRIVERS_DIR="$QT_LINUX/plugins/sqldrivers"
-          echo "sqldrivers before pruning:"
-          ls "$SQLDRIVERS_DIR"
-          find "$SQLDRIVERS_DIR" -maxdepth 1 -name '*.so' ! -name 'libqsqlite.so' -print -delete
-          echo "sqldrivers after pruning:"
-          ls "$SQLDRIVERS_DIR"
+          find "$SQLDRIVERS_DIR" -maxdepth 1 -name '*.so' ! -name 'libqsqlite.so' -delete
 
           # 5. Execute deployment using updated variable standards
           export QMAKE="$QT_LINUX/bin/qmake6"

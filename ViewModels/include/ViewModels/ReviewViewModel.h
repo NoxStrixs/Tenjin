@@ -21,6 +21,11 @@ class ReviewViewModel : public QObject
     Q_PROPERTY(QString currentWord READ currentWord NOTIFY sessionChanged)
     // All definition blocks of the current word, joined — shown on the answer side.
     Q_PROPERTY(QString currentAnswer READ currentAnswer NOTIFY sessionChanged)
+    // Raw cloze block text for the current entry (Anki-style markers), empty if
+    // the entry has no cloze block. The review UI masks it on the front and
+    // reveals it on the answer via AppViewModel.renderCloze.
+    Q_PROPERTY(QString currentClozeText READ currentClozeText NOTIFY sessionChanged)
+    Q_PROPERTY(bool currentHasCloze READ currentHasCloze NOTIFY sessionChanged)
     // True when the current card has been flagged a leech (failed many times).
     // The review UI surfaces this so the user can give it extra attention.
     Q_PROPERTY(bool currentIsLeech READ currentIsLeech NOTIFY sessionChanged)
@@ -51,6 +56,8 @@ public:
     bool    currentIsLeech() const;
     QString currentWord() const;
     QString currentAnswer() const;
+    QString currentClozeText() const;
+    bool    currentHasCloze() const;
     bool    showingAnswer() const
     {
         return m_showingAnswer;
@@ -73,9 +80,23 @@ public:
 
 public slots:
     void startSession(qint64 deckId);
+    // Custom study. mode: 0=Due, 1=Ahead, 2=Cram. tagIds/language narrow the
+    // queue; deckId -1 = all decks. Cram/Ahead are pure practice (no reschedule).
+    Q_INVOKABLE void startFilteredSession(int mode, const QVariantList& tagIds,
+                                          const QString& language, qint64 deckId,
+                                          int aheadDays, int limit);
     void stopSession();
     void revealAnswer();
     void submitQuality(int quality);
+
+    // Typed-answer mode. Compares the user's typed guess against the current
+    // word, normalized (trim, case-fold, strip accents/diacritics and
+    // surrounding punctuation) so minor differences don't count as wrong.
+    // Returns true when it matches. The UI reveals the answer and lets the user
+    // pick the SM-2 grade after seeing correctness.
+    Q_INVOKABLE bool checkTypedAnswer(const QString& typed) const;
+    // Normalized form, exposed so the UI can show a character-level diff.
+    Q_INVOKABLE QString normalizedWord() const;
 
 signals:
     void sessionChanged();

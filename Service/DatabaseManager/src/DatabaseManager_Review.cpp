@@ -53,6 +53,25 @@ Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
 
 Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int quality)
 {
+    // Determine the deck's scheduler. Default 'sm2' keeps existing behaviour.
+    QString scheduler = QStringLiteral("sm2");
+    double  retention = 0.9;
+    {
+        QSqlQuery dq(m_db);
+        dq.prepare("SELECT scheduler, fsrs_retention FROM deck WHERE id = :d;");
+        dq.bindValue(":d", QVariant::fromValue(deckId));
+        if (dq.exec() && dq.next()) {
+            scheduler = dq.value(0).toString();
+            retention = dq.value(1).toDouble();
+        }
+    }
+    if (scheduler == QStringLiteral("fsrs"))
+        return submitReviewFsrs(deckId, wordId, quality, retention);
+    return submitReviewSm2(deckId, wordId, quality);
+}
+
+Result_t<Review_t> DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, int quality)
+{
     QSqlQuery q(m_db);
     q.prepare("SELECT id, ease_factor, interval_days, repetitions, lapses, is_leech "
               "FROM review WHERE deck_id = :deckId AND entry_id = :wordId;");
@@ -155,6 +174,132 @@ Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int q
                     .lastReviewDate = today.toStdString()};
 }
 
+Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t deckId, ID_t wordId,
+                                                     int quality, double retention)
+{
+    QSqlQuery q(m_db);
+    q.prepare("SELECT id, stability, difficulty, lapses, is_leech, last_review_date "
+              "FROM review WHERE deck_id = :deckId AND entry_id = :wordId;");
+    q.bindValue(":deckId", QVariant::fromValue(deckId));
+    q.bindValue(":wordId", QVariant::fromValue(wordId));
+    if (!q.exec() || !q.next())
+        return std::unexpected("Review not found. Call initReview first.");
+
+    const ID_t reviewId = q.value(0).toLongLong();
+    Fsrs::State st{.stability = q.value(1).toDouble(), .difficulty = q.value(2).toDouble()};
+    int           lapses    = q.value(3).toInt();
+    bool          isLeech   = q.value(4).toInt() != 0;
+    const QString lastDate  = q.value(5).toString();
+
+    // UI grade 0..3 (Forgot/Hard/Good/Easy) -> FSRS 1..4 (Again/Hard/Good/Easy).
+    const int fsrsGrade = std::clamp(quality, 0, 3) + 1;
+
+    // Elapsed days since last review (0 for a new card).
+    double elapsed = 0.0;
+    if (!lastDate.isEmpty()) {
+        const QDate prev = QDate::fromString(lastDate, "yyyy-MM-dd");
+        if (prev.isValid())
+            elapsed = std::max(0, static_cast<int>(prev.daysTo(QDate::currentDate())));
+    }
+
+    Fsrs::Params p;
+    p.requestRetention = std::clamp(retention, 0.70, 0.97);
+    const Fsrs::Schedule sched = Fsrs::schedule(p, st, elapsed, fsrsGrade);
+
+    constexpr int kLeechThreshold = 8;
+    if (sched.lapsed) {
+        lapses++;
+        if (!isLeech && lapses >= kLeechThreshold)
+            isLeech = true;
+    }
+
+    const QString today    = QDate::currentDate().toString("yyyy-MM-dd");
+    const QString nextDate  = QDate::currentDate().addDays(sched.intervalDays).toString("yyyy-MM-dd");
+
+    QSqlQuery up(m_db);
+    up.prepare("UPDATE review SET stability = :s, difficulty = :d, "
+               "interval_days = :iv, lapses = :lapses, is_leech = :leech, "
+               "next_review_date = :nextDate, last_review_date = :lastDate "
+               "WHERE deck_id = :deckId AND entry_id = :wordId;");
+    up.bindValue(":s", sched.state.stability);
+    up.bindValue(":d", sched.state.difficulty);
+    up.bindValue(":iv", sched.intervalDays);
+    up.bindValue(":lapses", lapses);
+    up.bindValue(":leech", isLeech ? 1 : 0);
+    up.bindValue(":nextDate", nextDate);
+    up.bindValue(":lastDate", today);
+    up.bindValue(":deckId", QVariant::fromValue(deckId));
+    up.bindValue(":wordId", QVariant::fromValue(wordId));
+    if (!up.exec())
+        return std::unexpected(up.lastError().text().toStdString());
+
+    // Log for stats/analytics (quality on the UI scale; store interval + a
+    // pseudo ease derived from difficulty for the existing log schema).
+    {
+        QSqlQuery log(m_db);
+        log.prepare("INSERT INTO review_log "
+                    "(deck_id, entry_id, quality, ease_factor, interval_days, reviewed_at) "
+                    "VALUES (:d, :w, :q, :ef, :iv, :ts);");
+        log.bindValue(":d", QVariant::fromValue(deckId));
+        log.bindValue(":w", QVariant::fromValue(wordId));
+        log.bindValue(":q", quality);
+        log.bindValue(":ef", sched.state.difficulty);
+        log.bindValue(":iv", sched.intervalDays);
+        log.bindValue(":ts", QDateTime::currentMSecsSinceEpoch());
+        log.exec();
+    }
+
+    return Review_t{.id             = reviewId,
+                    .deckId         = deckId,
+                    .wordId         = wordId,
+                    .easeFactor     = static_cast<float>(sched.state.difficulty),
+                    .intervalDays   = static_cast<uint16_t>(sched.intervalDays),
+                    .repetitions    = 0,
+                    .lapses         = static_cast<uint16_t>(lapses),
+                    .isLeech        = isLeech,
+                    .nextReviewDate = nextDate.toStdString(),
+                    .lastReviewDate = today.toStdString()};
+}
+
+Result_t<Review_t> DatabaseManager::LogReviewOnly(ID_t deckId, ID_t wordId, int quality)
+{
+    // Read the current review row (for the ease/interval snapshot in the log)
+    // without modifying it.
+    float ef = 2.5f;
+    int   iv = 0;
+    {
+        QSqlQuery r(m_db);
+        r.prepare("SELECT ease_factor, interval_days FROM review "
+                  "WHERE deck_id = :d AND entry_id = :w;");
+        r.bindValue(":d", QVariant::fromValue(deckId));
+        r.bindValue(":w", QVariant::fromValue(wordId));
+        if (r.exec() && r.next()) {
+            ef = r.value(0).toFloat();
+            iv = r.value(1).toInt();
+        }
+    }
+
+    QSqlQuery log(m_db);
+    log.prepare("INSERT INTO review_log "
+                "(deck_id, entry_id, quality, ease_factor, interval_days, reviewed_at) "
+                "VALUES (:d, :w, :q, :ef, :iv, :ts);");
+    log.bindValue(":d", QVariant::fromValue(deckId));
+    log.bindValue(":w", QVariant::fromValue(wordId));
+    log.bindValue(":q", quality);
+    log.bindValue(":ef", ef);
+    log.bindValue(":iv", iv);
+    log.bindValue(":ts", QDateTime::currentMSecsSinceEpoch());
+    if (!log.exec())
+        return std::unexpected(log.lastError().text().toStdString());
+
+    // Return a minimal row; the schedule is unchanged so callers shouldn't rely
+    // on updated fields here.
+    return Review_t{.id = -1, .deckId = deckId, .wordId = wordId,
+                    .easeFactor = ef, .intervalDays = static_cast<uint16_t>(iv),
+                    .repetitions = 0, .lapses = 0, .isLeech = false,
+                    .nextReviewDate = {}, .lastReviewDate = {}};
+}
+
 Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
 {
     // Per-deck daily new-card limit. New cards (repetitions = 0, never reviewed)
@@ -233,7 +378,75 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
     return reviews;
 }
 
-Result_t<DeckStats_t> DatabaseManager::GetDeckStats(ID_t deckId)
+Result_t<std::vector<Review_t>> DatabaseManager::GetFilteredReviews(
+    int mode, const std::vector<ID_t>& tagIds, const std::string& language,
+    ID_t deckId, int aheadDays, int limit)
+{
+    // Build a query over review r joined to entry e, applying the filters. Mode
+    // controls the schedule predicate: Due = due today; Ahead = due within
+    // aheadDays; Cram = no schedule predicate (any matching card).
+    QString sql =
+        "SELECT DISTINCT r.id, r.deck_id, r.entry_id, r.ease_factor, r.interval_days, "
+        "r.repetitions, r.lapses, r.is_leech, r.next_review_date, r.last_review_date "
+        "FROM review r JOIN entry e ON e.id = r.entry_id ";
+
+    if (!tagIds.empty())
+        sql += "JOIN entry_tag et ON et.entry_id = e.id ";
+
+    sql += "WHERE 1=1 ";
+
+    if (deckId >= 0)
+        sql += "AND r.deck_id = :deckId ";
+    if (!language.empty())
+        sql += "AND e.language = :lang ";
+
+    // Schedule predicate by mode.
+    if (mode == 0)          // Due
+        sql += "AND r.next_review_date <= date('now', 'localtime') ";
+    else if (mode == 1)     // Ahead
+        sql += "AND r.next_review_date <= date('now', 'localtime', :ahead) ";
+    // mode == 2 (Cram): no schedule predicate.
+
+    if (!tagIds.empty()) {
+        sql += "AND et.tag_id IN (";
+        for (size_t i = 0; i < tagIds.size(); ++i)
+            sql += (i ? QStringLiteral(",:tag%1").arg(i) : QStringLiteral(":tag%1").arg(i));
+        sql += ") ";
+    }
+
+    sql += "ORDER BY r.next_review_date ASC LIMIT :lim;";
+
+    QSqlQuery q(m_db);
+    q.prepare(sql);
+    if (deckId >= 0)
+        q.bindValue(":deckId", QVariant::fromValue(deckId));
+    if (!language.empty())
+        q.bindValue(":lang", QString::fromStdString(language));
+    if (mode == 1)
+        q.bindValue(":ahead", QStringLiteral("+%1 days").arg(aheadDays));
+    for (size_t i = 0; i < tagIds.size(); ++i)
+        q.bindValue(QStringLiteral(":tag%1").arg(i), QVariant::fromValue(tagIds[i]));
+    q.bindValue(":lim", limit > 0 ? limit : 100);
+
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+
+    std::vector<Review_t> reviews;
+    while (q.next()) {
+        reviews.push_back(Review_t{
+            .id             = q.value(0).toLongLong(),
+            .deckId         = q.value(1).toLongLong(),
+            .wordId         = q.value(2).toLongLong(),
+            .easeFactor     = q.value(3).toFloat(),
+            .intervalDays   = static_cast<uint16_t>(q.value(4).toInt()),
+            .repetitions    = static_cast<uint16_t>(q.value(5).toInt()),
+            .lapses         = static_cast<uint16_t>(q.value(6).toInt()),
+            .isLeech        = q.value(7).toInt() != 0,
+            .nextReviewDate = q.value(8).toString().toStdString(),
+            .lastReviewDate = q.value(9).toString().toStdString()});
+    }
+    return reviews;
+}
 {
     DeckStats_t stats;
 

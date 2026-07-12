@@ -708,6 +708,7 @@ Item {
                     { type: 2, label: qsTr("Note") },
                     { type: 5, label: qsTr("Header")  },
                     { type: 6, label: qsTr("Tense")   },
+                    { type: 7, label: qsTr("Cloze")   },
                     { type: 4, label: qsTr("Formula") },
                     { type: 3, label: qsTr("Divider") }
                 ]

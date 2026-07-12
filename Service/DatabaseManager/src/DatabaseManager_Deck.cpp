@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <DatabaseManager/DatabaseManager.h>
 #include <DatabaseManager/Schema.h>
 
@@ -41,7 +42,7 @@ Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name, bool isSmart,
 Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day "
+    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention "
               "FROM deck WHERE id = :id;");
     q.bindValue(":id", QVariant::fromValue(id));
 
@@ -60,13 +61,15 @@ Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
                   .bIsSmart       = isSmart,
                   .filterMode     = mode,
                   .createdAt      = q.value(4).toString().toStdString(),
-                  .newCardsPerDay = q.value(5).toInt()};
+                  .newCardsPerDay = q.value(5).toInt(),
+                  .scheduler      = q.value(6).toString().toStdString(),
+                  .fsrsRetention  = q.value(7).toDouble()};
 }
 
 Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
 {
     QSqlQuery q(m_db);
-    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day "
+    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention "
                 "FROM deck ORDER BY name ASC;"))
         return std::unexpected(q.lastError().text().toStdString());
 
@@ -81,7 +84,9 @@ Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
                                .bIsSmart       = isSmart,
                                .filterMode     = mode,
                                .createdAt      = q.value(4).toString().toStdString(),
-                               .newCardsPerDay = q.value(5).toInt()});
+                               .newCardsPerDay = q.value(5).toInt(),
+                               .scheduler      = q.value(6).toString().toStdString(),
+                               .fsrsRetention  = q.value(7).toDouble()});
     }
     return decks;
 }
@@ -110,6 +115,23 @@ Result_t<bool> DatabaseManager::SetDeckNewCardsPerDay(ID_t id, int perDay)
     q.bindValue(":n", perDay);
     q.bindValue(":id", QVariant::fromValue(id));
 
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+    if (q.numRowsAffected() == 0)
+        return std::unexpected("No deck found with id: " + std::to_string(id));
+    return true;
+}
+
+Result_t<bool> DatabaseManager::SetDeckScheduler(ID_t id, const std::string& scheduler,
+                                                 double retention)
+{
+    const std::string sched = (scheduler == "fsrs") ? "fsrs" : "sm2";
+    const double ret = std::clamp(retention, 0.70, 0.97);
+    QSqlQuery q(m_db);
+    q.prepare("UPDATE deck SET scheduler = :s, fsrs_retention = :r WHERE id = :id;");
+    q.bindValue(":s", QString::fromStdString(sched));
+    q.bindValue(":r", ret);
+    q.bindValue(":id", QVariant::fromValue(id));
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
     if (q.numRowsAffected() == 0)

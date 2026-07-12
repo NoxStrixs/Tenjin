@@ -65,7 +65,15 @@ if(TENJIN_BUILD_GUI AND WEBVIEW_SUPPORT)
     find_package(Qt6 6.9 REQUIRED COMPONENTS WebView)
 endif()
 if(TENJIN_BUILD_GUI AND TTS_SUPPORT)
-    find_package(Qt6 6.9 REQUIRED COMPONENTS TextToSpeech)
+    # Optional, not REQUIRED: if the qtspeech module isn't installed (e.g. a CI
+    # kit without it, or an iOS-static Qt that lacks it), disable TTS and build
+    # the no-op stub rather than failing the whole configure. TtsService is
+    # written to compile either way.
+    find_package(Qt6 6.9 QUIET COMPONENTS TextToSpeech)
+    if(NOT Qt6TextToSpeech_FOUND)
+        message(STATUS "QtTextToSpeech not found — building without TTS (stub).")
+        set(TTS_SUPPORT OFF)
+    endif()
 endif()
 
 qt_standard_project_setup(REQUIRES 6.9)

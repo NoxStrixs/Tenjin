@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DatabaseManager/Types.h>
+#include <DatabaseManager/Fsrs.h>
 
 #include <QSqlDatabase>
 #include <QString>
@@ -97,6 +98,7 @@ public:
     Result_t<std::vector<Deck_t>> GetAllDecks();
     Result_t<bool>                DeleteDeck(ID_t id);
     Result_t<bool>                SetDeckNewCardsPerDay(ID_t id, int perDay);
+    Result_t<bool>                SetDeckScheduler(ID_t id, const std::string& scheduler, double retention);
 
     Result_t<bool> AddEntryToDeck(ID_t deckId, ID_t wordId);
     Result_t<bool> RemoveEntryFromDeck(ID_t deckId, ID_t wordId);
@@ -112,7 +114,16 @@ public:
     // Reviews + analytics
     Result_t<Review_t>                        InitReview(ID_t deckId, ID_t wordId);
     Result_t<Review_t>                        SubmitReview(ID_t deckId, ID_t wordId, int quality);
+    // Log a practice review for stats WITHOUT advancing the SRS schedule. Used
+    // by cram / study-ahead filtered sessions. Returns the unchanged review row.
+    Result_t<Review_t>                        LogReviewOnly(ID_t deckId, ID_t wordId, int quality);
     Result_t<std::vector<Review_t>>           GetDueReviews(ID_t deckId);
+    // Filtered queue for custom study. mode: 0=Due, 1=Ahead(<= aheadDays),
+    // 2=Cram(any). tagIds/language narrow the set (empty = any). deckId -1 spans
+    // all decks. Returns at most `limit` rows.
+    Result_t<std::vector<Review_t>>           GetFilteredReviews(
+        int mode, const std::vector<ID_t>& tagIds, const std::string& language,
+        ID_t deckId, int aheadDays, int limit);
     Result_t<DeckStats_t>                     GetDeckStats(ID_t deckId);
     Result_t<DeckAnalytics_t>                 GetDeckAnalytics(ID_t deckId);
     Result_t<std::vector<EntryReviewEvent_t>> GetEntryHistory(ID_t deckId, ID_t wordId);
@@ -133,6 +144,11 @@ public:
     Result_t<int> ImportFromAnki(const QString& apkgPath, const QString& intoDeck = {});
 
 private:
+    // Scheduler backends dispatched by SubmitReview based on deck.scheduler.
+    Result_t<Review_t> submitReviewSm2(ID_t deckId, ID_t wordId, int quality);
+    Result_t<Review_t> submitReviewFsrs(ID_t deckId, ID_t wordId, int quality,
+                                        double retention);
+
     // Assigns a fresh guid to any pre-existing row that lacks one.
     void backfillGuids();
 

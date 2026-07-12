@@ -42,7 +42,7 @@ Companion documents: `ROADMAP.md` (product), `SUBMISSION_CHECKLIST.md` (stores).
 - [ ] **targetSdk 34.** Play has required 35 for updates since late 2025.
       Verify the current floor at submission time (post-knowledge-cutoff
       policy) and bump `QT_ANDROID_TARGET_SDK_VERSION`.
-- [ ] **Native photo/media picker.** Android still falls back to the in-app
+- [x] **Native photo/media picker** — Photo Picker (ACTION_PICK_IMAGES, API33+, SAF fallback) + camera + SAF files + SAF import, via MediaPickerClient + ActivityResultListener. Original note: Android still falls back to the in-app
       Documents list. Implement `ACTION_PICK_IMAGES` (Photo Picker,
       permissionless, Play-preferred) + `ACTION_IMAGE_CAPTURE` for camera,
       mirroring the iOS `pickMediaNative` backend.
@@ -77,15 +77,15 @@ Priority-ordered by user impact ÷ effort:
 3. [x] **Automatic local backups (rotation added)** — rolling pre-import / pre-bulk-delete
        snapshots of the DB (the destructive `deleteAll*` ops already exist).
        Keep N=5 rotating copies under the app data dir.
-4. [ ] **Review heatmap + streaks** — calendar heatmap on StatsPage from the
+4. [x] **Review heatmap + streaks** — already implemented (AnalyticsPanel 13x7 heatmap, streak walk-back, reviewsByDay queries).
        existing review log; streak counter. Standard retention mechanic.
-5. [ ] **Filtered/custom study** — cram-by-tag, study-ahead. The tag system
+5. [x] **Filtered/custom study** — cram-by-tag, study-ahead. The tag system
        makes this mostly a DeckService query + one page.
-6. [ ] **Cloze deletions** — new content-block type; renderer masks the cloze
+6. [x] **Cloze deletions** — Anki-syntax {{cN::answer::hint}} content block; masked on review front, revealed on answer (option a). Per-deletion cards (option b) deferred to post-FSRS. — new content-block type; renderer masks the cloze
        span during review. Medium effort.
-7. [ ] **Typed-answer review mode** — text field + diff highlight against the
+7. [x] **Typed-answer review mode** — per-session, normalized matching, diff shown before grade. — text field + diff highlight against the
        answer. Medium.
-8. [ ] **FSRS scheduler (flagship)** — SM-2 is a generation behind; Anki
+8. [x] **FSRS scheduler (flagship)** — FSRS-5 implemented (Fsrs.h, verified intervals), per-deck scheduler + retention, wired into SubmitReview alongside SM-2. Optimizer deferred (default weights).
        defaults to FSRS. Port the open FSRS algorithm (permissively-licensed
        reference implementations exist) into `Service` beside SM-2 with a
        per-deck scheduler switch and parameter optimizer as a later phase.
@@ -238,8 +238,16 @@ and note it in the file header.
 | 7 | Android Photo Picker backend | M | 1.2 |
 | 8 | Heatmap/streaks, filtered study | M | 2.4–2.5 |
 | 9 | Cloze + typed answer | M | 2.6–2.7 |
-| 10 | FSRS scheduler | L | 2.8 |
+| 10 | FSRS scheduler ✓ | L | 2.8 |
 
 Unverified items are marked as such above; store-policy floors (Play
 targetSdk) and the Qt-LGPL-on-iOS position must be re-verified at submission
 time — both are outside static-audit certainty.
+
+
+### 4.11 Media portability (added)
+- [x] JSON export now embeds media-block bytes as base64 (`mediaData` field,
+      25 MB/file cap), and import decodes them back into the managed media dir.
+      Media now survives cross-device export/import. Files over the cap are
+      exported path-only (a future zip-bundle `.tenjinpkg` export could lift the
+      cap for large video). CSV export remains text-only by design.

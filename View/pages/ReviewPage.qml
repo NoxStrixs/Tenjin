@@ -6,8 +6,20 @@ import QtQuick.Layouts
 import TenjinView
 
 Rectangle {
+    id: reviewRoot
     color: Platform.reviewBg
     signal sessionEnded
+
+    // Per-session typed-answer mode (opt-in, resets each session). When on, the
+    // user types the word before revealing; correctness is shown, then grade.
+    property bool typedMode: false
+    property int  typedState: 0   // 0 = awaiting input, 1 = correct, 2 = wrong
+
+    // Reset the typed verdict whenever the current card changes.
+    Connections {
+        target: appVM.reviewVM
+        function onSessionChanged() { reviewRoot.typedState = 0 }
+    }
 
     StackLayout {
         anchors.fill: parent
@@ -157,6 +169,17 @@ Rectangle {
                 }
                 Item { Layout.fillWidth: true }
                 Button {
+                    id: typedToggle
+                    text: reviewRoot.typedMode ? qsTr("⌨ Typing") : qsTr("⌨ Type")
+                    implicitHeight: Platform.touchTarget
+                    onClicked: {
+                        reviewRoot.typedMode = !reviewRoot.typedMode
+                        reviewRoot.typedState = 0
+                    }
+                    background: Rectangle { color: reviewRoot.typedMode ? Platform.accent : Platform.surface; radius: Platform.radius; border.color: Platform.border; border.width: 1 }
+                    contentItem: Text { text: typedToggle.text; color: reviewRoot.typedMode ? Platform.textOnDark : Platform.textPrimary; font.pixelSize: Platform.fontBase; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                }
+                Button {
                     id: stopBtn
                     text: qsTr("✕ Stop"); implicitHeight: Platform.touchTarget
                     onClicked: { appVM.reviewVM.stopSession(); sessionEnded() }
@@ -227,17 +250,84 @@ Rectangle {
                         }
                     }
 
-                    Text { Layout.alignment: Qt.AlignHCenter; text: appVM.reviewVM.currentWord; color: Platform.textPrimary; font.pixelSize: Platform.fontTitle; font.bold: true }
+                    Text { Layout.alignment: Qt.AlignHCenter; text: appVM.reviewVM.currentWord; color: Platform.textPrimary; font.pixelSize: Platform.fontTitle; font.bold: true; visible: !reviewRoot.typedMode || appVM.reviewVM.showingAnswer }
+
+                    // Cloze sentence: masked before reveal, revealed after. Only
+                    // shown when the current entry has a cloze block.
+                    Text {
+                        Layout.fillWidth: true
+                        visible: appVM.reviewVM.currentHasCloze
+                        text: appVM.renderCloze(appVM.reviewVM.currentClozeText,
+                                                !appVM.reviewVM.showingAnswer)
+                        textFormat: Text.RichText
+                        color: Platform.textPrimary
+                        font.pixelSize: Platform.fontLarge
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    // Typed-answer input (per-session mode). Shown before reveal;
+                    // on check, reveals correctness + the answer, then grade.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: reviewRoot.typedMode && !appVM.reviewVM.showingAnswer
+                        spacing: 8
+                        TextField {
+                            id: typedField
+                            Layout.fillWidth: true
+                            placeholderText: qsTr("Type the word…")
+                            font.pixelSize: Platform.fontLarge
+                            color: Platform.textPrimary
+                            background: Rectangle { radius: Platform.radius; color: Platform.bg; border.color: typedField.activeFocus ? Platform.accent : Platform.border }
+                            onAccepted: checkTypedBtn.doCheck()
+                            Connections {
+                                target: appVM.reviewVM
+                                function onSessionChanged() { typedField.text = "" }
+                            }
+                        }
+                        Button {
+                            id: checkTypedBtn
+                            Layout.alignment: Qt.AlignHCenter
+                            text: qsTr("Check")
+                            implicitHeight: Platform.touchTarget; implicitWidth: 140
+                            function doCheck() {
+                                var ok = appVM.reviewVM.checkTypedAnswer(typedField.text)
+                                reviewRoot.typedState = ok ? 1 : 2
+                                haptics.light()
+                                appVM.reviewVM.revealAnswer()
+                            }
+                            onClicked: doCheck()
+                            background: Rectangle { color: Platform.accent; radius: Platform.radius }
+                            contentItem: Text { text: checkTypedBtn.text; color: Platform.textOnDark; font.pixelSize: Platform.fontBase; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                        }
+                    }
 
                     Button {
                         id: showBtn
                         Layout.alignment: Qt.AlignHCenter
-                        visible: !appVM.reviewVM.showingAnswer
+                        visible: !appVM.reviewVM.showingAnswer && !reviewRoot.typedMode
                         text: qsTr("Show Answer")
                         implicitHeight: Platform.touchTarget; implicitWidth: 140
                         onClicked: { haptics.light(); appVM.reviewVM.revealAnswer() }
                         background: Rectangle { color: Platform.accent; radius: Platform.radius }
                         contentItem: Text { text: showBtn.text; color: Platform.textOnDark; font.pixelSize: Platform.fontBase; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    }
+
+                    // Typed-answer verdict (shown after checking, on the answer side).
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        visible: appVM.reviewVM.showingAnswer && reviewRoot.typedMode && reviewRoot.typedState !== 0
+                        spacing: 8
+                        Text {
+                            text: reviewRoot.typedState === 1 ? qsTr("✓ Correct") : qsTr("✗ Not quite")
+                            color: reviewRoot.typedState === 1 ? Platform.success : Platform.danger
+                            font.pixelSize: Platform.fontLarge; font.bold: true
+                        }
+                        Text {
+                            visible: reviewRoot.typedState === 2
+                            text: qsTr("You typed: %1").arg(typedField.text)
+                            color: Platform.textMuted; font.pixelSize: Platform.fontBase
+                        }
                     }
 
                     ColumnLayout {

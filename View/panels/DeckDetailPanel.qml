@@ -48,6 +48,14 @@ Item {
                         }
                     }
                     ActionButton {
+                        text: qsTr("Custom study")
+                        onClicked: customStudySheet.open()
+                    }
+                    ActionButton {
+                        text: qsTr("Scheduler")
+                        onClicked: { schedulerSheet.load(); schedulerSheet.open() }
+                    }
+                    ActionButton {
                         text: panelRoot.showAnalytics ? qsTr("Hide analytics") : qsTr("Analytics")
                         onClicked: panelRoot.showAnalytics = !panelRoot.showAnalytics
                     }
@@ -70,6 +78,11 @@ Item {
                         appVM.reviewVM.startSession(appVM.deckVM.selectedDeckId)
                         if (panelRoot.reviewLoaderRef) panelRoot.reviewLoaderRef.active = true
                     }
+                }
+                ActionButton {
+                    Layout.fillWidth: true
+                    text: qsTr("Custom")
+                    onClicked: customStudySheet.open()
                 }
                 ActionButton {
                     Layout.fillWidth: true
@@ -404,6 +417,196 @@ Item {
         id: deleteDeckConfirm
         message: "Delete deck \"" + appVM.deckVM.selectedDeckName + "\"?"
         onConfirmed: appVM.deckVM.deleteDeck(appVM.deckVM.selectedDeckId)
+    }
+
+    // Per-deck scheduler settings: SM-2 (default) or FSRS-5, and for FSRS the
+    // desired retention (higher = more frequent reviews, better recall).
+    SheetPopup {
+        id: schedulerSheet
+        title: qsTr("Scheduler")
+
+        property string scheduler: "sm2"
+        property real retention: 0.9
+
+        function load() {
+            var st = appVM.deckVM.deckStats(appVM.deckVM.selectedDeckId)
+            scheduler = st.scheduler !== undefined ? st.scheduler : "sm2"
+            retention = st.fsrsRetention !== undefined ? st.fsrsRetention : 0.9
+        }
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 14
+
+            AppText { text: qsTr("Algorithm"); font.bold: true; font.pixelSize: Platform.fontBase }
+            Row {
+                spacing: 8
+                Repeater {
+                    model: [
+                        { label: qsTr("SM-2"), v: "sm2" },
+                        { label: qsTr("FSRS-5"), v: "fsrs" }
+                    ]
+                    delegate: Rectangle {
+                        required property var modelData
+                        radius: Platform.radius
+                        implicitHeight: Platform.touchTarget
+                        implicitWidth: 110
+                        color: schedulerSheet.scheduler === modelData.v ? Platform.accent : Platform.surfaceAlt
+                        border.color: Platform.border
+                        AppText {
+                            anchors.centerIn: parent
+                            text: parent.modelData.label
+                            color: schedulerSheet.scheduler === parent.modelData.v ? Platform.textOnDark : Platform.textPrimary
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: schedulerSheet.scheduler = parent.modelData.v
+                        }
+                    }
+                }
+            }
+            AppText {
+                text: schedulerSheet.scheduler === "fsrs"
+                      ? qsTr("FSRS-5 adapts intervals to your memory for better retention.")
+                      : qsTr("SM-2 is the classic SuperMemo algorithm.")
+                color: Platform.textMuted; font.pixelSize: Platform.fontSmall
+                maxLines: 2; Layout.fillWidth: true
+            }
+
+            // Retention (FSRS only).
+            ColumnLayout {
+                visible: schedulerSheet.scheduler === "fsrs"
+                Layout.fillWidth: true
+                spacing: 4
+                AppText {
+                    text: qsTr("Desired retention: %1%").arg(Math.round(schedulerSheet.retention * 100))
+                    font.bold: true; font.pixelSize: Platform.fontBase
+                }
+                Slider {
+                    Layout.fillWidth: true
+                    from: 0.70; to: 0.97; stepSize: 0.01
+                    value: schedulerSheet.retention
+                    onMoved: schedulerSheet.retention = value
+                }
+                AppText {
+                    text: qsTr("Higher retention schedules reviews more often.")
+                    color: Platform.textMuted; font.pixelSize: Platform.fontSmall
+                    maxLines: 2; Layout.fillWidth: true
+                }
+            }
+
+            ActionButton {
+                Layout.fillWidth: true
+                text: qsTr("Save")
+                variant: "success"
+                onClicked: {
+                    appVM.deckVM.setScheduler(appVM.deckVM.selectedDeckId,
+                                              schedulerSheet.scheduler,
+                                              schedulerSheet.retention)
+                    schedulerSheet.close()
+                }
+            }
+        }
+    }
+
+    // Custom study: pick a mode + optional tag/language filter, then launch a
+    // filtered session. Cram/Ahead are pure practice (no reschedule).
+    SheetPopup {
+        id: customStudySheet
+        title: qsTr("Custom study")
+
+        property int mode: 0                 // 0=Due, 1=Ahead, 2=Cram
+        property var selectedTagIds: []
+        property string language: ""         // "" = any
+
+        ColumnLayout {
+            width: parent.width
+            spacing: 14
+
+            AppText { text: qsTr("Mode"); font.bold: true; font.pixelSize: Platform.fontBase }
+            Row {
+                spacing: 8
+                Repeater {
+                    model: [
+                        { label: qsTr("Due"),   m: 0 },
+                        { label: qsTr("Ahead"), m: 1 },
+                        { label: qsTr("Cram"),  m: 2 }
+                    ]
+                    delegate: Rectangle {
+                        required property var modelData
+                        radius: Platform.radius
+                        implicitHeight: Platform.touchTarget
+                        implicitWidth: 84
+                        color: customStudySheet.mode === modelData.m ? Platform.accent : Platform.surfaceAlt
+                        border.color: Platform.border
+                        AppText {
+                            anchors.centerIn: parent
+                            text: parent.modelData.label
+                            color: customStudySheet.mode === parent.modelData.m ? Platform.textOnDark : Platform.textPrimary
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: customStudySheet.mode = parent.modelData.m
+                        }
+                    }
+                }
+            }
+            AppText {
+                visible: customStudySheet.mode === 2
+                text: qsTr("Cram reviews cards for practice without changing their schedule.")
+                color: Platform.textMuted; font.pixelSize: Platform.fontSmall
+                maxLines: 2; Layout.fillWidth: true
+            }
+
+            AppText { text: qsTr("Tags (optional)"); font.bold: true; font.pixelSize: Platform.fontBase }
+            Flow {
+                Layout.fillWidth: true
+                spacing: 6
+                Repeater {
+                    model: appVM.deckVM.allTags()
+                    delegate: TagChip {
+                        required property var modelData
+                        tagName: modelData.name
+                        interactive: true
+                        // Selected tags render active; tap toggles.
+                        active: customStudySheet.selectedTagIds.indexOf(modelData.id) !== -1
+                        onClicked: {
+                            var ids = customStudySheet.selectedTagIds.slice()
+                            var i = ids.indexOf(modelData.id)
+                            if (i === -1) ids.push(modelData.id); else ids.splice(i, 1)
+                            customStudySheet.selectedTagIds = ids
+                        }
+                    }
+                }
+            }
+
+            AppText { text: qsTr("Language (optional)"); font.bold: true; font.pixelSize: Platform.fontBase }
+            StyledComboBox {
+                Layout.fillWidth: true
+                model: [qsTr("Any")].concat(appVM.availableLanguages)
+                onActivated: (idx) => {
+                    customStudySheet.language = idx === 0 ? "" : appVM.availableLanguages[idx - 1]
+                }
+            }
+
+            ActionButton {
+                Layout.fillWidth: true
+                text: qsTr("Start studying")
+                variant: "success"
+                onClicked: {
+                    appVM.reviewVM.startFilteredSession(
+                        customStudySheet.mode,
+                        customStudySheet.selectedTagIds,
+                        customStudySheet.language,
+                        appVM.deckVM.selectedDeckId,
+                        3, 100)
+                    customStudySheet.close()
+                    if (panelRoot.reviewLoaderRef) panelRoot.reviewLoaderRef.active = true
+                }
+            }
+        }
     }
 }
 

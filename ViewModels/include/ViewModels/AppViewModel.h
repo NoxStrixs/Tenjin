@@ -230,6 +230,13 @@ public:
     }
 
     Q_INVOKABLE QString renderFormula(const QString& latex) const;
+    // Render Anki-style cloze text ({{cN::answer::hint}}). When masked, each
+    // deletion becomes "[…]" (or "[hint]" if a hint is present); when revealed,
+    // the answer is shown emphasized. Returns rich text for a Text element.
+    Q_INVOKABLE QString renderCloze(const QString& text, bool masked) const;
+    // True if the text contains at least one cloze deletion — the UI uses this
+    // to decide whether a block participates in cloze review.
+    Q_INVOKABLE bool hasCloze(const QString& text) const;
 
     // Returns the current clipboard contents as plain text. QClipboard::text()
     // ignores HTML/RTF entirely, so calling this and inserting the result

@@ -36,36 +36,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Load .env into environment
-        run: |
-          echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"
-          if [ -f .env ]; then
-            awk -F= '
-              /^[[:space:]]*#/ { next } /^[[:space:]]*$/ { next } NF < 2 { next }
-              { k=$1; $1=""; v=substr($0,2);
-                sub(/^[[:space:]]+/,"",k); sub(/[[:space:]]+$/,"",k);
-                sub(/^[[:space:]]+/,"",v); sub(/[[:space:]]+$/,"",v);
-                if (v ~ /^".*"$/ || v ~ /^'\''.*'\''$/) v=substr(v,2,length(v)-2);
-                print k "=" v
-              }
-            ' .env >> "$GITHUB_ENV"
-          fi
-
-      - name: Seed translation .ts files if missing
-        run: |
-          mkdir -p translations
-          for lang in ja es fr de zh_CN pt ko it ru ar; do
-            f="translations/tenjin_${lang}.ts"
-            if [ ! -f "$f" ]; then
-              cat > "$f" <<EOF
-          <?xml version="1.0" encoding="utf-8"?>
-          <!DOCTYPE TS>
-          <TS version="2.1" language="${lang}">
-          </TS>
-          EOF
-              echo "  seeded empty $f"
-            fi
-          done
+      - name: Tenjin setup (Python, fonts, env, translations)
+        uses: ./.github/actions/tenjin-setup
+        with:
+          qt-host: linux
+          install-qt: "false"
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-android
+          extra-defaults: echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -78,14 +55,6 @@ jobs:
         with:
           packages: "platform-tools platforms;android-34 build-tools;34.0.0 ndk;${{ env.ANDROID_NDK_VERSION }}"
 
-      - name: Set up Python (for aqtinstall)
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Python build deps (font subsetting + icon)
-        run: python -m pip install --upgrade fonttools pillow
-
       - name: Install Qt (host / desktop)
         uses: jurplel/install-qt-action@v4
         with:
@@ -93,6 +62,7 @@ jobs:
           host: "linux"
           target: "desktop"
           arch: "linux_gcc_64"
+          modules: "qtmultimedia qtspeech"
           dir: ${{ github.workspace }}/Qt
           cache: true
           cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-android-host
@@ -105,7 +75,7 @@ jobs:
           host: "linux"
           target: "android"
           arch: "android_arm64_v8a"
-          modules: "qtmultimedia"
+          modules: "qtmultimedia qtspeech"
           dir: ${{ github.workspace }}/Qt
           cache: true
           cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-android-arm64
@@ -117,7 +87,6 @@ jobs:
           for t in lupdate lrelease; do
             if [ ! -x "$QT_HOST/bin/$t" ]; then
               echo "::error::Qt $t missing at $QT_HOST/bin/$t"
-              ls "$QT_HOST/bin" | head -50
               exit 1
             fi
           done
@@ -128,14 +97,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build ccache cmake
-
-      - name: Cache ccache
-        uses: actions/cache@v4
-        with:
-          path: ~/.ccache
-          key: ${{ env.CACHE_VERSION }}-android-ccache-${{ github.sha }}
-          restore-keys: |
-            ${{ env.CACHE_VERSION }}-android-ccache-
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -175,10 +136,7 @@ jobs:
       - name: Build native libraries
         run: |
           ccache --max-size=$CCACHE_MAXSIZE
-          ccache --zero-stats
           cmake --build build --config Release
-          echo "===== ccache stats ====="
-          ccache --show-stats
 
       - name: Build APK
         run: cmake --build build --target apk

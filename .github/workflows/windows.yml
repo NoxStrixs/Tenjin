@@ -29,43 +29,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Load .env into environment
-        shell: pwsh
-        run: |
-          Add-Content -Path $env:GITHUB_ENV -Value "TENJIN_APP_NAME=Tenjin"
-          if (Test-Path .env) {
-            Get-Content .env | ForEach-Object {
-              $line = $_.Trim()
-              if ($line -eq "" -or $line.StartsWith("#")) { return }
-              $eq = $line.IndexOf("=")
-              if ($eq -lt 1) { return }
-              $k = $line.Substring(0, $eq).Trim()
-              $v = $line.Substring($eq + 1).Trim()
-              if (($v.StartsWith('"') -and $v.EndsWith('"')) -or
-                  ($v.StartsWith("'") -and $v.EndsWith("'"))) {
-                $v = $v.Substring(1, $v.Length - 2)
-              }
-              Add-Content -Path $env:GITHUB_ENV -Value "$k=$v"
-            }
-          }
-
-      # Seed empty translations/*.ts files if missing. PowerShell here-
-      # string syntax for cross-platform parity with linux.yml.
-      - name: Seed translation .ts files if missing
-        shell: pwsh
-        run: |
-          $tsDir = "translations"
-          if (-not (Test-Path $tsDir)) { New-Item -ItemType Directory -Path $tsDir | Out-Null }
-          $langs = @("ja","es","fr","de","zh_CN","pt","ko","it","ru","ar")
-          foreach ($lang in $langs) {
-            $f = Join-Path $tsDir "tenjin_$lang.ts"
-            if (-not (Test-Path $f)) {
-              $content = "<?xml version=`"1.0`" encoding=`"utf-8`"?>`n<!DOCTYPE TS>`n<TS version=`"2.1`" language=`"$lang`">`n</TS>`n"
-              Set-Content -Path $f -Value $content -NoNewline -Encoding UTF8
-              Write-Host "  seeded empty $f"
-            }
-          }
-
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -75,26 +38,13 @@ jobs:
         shell: pwsh
         run: choco install -y ninja sccache nsis
 
-      - name: Set up Python (for aqtinstall)
-        uses: actions/setup-python@v5
+      - name: Tenjin setup (Python, fonts, Qt, ccache)
+        uses: ./.github/actions/tenjin-setup
         with:
-          python-version: "3.12"
-
-      - name: Install Python build deps (Pillow for the .ico)
-        run: python -m pip install --upgrade pillow fonttools
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: "6.9.3"
-          host: "windows"
-          target: "desktop"
-          arch: "win64_msvc2022_64"
-          modules: "qtmultimedia"
-          dir: ${{ github.workspace }}\Qt
-          cache: true
-          cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-windows
-          setup-python: false
+          qt-host: windows
+          qt-arch: win64_msvc2022_64
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-windows
+          extra-defaults: echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"
 
       - name: Verify Qt Linguist tools (lupdate/lrelease)
         shell: pwsh

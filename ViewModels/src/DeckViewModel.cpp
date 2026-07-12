@@ -91,6 +91,14 @@ QVariantMap DeckViewModel::deckStats(qint64 deckId)
     out["total"]   = result->total;
     out["due"]     = result->due;
     out["nextDue"] = QString::fromStdString(result->nextDue);
+    // Scheduler settings for the deck settings UI.
+    if (auto deck = m_deckService->GetDeck(deckId)) {
+        out["scheduler"]     = QString::fromStdString(deck->scheduler);
+        out["fsrsRetention"] = deck->fsrsRetention;
+    } else {
+        out["scheduler"]     = QStringLiteral("sm2");
+        out["fsrsRetention"] = 0.9;
+    }
     return out;
 }
 
@@ -190,6 +198,18 @@ bool DeckViewModel::deleteDeck(qint64 deckId)
 bool DeckViewModel::setNewCardsPerDay(qint64 deckId, int perDay)
 {
     auto result = m_deckService->SetNewCardsPerDay(static_cast<Service::ID_t>(deckId), perDay);
+    if (!result) {
+        emit errorOccurred(QString::fromStdString(result.error()));
+        return false;
+    }
+    reloadDecks();
+    return true;
+}
+
+bool DeckViewModel::setScheduler(qint64 deckId, const QString& scheduler, double retention)
+{
+    auto result = m_deckService->SetScheduler(static_cast<Service::ID_t>(deckId),
+                                              scheduler.toStdString(), retention);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;

@@ -1,9 +1,50 @@
 name: Tenjin Setup
-description: Load .env into GITHUB_ENV and seed empty translation stubs.
+description: >
+  Shared build setup for all Tenjin workflows: Python + font tooling, Qt
+  install (parameterized, full module set by default), ccache, .env loading,
+  and translation stubs. Centralizing this prevents per-workflow dependency
+  drift — the Qt module list defaults to the COMPLETE set so no platform can
+  silently omit qtmultimedia/qtspeech.
 
 inputs:
+  qt-version:
+    description: "Qt version to install"
+    required: false
+    default: "6.9.3"
+  qt-host:
+    description: "aqt host (linux/mac/windows)"
+    required: true
+  qt-target:
+    description: "aqt target (desktop/android/ios)"
+    required: false
+    default: "desktop"
+  qt-arch:
+    description: "aqt arch (e.g. linux_gcc_64, clang_64, android_arm64_v8a). Empty = action default."
+    required: false
+    default: ""
+  qt-modules:
+    description: >
+      Space-separated Qt modules. Defaults to the full set the app links so no
+      workflow drops one. Override only to ADD, never to shrink below this.
+    required: false
+    default: "qtmultimedia qtspeech"
+  qt-dir:
+    description: "Install directory for Qt"
+    required: false
+    default: "Qt"
+  cache-key-prefix:
+    description: "Distinct cache key prefix per platform/arch"
+    required: true
+  install-qt:
+    description: "Whether to install Qt (set false for jobs that only lint)"
+    required: false
+    default: "true"
+  python-version:
+    description: "Python version for aqtinstall + font tooling"
+    required: false
+    default: "3.12"
   extra-defaults:
-    description: "Shell commands to echo extra KEY=VALUE into GITHUB_ENV before .env is parsed"
+    description: "Shell commands to echo extra KEY=VALUE into GITHUB_ENV before .env"
     required: false
     default: ""
 
@@ -38,3 +79,32 @@ runs:
           printf '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n<TS version="2.1" language="%s">\n</TS>\n' \
             "$lang" > "$f"
         done
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install font tooling
+      shell: bash
+      run: python -m pip install --upgrade fonttools pillow
+
+    - name: Install Qt
+      if: inputs.install-qt == 'true'
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: ${{ inputs.qt-version }}
+        host: ${{ inputs.qt-host }}
+        target: ${{ inputs.qt-target }}
+        arch: ${{ inputs.qt-arch }}
+        modules: ${{ inputs.qt-modules }}
+        dir: ${{ github.workspace }}/${{ inputs.qt-dir }}
+        cache: true
+        cache-key-prefix: ${{ inputs.cache-key-prefix }}
+
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: ~/.ccache
+        key: ${{ inputs.cache-key-prefix }}-ccache-${{ github.sha }}
+        restore-keys: ${{ inputs.cache-key-prefix }}-ccache-

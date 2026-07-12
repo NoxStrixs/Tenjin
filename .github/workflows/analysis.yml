@@ -21,14 +21,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang-format clang-tidy cppcheck
 
-      - name: Install Qt 6.9.3 (for qmllint / compile db)
-        uses: jurplel/install-qt-action@v4
+      - name: Tenjin setup (Python, fonts, Qt, ccache)
+        uses: ./.github/actions/tenjin-setup
         with:
-          version: 6.9.3
-          host: linux
-          target: desktop
-          arch: linux_gcc_64
-          modules: qtmultimedia
+          qt-host: linux
+          qt-arch: linux_gcc_64
+          cache-key-prefix: analysis
 
       - name: clang-format (check)
         run: python3 tools/tool format --check

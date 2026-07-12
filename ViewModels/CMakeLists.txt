@@ -13,9 +13,9 @@ if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
 elseif(ANDROID)
     set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_android.cpp)
     set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_android.cpp)
-    # Android document picking (Storage Access Framework) and share (FileProvider)
-    # are not yet implemented; the default backends keep the in-app fallbacks.
-    set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_default.cpp)
+    # Android media/import picking: Photo Picker + camera + SAF, with results
+    # routed through an ActivityResultListener (see the .cpp).
+    set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_android.cpp)
     set(_TENJIN_TIME_BACKEND     src/TimePickerService_android.cpp)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_android.cpp)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)

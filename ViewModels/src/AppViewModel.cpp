@@ -710,6 +710,48 @@ QString AppViewModel::renderFormula(const QString& latex) const
     return Tenjin::FormulaRenderer::toRichText(latex);
 }
 
+namespace {
+// Matches Anki-style cloze deletions: {{c<N>::answer}} or
+// {{c<N>::answer::hint}}. Answer/hint captured non-greedily; nested braces
+// aren't supported (matching Anki's own limitation).
+const QRegularExpression& clozeRe()
+{
+    static const QRegularExpression re(
+        QStringLiteral("\\{\\{c(\\d+)::(.*?)(?:::(.*?))?\\}\\}"));
+    return re;
+}
+}
+
+bool AppViewModel::hasCloze(const QString& text) const
+{
+    return clozeRe().match(text).hasMatch();
+}
+
+QString AppViewModel::renderCloze(const QString& text, bool masked) const
+{
+    QString out;
+    qsizetype last = 0;
+    auto it = clozeRe().globalMatch(text);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch m = it.next();
+        // Append the literal text before this deletion (HTML-escaped).
+        out += text.mid(last, m.capturedStart() - last).toHtmlEscaped();
+        const QString answer = m.captured(2);
+        const QString hint   = m.captured(3);
+        if (masked) {
+            const QString shown = hint.isEmpty() ? QStringLiteral("[…]")
+                                                 : QStringLiteral("[%1]").arg(hint.toHtmlEscaped());
+            out += QStringLiteral("<span style=\"color:#3498db;font-weight:bold\">%1</span>").arg(shown);
+        } else {
+            out += QStringLiteral("<span style=\"color:#2ecc71;font-weight:bold\">%1</span>")
+                       .arg(answer.toHtmlEscaped());
+        }
+        last = m.capturedEnd();
+    }
+    out += text.mid(last).toHtmlEscaped();
+    return out;
+}
+
 QString AppViewModel::clipboardPlainText() const
 {
     // QClipboard::text() returns the clipboard's text/plain representation,

@@ -31,6 +31,12 @@ Result_t<bool> DeckService::SetNewCardsPerDay(ID_t deckId, int perDay)
     return m_db->SetDeckNewCardsPerDay(deckId, perDay);
 }
 
+Result_t<bool> DeckService::SetScheduler(ID_t deckId, const std::string& scheduler,
+                                         double retention)
+{
+    return m_db->SetDeckScheduler(deckId, scheduler, retention);
+}
+
 Result_t<bool> DeckService::AddEntryToDeck(ID_t deckId, ID_t wordId)
 {
     return m_db->AddEntryToDeck(deckId, wordId);
@@ -102,16 +108,56 @@ Result_t<ReviewSession_t> DeckService::StartSession(ID_t deckId)
     return ReviewSession_t{.deckId = deckId, .queue = std::move(*dueResult), .currentIndex = 0};
 }
 
+Result_t<ReviewSession_t> DeckService::StartFilteredSession(const StudyFilter_t& filter)
+{
+    // Ensure review rows exist for candidate entries so filtered study can
+    // include never-reviewed cards. For a specific deck we can init its entries;
+    // for all-decks we rely on rows already created by prior deck sessions.
+    if (filter.deckId >= 0) {
+        auto wordsResult = m_db->GetEntriesForDeck(filter.deckId);
+        if (wordsResult) {
+            for (const auto& word : *wordsResult)
+                m_db->InitReview(filter.deckId, word.id);
+        }
+    }
+
+    auto rows = m_db->GetFilteredReviews(
+        static_cast<int>(filter.mode), filter.tagIds, filter.language,
+        filter.deckId, filter.aheadDays, filter.limit);
+    if (!rows)
+        return std::unexpected(rows.error());
+
+    // Cram and Ahead are pure practice — do not advance the SRS schedule. Only
+    // a normal Due session reschedules.
+    const bool reschedule = (filter.mode == StudyMode_t::Due);
+
+    return ReviewSession_t{.deckId       = filter.deckId,
+                           .queue        = std::move(*rows),
+                           .currentIndex = 0,
+                           .reschedule   = reschedule};
+}
+
 Result_t<Review_t> DeckService::SubmitCard(ReviewSession_t& session, int quality)
 {
     if (IsComplete(session))
         return std::unexpected("Session complete.");
 
     const auto& current = session.queue[session.currentIndex];
-    auto        result  = m_db->SubmitReview(session.deckId, current.wordId, quality);
-    if (result)
+
+    if (session.reschedule) {
+        auto result = m_db->SubmitReview(session.deckId >= 0 ? session.deckId
+                                                             : current.deckId,
+                                         current.wordId, quality);
+        if (result)
+            session.currentIndex++;
+        return result;
+    }
+
+    // Practice mode: log the review for stats but do NOT change the schedule.
+    auto logged = m_db->LogReviewOnly(current.deckId, current.wordId, quality);
+    if (logged)
         session.currentIndex++;
-    return result;
+    return logged;
 }
 
 bool DeckService::IsComplete(const ReviewSession_t& session) const

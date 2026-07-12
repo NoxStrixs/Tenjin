@@ -41,78 +41,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Load .env into environment
-        run: |
-          echo "TENJIN_APP_NAME=Tenjin"                             >> "$GITHUB_ENV"
-          echo "TENJIN_APP_DISPLAY_NAME=Tenjin"                     >> "$GITHUB_ENV"
-          echo "TENJIN_BUNDLE_ID=app.tenjin.Tenjin"                 >> "$GITHUB_ENV"
-          echo "TENJIN_IOS_DEPLOYMENT_TARGET=16.0"                  >> "$GITHUB_ENV"
-          if [ -f .env ]; then
-            awk -F= '
-              /^[[:space:]]*#/  { next }
-              /^[[:space:]]*$/  { next }
-              NF < 2            { next }
-              {
-                key=$1; $1=""; val=substr($0, 2)
-                sub(/^[[:space:]]+/, "", key); sub(/[[:space:]]+$/, "", key)
-                sub(/^[[:space:]]+/, "", val); sub(/[[:space:]]+$/, "", val)
-                gsub(/\r/, "", val)
-                if (val ~ /^".*"$/ || val ~ /^'\''.*'\''$/) {
-                  val = substr(val, 2, length(val) - 2)
-                }
-                print key "=" val
-              }
-            ' .env >> "$GITHUB_ENV"
-          fi
-
-      - name: Seed translation .ts files if missing
-        run: |
-          mkdir -p translations
-          for lang in ja es fr de zh_CN pt ko it ru ar; do
-            f="translations/tenjin_${lang}.ts"
-            if [ ! -f "$f" ]; then
-              cat > "$f" <<EOF
-          <?xml version="1.0" encoding="utf-8"?>
-          <!DOCTYPE TS>
-          <TS version="2.1" language="${lang}">
-          </TS>
-          EOF
-              echo "  seeded empty $f"
-            fi
-          done
-
-      # Patch 2: Info_plist.in path detection.
-      # configure_file() in App/CMakeLists.txt may have a hardcoded relative
-      # path that doesn't resolve from the build directory. Patch it to use
-      # CMAKE_CURRENT_SOURCE_DIR so it always resolves correctly.
-      - name: Patch App/CMakeLists.txt — Info_plist.in path
-        run: |
-          if [ -f App/CMakeLists.txt ]; then
-            # If the file references Info_plist.in without CMAKE_CURRENT_SOURCE_DIR, fix it.
-            if grep -qE 'configure_file\s*\(\s*[^$].*Info_plist\.in' App/CMakeLists.txt; then
-              cp App/CMakeLists.txt App/CMakeLists.txt.bak2 2>/dev/null || true
-              # Replace bare path references to Info_plist.in with absolute path.
-              # Pattern: configure_file( "some/path/Info_plist.in" -> configure_file( "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info_plist.in"
-              sed -i '' \
-                's|configure_file(\s*"\([^"]*Info_plist\.in\)"|configure_file("${CMAKE_CURRENT_SOURCE_DIR}/ios/Info_plist.in"|g' \
-                App/CMakeLists.txt
-              echo "After Info_plist.in patch:"
-              grep -n 'Info_plist' App/CMakeLists.txt
-            else
-              echo "Info_plist.in reference already uses a variable or was not found — no patch needed."
-            fi
-          fi
-
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
-
-      - name: Set up Python (for aqtinstall)
-        uses: actions/setup-python@v5
+      - name: Tenjin setup (Python, fonts, ccache, env)
+        uses: ./.github/actions/tenjin-setup
         with:
-          python-version: "3.12"
-
-      - name: Install Python build deps (font subsetting + icon)
-        run: python -m pip install --upgrade fonttools pillow
+          qt-host: mac
+          install-qt: "false"
+          cache-key-prefix: ${{ env.CACHE_VERSION }}-ios
+          extra-defaults: |
+            echo "TENJIN_APP_NAME=Tenjin" >> "$GITHUB_ENV"
+            echo "TENJIN_APP_DISPLAY_NAME=Tenjin" >> "$GITHUB_ENV"
+            echo "TENJIN_BUNDLE_ID=app.tenjin.Tenjin" >> "$GITHUB_ENV"
+            echo "TENJIN_IOS_DEPLOYMENT_TARGET=16.0" >> "$GITHUB_ENV"
 
       - name: Install Qt (macOS host)
         uses: jurplel/install-qt-action@v4
@@ -121,7 +60,7 @@ jobs:
           host: "mac"
           target: "desktop"
           arch: "clang_64"
-          modules: "qtmultimedia"
+          modules: "qtmultimedia qtspeech"
           dir: ${{ github.workspace }}/Qt
           cache: true
           cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-ios-host
@@ -133,7 +72,7 @@ jobs:
           version: "6.9.3"
           host: "mac"
           target: "ios"
-          modules: "qtmultimedia"
+          modules: "qtmultimedia qtspeech"
           dir: ${{ github.workspace }}/Qt
           cache: true
           cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-ios-target
@@ -150,11 +89,6 @@ jobs:
             fi
           done
           "$QT_HOST/bin/lrelease" -version
-
-      - name: Debug
-        run: |
-          echo "===== FULL FILE WITH LINE NUMBERS ====="
-          awk '{printf("%4d | %s\n", NR, $0)}' App/CMakeLists.txt
 
       - name: Cache icon font
         uses: actions/cache@v4
@@ -187,55 +121,30 @@ jobs:
         run: |
           APP=$(find build-ios -name "${TENJIN_APP_NAME}.app" -type d | head -n1)
           if [ -z "$APP" ]; then echo "::error::${TENJIN_APP_NAME}.app not found"; exit 1; fi
-          echo "App bundle: $APP"
           PLIST="$APP/Info.plist"
-          echo "===== FULL Info.plist (as built) ====="
-          plutil -p "$PLIST"
-          echo "===== bundle top-level contents ====="
-          ls -la "$APP"
-          echo "===== executable check ====="
           EXE=$(plutil -extract CFBundleExecutable raw "$PLIST")
-          echo "CFBundleExecutable = $EXE"
           if [ ! -f "$APP/$EXE" ]; then
             echo "::error::Bundle executable '$EXE' is missing from the .app!"
             exit 1
           fi
-          file "$APP/$EXE"
-          echo "===== plist validity ====="
           plutil -lint "$PLIST"
           PLIST_BUNDLE_ID=$(plutil -extract CFBundleIdentifier raw "$PLIST")
           if [ "$PLIST_BUNDLE_ID" != "$TENJIN_BUNDLE_ID" ]; then
             echo "::error::Bundle id mismatch: plist='$PLIST_BUNDLE_ID' env='$TENJIN_BUNDLE_ID'"
             exit 1
           fi
-          ls "$APP"/AppIcon*.png 2>/dev/null && echo "icon present" \
-            || echo "::warning::No AppIcon*.png in bundle."
-          echo "Bundle verified."
+          ls "$APP"/AppIcon*.png >/dev/null 2>&1 || echo "::warning::No AppIcon*.png in bundle."
 
       - name: Ad-hoc sign all Mach-O binaries in the bundle
         run: |
           APP=$(find build-ios -name "${TENJIN_APP_NAME}.app" -type d | head -n1)
-          echo "Re-signing every framework in: $APP/Frameworks"
           if [ -d "$APP/Frameworks" ]; then
             for FW in "$APP"/Frameworks/*.framework; do
               [ -d "$FW" ] || continue
-              echo "  ad-hoc signing $FW"
               codesign --force --sign - --timestamp=none "$FW"
             done
-          else
-            echo "  (no Frameworks/ dir; nothing to sign)"
           fi
-          echo "Ad-hoc signing main executable"
           codesign --force --sign - --timestamp=none "$APP"
-          echo "===== verify signatures ====="
-          codesign -dv --verbose=2 "$APP" 2>&1 | head -20
-          if [ -d "$APP/Frameworks" ]; then
-            for FW in "$APP"/Frameworks/*.framework; do
-              [ -d "$FW" ] || continue
-              echo "--- $(basename $FW) ---"
-              codesign -dv "$FW" 2>&1 | grep -E "Identifier|TeamIdentifier|Signature" || true
-            done
-          fi
 
       - name: Package unsigned .ipa
         run: |

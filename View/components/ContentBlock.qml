@@ -45,6 +45,7 @@ Rectangle {
     readonly property bool isFormula:  blockType === 4
     readonly property bool isHeader:   blockType === 5
     readonly property bool isTense:    blockType === 6
+    readonly property bool isCloze:    blockType === 7
 
     property bool webEngineAvailable: (typeof appVM !== "undefined"
                                        && appVM.webEngineAvailable !== undefined)
@@ -412,6 +413,7 @@ Rectangle {
                 if (root.isHeader)   return headerArea
                 if (root.isTense)    return tenseArea
                 if (root.isFormula)  return formulaArea
+                if (root.isCloze)    return root.editMode ? clozeEdit : clozeArea
                 return root.editMode ? editArea : viewArea
             }
         }
@@ -573,6 +575,50 @@ Rectangle {
         id: formulaArea
         Loader {
             sourceComponent: root.editMode ? formulaEdit : formulaView
+        }
+    }
+
+    // Cloze read view — deletions revealed (answers emphasized). The masked
+    // form is only shown during review (ReviewPage), not in the normal entry.
+    Component {
+        id: clozeArea
+        Text {
+            width: contentLoader.width
+            text: root.blockContent.length > 0
+                  ? appVM.renderCloze(root.blockContent, false)
+                  : qsTr("(empty cloze — type text with {{c1::answer}})")
+            color: root.blockContent.length > 0 ? Platform.textPrimary : Platform.textMuted
+            textFormat: Text.RichText
+            font.pixelSize: Platform.fontLarge
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    // Cloze editor — PLAIN text (not the rich editArea, which would wrap the
+    // {{cN::answer}} markers in HTML and corrupt them). Author types markers
+    // directly; a hint shows the syntax.
+    Component {
+        id: clozeEdit
+        ColumnLayout {
+            width: contentLoader.width
+            spacing: 4
+            TextArea {
+                Layout.fillWidth: true
+                text: root.blockContent
+                placeholderText: qsTr("She {{c1::went}} to the {{c2::market::place}}.")
+                wrapMode: TextEdit.Wrap
+                color: Platform.textPrimary
+                font.pixelSize: Platform.fontLarge
+                background: Rectangle { radius: Platform.radius; color: Platform.bg; border.color: Platform.border }
+                onEditingFinished: root.contentEdited(root.blockId, text)
+            }
+            AppText {
+                text: qsTr("Use {{c1::answer}} or {{c1::answer::hint}} to hide words.")
+                color: Platform.textMuted
+                font.pixelSize: Platform.fontSmall
+                maxLines: 2
+                Layout.fillWidth: true
+            }
         }
     }
     Component {
