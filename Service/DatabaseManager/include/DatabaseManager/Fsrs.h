@@ -43,7 +43,7 @@ inline double clampDifficulty(double d) { return std::clamp(d, 1.0, 10.0); }
 inline double initialStability(const Params& p, int grade)
 {
     const int g = std::clamp(grade, 1, 4);
-    return std::max(0.1, p.w[static_cast<size_t>(g - 1)]);
+    return (std::max)(0.1, p.w[static_cast<size_t>(g - 1)]);
 }
 
 // Initial difficulty for a new card given the first grade.
@@ -112,7 +112,7 @@ inline double nextStabilityForget(const Params& p, double difficulty,
                       * (std::pow(stability + 1.0, p.w[13]) - 1.0)
                       * std::exp(p.w[14] * (1.0 - retr));
     // Post-lapse stability is capped at the pre-lapse value.
-    return std::min(sMin, stability);
+    return (std::min)(sMin, stability);
 }
 
 // Result of scheduling: the new state and the interval (days) to next review.
@@ -152,7 +152,7 @@ inline Schedule schedule(const Params& p, const State& current,
                                                   current.stability, retr, g);
     }
 
-    out.state.stability = std::max(0.1, out.state.stability);
+    out.state.stability = (std::max)(0.1, out.state.stability);
     out.intervalDays    = intervalForStability(p, out.state.stability);
     return out;
 }

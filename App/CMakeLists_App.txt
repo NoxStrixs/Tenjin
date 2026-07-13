@@ -259,6 +259,27 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         else()
             message(FATAL_ERROR "qt_add_ios_ffmpeg_libraries is not available.")
         endif()
+        # qt_add_ios_ffmpeg_libraries embeds the FFmpeg dylibs into the bundle,
+        # but with aqt-installed kits the statically linked FFmpeg media plugin
+        # (libQt6FFmpegMediaPluginImpl.a) can still fail to resolve libswscale/
+        # libswresample symbols at link because the dylibs never make it onto
+        # the linker line. Link every FFmpeg library the kit ships explicitly;
+        # if the kit has none, fail at configure with a listing instead of a
+        # cryptic "_sws_* symbol not found" at link time.
+        file(GLOB _tenjin_ffmpeg_libs
+            "${QT6_INSTALL_PREFIX}/lib/ffmpeg/*.dylib"
+            "${QT6_INSTALL_PREFIX}/lib/ffmpeg/*.a")
+        if(_tenjin_ffmpeg_libs)
+            target_link_libraries(Tenjin PRIVATE ${_tenjin_ffmpeg_libs})
+            message(STATUS "Tenjin iOS: linking FFmpeg libs: ${_tenjin_ffmpeg_libs}")
+        else()
+            file(GLOB _tenjin_ffmpeg_dir_contents "${QT6_INSTALL_PREFIX}/lib/ffmpeg/*")
+            message(FATAL_ERROR
+                "iOS MEDIA_SUPPORT=ON but no FFmpeg libraries found under "
+                "${QT6_INSTALL_PREFIX}/lib/ffmpeg — the Qt kit does not ship them. "
+                "Dir contents: '${_tenjin_ffmpeg_dir_contents}'. Either install a "
+                "Qt iOS kit with FFmpeg or configure with -DMEDIA_SUPPORT=OFF.")
+        endif()
     endif()
 endif()
 

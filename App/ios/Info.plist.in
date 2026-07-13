@@ -42,11 +42,6 @@
     <array>
         <string>iPhoneOS</string>
     </array>
-    <key>UIDeviceFamily</key>
-    <array>
-        <integer>1</integer>
-        <integer>2</integer>
-    </array>
 
     <!-- UILaunchScreen MUST be a non-empty dict for iOS to opt the app into
          the modern launch-screen system and render at the device's native
