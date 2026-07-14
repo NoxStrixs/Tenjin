@@ -43,7 +43,7 @@ namespace detail {
 inline double clampProb(double p)
 {
     constexpr double eps = 1e-6;
-    return std::min(1.0 - eps, std::max(eps, p));
+    return (std::min)(1.0 - eps, (std::max)(eps, p));
 }
 
 // Compute mean log-loss of the given weights over all card histories. For each
@@ -123,7 +123,7 @@ inline OptimizeResult optimize(const std::vector<CardHistory>& data,
             const double delta = step * span * 0.1;
 
             for (const double cand : {original + delta, original - delta}) {
-                const double clamped = std::min(hi[i], std::max(lo[i], cand));
+                const double clamped = (std::min)(hi[i], (std::max)(lo[i], cand));
                 if (clamped == original) continue;
                 w[i] = clamped;
                 const double loss = detail::logLoss(w, data);

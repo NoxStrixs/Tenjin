@@ -129,7 +129,7 @@ int EntryViewModel::rowCountForLayout() const
 {
     int maxRow = -1;
     for (const auto& b : m_contentModel->blocks())
-        maxRow = std::max(maxRow, b.row);
+        maxRow = (std::max)(maxRow, b.row);
     return maxRow + 1;
 }
 

@@ -159,7 +159,7 @@ Result_t<Review_t> DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, in
             intervalDays = static_cast<int>(std::round(intervalDays * easeFactor));
 
         easeFactor += 0.1f - (5 - sm2Quality) * (0.08f + (5 - sm2Quality) * 0.02f);
-        easeFactor = std::max(1.3f, easeFactor);
+        easeFactor = (std::max)(1.3f, easeFactor);
         repetitions++;
     } else {
         // Failed. Reset the streak, keep ease factor, and count a lapse. A card
@@ -249,7 +249,7 @@ Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t deckId, ID_t wordId,
     if (!lastDate.isEmpty()) {
         const QDate prev = QDate::fromString(lastDate, "yyyy-MM-dd");
         if (prev.isValid())
-            elapsed = std::max(0, static_cast<int>(prev.daysTo(QDate::currentDate())));
+            elapsed = (std::max)(0, static_cast<int>(prev.daysTo(QDate::currentDate())));
     }
 
     Fsrs::Params p;
@@ -392,7 +392,7 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
         if (cq.exec() && cq.next())
             introducedToday = cq.value(0).toInt();
     }
-    const int newAllowance = std::max(0, newPerDay - introducedToday);
+    const int newAllowance = (std::max)(0, newPerDay - introducedToday);
 
     auto readRows = [](QSqlQuery& q, std::vector<Review_t>& out) {
         while (q.next()) {
@@ -701,7 +701,7 @@ Result_t<GlobalStats_t> DatabaseManager::GetGlobalStats()
                 cur = cur.addDays(1);
                 ++run;
             }
-            longest = std::max(longest, run);
+            longest = (std::max)(longest, run);
         }
         s.longestStreakDays = longest;
         // Current run ending today or yesterday.
