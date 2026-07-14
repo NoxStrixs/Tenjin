@@ -96,7 +96,10 @@ const Step kV1 = {
     // Scheduler per deck: 'sm2' (default, unchanged for existing decks) or
     // 'fsrs'. fsrs_retention is the FSRS desired-recall target (0.7..0.97).
     "scheduler TEXT NOT NULL DEFAULT 'sm2',"
-    "fsrs_retention REAL NOT NULL DEFAULT 0.9);",
+    "fsrs_retention REAL NOT NULL DEFAULT 0.9,"
+    // Optimized FSRS weights as a JSON array of 19 numbers, empty = use
+    // defaults. Populated by the optimizer from the deck's review history.
+    "fsrs_weights TEXT NOT NULL DEFAULT '');",
 
     "CREATE TABLE IF NOT EXISTS deck_entry ("
     "deck_id  INTEGER REFERENCES deck(id)  ON DELETE CASCADE,"
@@ -122,9 +125,13 @@ const Step kV1 = {
     // columns so a deck can switch schedulers without losing history.
     "stability        REAL NOT NULL DEFAULT 0,"
     "difficulty       REAL NOT NULL DEFAULT 0,"
+    // Per-deletion cloze scheduling: 0 = the entry's normal card; 1,2,3… map to
+    // cloze deletions c1,c2,c3 so each schedules independently. Non-cloze
+    // entries only ever use ordinal 0.
+    "cloze_ordinal    INTEGER NOT NULL DEFAULT 0,"
     "next_review_date TEXT,"
     "last_review_date TEXT,"
-    "UNIQUE (deck_id, entry_id));",
+    "UNIQUE (deck_id, entry_id, cloze_ordinal));",
 
     "CREATE TABLE IF NOT EXISTS review_log ("
     "id            INTEGER PRIMARY KEY,"

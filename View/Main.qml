@@ -632,6 +632,7 @@ ApplicationWindow {
 
             ListView {
                 id: langList
+                readonly property Popup menuRef: languageMenu
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
@@ -677,7 +678,7 @@ ApplicationWindow {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             appVM.setUiLanguage(modelData)
-                            languageMenu.close()
+                            langList.menuRef.close()
                         }
                     }
                 }

@@ -26,6 +26,8 @@ class ReviewViewModel : public QObject
     // reveals it on the answer via AppViewModel.renderCloze.
     Q_PROPERTY(QString currentClozeText READ currentClozeText NOTIFY sessionChanged)
     Q_PROPERTY(bool currentHasCloze READ currentHasCloze NOTIFY sessionChanged)
+    // Which cloze deletion (cN) this card tests; 0 = normal card.
+    Q_PROPERTY(int currentClozeOrdinal READ currentClozeOrdinal NOTIFY sessionChanged)
     // True when the current card has been flagged a leech (failed many times).
     // The review UI surfaces this so the user can give it extra attention.
     Q_PROPERTY(bool currentIsLeech READ currentIsLeech NOTIFY sessionChanged)
@@ -58,6 +60,7 @@ public:
     QString currentAnswer() const;
     QString currentClozeText() const;
     bool    currentHasCloze() const;
+    int     currentClozeOrdinal() const;
     bool    showingAnswer() const
     {
         return m_showingAnswer;

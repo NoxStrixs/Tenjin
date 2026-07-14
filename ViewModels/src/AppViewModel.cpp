@@ -727,24 +727,33 @@ bool AppViewModel::hasCloze(const QString& text) const
     return clozeRe().match(text).hasMatch();
 }
 
-QString AppViewModel::renderCloze(const QString& text, bool masked) const
+QString AppViewModel::renderCloze(const QString& text, bool masked, int ordinal) const
 {
     QString out;
     qsizetype last = 0;
     auto it = clozeRe().globalMatch(text);
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
-        // Append the literal text before this deletion (HTML-escaped).
         out += text.mid(last, m.capturedStart() - last).toHtmlEscaped();
+        const int    thisOrd = m.captured(1).toInt();
         const QString answer = m.captured(2);
         const QString hint   = m.captured(3);
-        if (masked) {
+
+        // When an ordinal is given (>0), only that deletion is masked; the
+        // others are shown revealed so the sentence reads normally around the
+        // single blank. ordinal 0 (or masked=false) uses the all-or-nothing
+        // behavior.
+        const bool maskThis = masked && (ordinal <= 0 || thisOrd == ordinal);
+
+        if (maskThis) {
             const QString shown = hint.isEmpty() ? QStringLiteral("[…]")
                                                  : QStringLiteral("[%1]").arg(hint.toHtmlEscaped());
             out += QStringLiteral("<span style=\"color:#3498db;font-weight:bold\">%1</span>").arg(shown);
         } else {
-            out += QStringLiteral("<span style=\"color:#2ecc71;font-weight:bold\">%1</span>")
-                       .arg(answer.toHtmlEscaped());
+            const bool isTarget = (thisOrd == ordinal);
+            const QString color = isTarget ? QStringLiteral("#2ecc71") : QStringLiteral("#555555");
+            out += QStringLiteral("<span style=\"color:%1;font-weight:bold\">%2</span>")
+                       .arg(color, answer.toHtmlEscaped());
         }
         last = m.capturedEnd();
     }

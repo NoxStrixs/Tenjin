@@ -41,6 +41,23 @@ DESKTOP="$(find "${APPDIR}" -name 'tenjin.desktop' | head -1)"
 ICON="$(find "${APPDIR}" -name 'tenjin.png' -o -name 'Tenjin.png' | head -1)"
 
 echo "==> Running linuxdeploy (bundling Qt runtime + QML imports)"
+# Fetch the modern static AppImage runtime (type2-runtime). The default runtime
+# linuxdeploy embeds requires libfuse.so.2 at launch, which modern distros
+# (Arch, Ubuntu 24.04+) don't ship — that's why the AppImage needed
+# --appimage-extract-and-run or a manual libfuse2 install. The static runtime
+# self-mounts without FUSE 2 (falls back to extraction automatically), so the
+# AppImage runs out of the box. linuxdeploy's appimage plugin honors
+# LDAI_RUNTIME_FILE.
+RUNTIME_FILE="${BUILD_DIR}/appimage-runtime-x86_64"
+if [ ! -f "${RUNTIME_FILE}" ]; then
+    curl -fL --retry 3 -o "${RUNTIME_FILE}" \
+        "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64" \
+        || wget -q -O "${RUNTIME_FILE}" \
+        "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"
+    chmod +x "${RUNTIME_FILE}"
+fi
+export LDAI_RUNTIME_FILE="${RUNTIME_FILE}"
+
 # Strip unused Qt SQL driver plugins before deployment. linuxdeploy-plugin-qt
 # bundles every .so under plugins/sqldrivers; the aqt Qt kit ships mimer/mysql
 # drivers linking third-party client libs absent from this image, which aborts

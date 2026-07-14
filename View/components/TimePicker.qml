@@ -85,6 +85,7 @@ Item {
             spacing: 6
 
             component TimeField: Rectangle {
+                id: timeField
                 property alias text: field.text
                 property int lo: 0
                 property int hi: 59
@@ -103,9 +104,9 @@ Item {
                     font.pixelSize: Platform.fontBase
                     color: Platform.textPrimary
                     inputMethodHints: Qt.ImhDigitsOnly
-                    validator: IntValidator { bottom: parent.lo; top: parent.hi }
+                    validator: IntValidator { bottom: timeField.lo; top: timeField.hi }
                     background: null
-                    onEditingFinished: parent.committed(parseInt(text || "0"))
+                    onEditingFinished: timeField.committed(parseInt(text || "0"))
                 }
             }
 

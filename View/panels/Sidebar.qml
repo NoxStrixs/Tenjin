@@ -440,64 +440,9 @@ Rectangle {
             }
         }
 
-        // Import / Export footer
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 44
-            color: Platform.surface
-            Rectangle {
-                anchors { left: parent.left; right: parent.right; top: parent.top }
-                height: 1; color: Platform.border
-            }
-            RowLayout {
-                anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
-                spacing: 8
-                Repeater {
-                    model: [{ label: qsTr("Import"), act: 0 }, { label: qsTr("Export"), act: 1 }]
-                    delegate: Rectangle {
-                        required property var modelData
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 28
-                        radius: Platform.radius
-                        color: ieArea.containsMouse ? Platform.surfaceAlt : Platform.bg
-                        border.color: Platform.border
-                        border.width: 1
-                        Text {
-                            anchors.centerIn: parent
-                            text: parent.modelData.label
-                            color: Platform.accentDark
-                            font.pixelSize: 12
-                            font.bold: true
-                        }
-                        MouseArea {
-                            id: ieArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (parent.modelData.act === 0) {
-                                    // Import — show the QML picker that
-                                    // lists files in appVM.documentsFolder.
-                                    importPickerDialog.open()
-                                } else {
-                                    // Export — write to Documents folder,
-                                    // toast the resulting path so the user
-                                    // can find it (Files app on iOS,
-                                    // ~/Documents on desktop).
-                                    const path = appVM.exportToDocuments()
-                                    if (path && path.length > 0)
-                                        appVM.statusMessage = "Exported to " + path
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         // Sync footer — appears below Import/Export when a cloud endpoint is
-        // Import / Export — parity with MobileDrawer; desktop routes to the
-        // native file dialogs via Main.openImport/ExportDialog.
+        // Import / Export — routes to the native file dialogs via
+        // Main.openImport/ExportDialog (desktop) for parity with MobileDrawer.
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 40
@@ -588,15 +533,10 @@ Rectangle {
         }
     }
 
-    // FileDialog was the wrong abstraction for cross-platform export/import:
-    // QtQuick.Dialogs.FileDialog emits "no native option" on iOS (no
-    // platform picker, no Quick fallback). Replaced with:
-    //   Export → appVM.exportToDocuments() writes a timestamped JSON to
-    //            ~/Documents (or the iOS sandboxed Documents that's
-    //            visible via Files.app) and toasts the path.
-    //   Import → ImportPickerDialog lists existing JSON exports in that
-    //            folder and lets the user pick one.
-    ImportPickerDialog { id: importPickerDialog }
+    // Export/import route through the importRequested()/exportRequested()
+    // signals to Main.qml's openImportDialog()/openExportDialog(), which use
+    // the native file dialogs on desktop and the sandboxed Documents flow on
+    // iOS. (FileDialog was the wrong abstraction — no native picker on iOS.)
 
     // Mode state
     property int sidebarMode: 0

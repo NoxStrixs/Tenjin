@@ -2,6 +2,7 @@
 
 #include <DatabaseManager/DatabaseManager.h>
 
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,6 +35,15 @@ struct StudyFilter_t {
     int                  limit = 100;     // cap the queue
 };
 
+// Result of an FSRS weight-optimization run for one deck.
+struct OptimizeReport_t {
+    bool        optimized   = false; // true if weights were fitted + saved
+    int         reviewCount = 0;     // scored review events considered
+    double      initialLoss = 0.0;   // log-loss with default weights
+    double      finalLoss   = 0.0;   // log-loss after fitting
+    std::string error;               // non-empty on failure
+};
+
 class DeckService
 {
 public:
@@ -46,6 +56,10 @@ public:
     Result_t<bool>                DeleteDeck(ID_t deckId);
     Result_t<bool>                SetNewCardsPerDay(ID_t deckId, int perDay);
     Result_t<bool>                SetScheduler(ID_t deckId, const std::string& scheduler, double retention);
+    // Optimizer split so DB access stays on the caller's thread: read sequences,
+    // run the pure Fsrs::optimize on a worker, then save the weights here.
+    Result_t<std::vector<Fsrs::CardHistory>> GetReviewSequencesFor(ID_t deckId);
+    Result_t<bool>                SaveDeckWeights(ID_t deckId, const std::array<double, 19>& weights);
 
     // Bulk wipe + tag-impact query. Used by the Settings danger zone and
     // by the tag-delete confirmation popup (which warns the user when

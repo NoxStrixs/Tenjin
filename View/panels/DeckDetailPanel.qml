@@ -496,6 +496,51 @@ Item {
                 }
             }
 
+            // Optimize FSRS weights from this deck's review history (FSRS only).
+            ColumnLayout {
+                visible: schedulerSheet.scheduler === "fsrs"
+                Layout.fillWidth: true
+                spacing: 6
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: Platform.border }
+
+                AppText {
+                    text: qsTr("Optimize weights")
+                    font.bold: true; font.pixelSize: Platform.fontBase
+                }
+                AppText {
+                    text: qsTr("Fit the scheduler to your own review history for more accurate intervals. Needs enough reviews to be useful.")
+                    color: Platform.textMuted; font.pixelSize: Platform.fontSmall
+                    maxLines: 3; Layout.fillWidth: true; wrapMode: Text.WordWrap
+                }
+                AppText {
+                    id: optimizeStatus
+                    visible: text.length > 0
+                    text: ""
+                    color: Platform.textPrimary; font.pixelSize: Platform.fontSmall
+                    maxLines: 3; Layout.fillWidth: true; wrapMode: Text.WordWrap
+                }
+                ActionButton {
+                    id: optimizeBtn
+                    Layout.fillWidth: true
+                    property bool running: false
+                    enabled: !running
+                    text: running ? qsTr("Optimizing…") : qsTr("Optimize now")
+                    onClicked: appVM.deckVM.optimizeDeck(appVM.deckVM.selectedDeckId)
+                }
+                Connections {
+                    target: appVM.deckVM
+                    function onOptimizeStarted() {
+                        optimizeBtn.running = true
+                        optimizeStatus.text = qsTr("Analyzing review history…")
+                    }
+                    function onOptimizeFinished(success, message) {
+                        optimizeBtn.running = false
+                        optimizeStatus.text = message
+                    }
+                }
+            }
+
             ActionButton {
                 Layout.fillWidth: true
                 text: qsTr("Save")

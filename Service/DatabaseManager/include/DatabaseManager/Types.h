@@ -139,6 +139,7 @@ struct Deck_t {
     int          newCardsPerDay = 20;
     std::string  scheduler = "sm2";   // "sm2" or "fsrs"
     double       fsrsRetention = 0.9; // FSRS desired retention (0.7..0.97)
+    std::string  fsrsWeights;         // JSON array of 19 weights, empty = defaults
 };
 
 // SM-2 scheduling state for one (deck, word) pair.
@@ -151,6 +152,7 @@ struct Review_t {
     std::uint16_t repetitions  = 0;
     std::uint16_t lapses       = 0;
     bool          isLeech      = false;
+    int           clozeOrdinal = 0; // 0 = normal card; N = cloze deletion cN
     std::string   nextReviewDate;
     std::string   lastReviewDate;
 };

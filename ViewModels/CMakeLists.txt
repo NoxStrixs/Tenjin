@@ -30,7 +30,16 @@ elseif(APPLE)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_default.cpp)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
 else()
-    set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_default.cpp)
+    # Windows and Linux now have native closed-app daily-reminder backends
+    # (Scheduled Task / systemd user timer). Other desktop OSes fall back to
+    # the in-app default.
+    if(WIN32)
+        set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_windows.cpp)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_linux.cpp)
+    else()
+        set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_default.cpp)
+    endif()
     set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_default.cpp)
     set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_default.cpp)
     set(_TENJIN_TIME_BACKEND     src/TimePickerService_default.cpp)
@@ -98,6 +107,7 @@ target_compile_definitions(TenjinViewModels
 target_link_libraries(TenjinViewModels
     PUBLIC
         Qt6::Core
+        Qt6::Concurrent
         Qt6::Gui
         Qt6::Qml
         Qt6::Network

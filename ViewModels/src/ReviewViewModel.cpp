@@ -78,6 +78,16 @@ bool ReviewViewModel::currentHasCloze() const
     return !currentClozeText().isEmpty();
 }
 
+int ReviewViewModel::currentClozeOrdinal() const
+{
+    if (!m_session || m_session->queue.empty())
+        return 0;
+    const int idx = m_session->currentIndex;
+    if (idx < 0 || idx >= static_cast<int>(m_session->queue.size()))
+        return 0;
+    return m_session->queue[static_cast<size_t>(idx)].clozeOrdinal;
+}
+
 QString ReviewViewModel::currentAnswer() const
 {
     qint64 wid = currentWordId();

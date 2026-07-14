@@ -81,7 +81,7 @@ Priority-ordered by user impact ÷ effort:
        existing review log; streak counter. Standard retention mechanic.
 5. [x] **Filtered/custom study** — cram-by-tag, study-ahead. The tag system
        makes this mostly a DeckService query + one page.
-6. [x] **Cloze deletions** — Anki-syntax {{cN::answer::hint}} content block; masked on review front, revealed on answer (option a). Per-deletion cards (option b) deferred to post-FSRS. — new content-block type; renderer masks the cloze
+6. [x] **Cloze deletions** — Anki-syntax {{cN::answer::hint}} content block; masked on review front, revealed on answer (option a). Per-deletion cards (option b) DONE: cloze_ordinal in review key, per-cN scheduling. — new content-block type; renderer masks the cloze
        span during review. Medium effort.
 7. [x] **Typed-answer review mode** — per-session, normalized matching, diff shown before grade. — text field + diff highlight against the
        answer. Medium.

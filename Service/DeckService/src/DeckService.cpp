@@ -37,6 +37,23 @@ Result_t<bool> DeckService::SetScheduler(ID_t deckId, const std::string& schedul
     return m_db->SetDeckScheduler(deckId, scheduler, retention);
 }
 
+Result_t<std::vector<Fsrs::CardHistory>> DeckService::GetReviewSequencesFor(ID_t deckId)
+{
+    return m_db->GetReviewSequences(deckId);
+}
+
+Result_t<bool> DeckService::SaveDeckWeights(ID_t deckId,
+                                            const std::array<double, 19>& weights)
+{
+    std::string json = "[";
+    for (size_t i = 0; i < weights.size(); ++i) {
+        if (i) json += ",";
+        json += std::to_string(weights[i]);
+    }
+    json += "]";
+    return m_db->SetDeckWeights(deckId, json);
+}
+
 Result_t<bool> DeckService::AddEntryToDeck(ID_t deckId, ID_t wordId)
 {
     return m_db->AddEntryToDeck(deckId, wordId);
@@ -147,14 +164,15 @@ Result_t<Review_t> DeckService::SubmitCard(ReviewSession_t& session, int quality
     if (session.reschedule) {
         auto result = m_db->SubmitReview(session.deckId >= 0 ? session.deckId
                                                              : current.deckId,
-                                         current.wordId, quality);
+                                         current.wordId, quality, current.clozeOrdinal);
         if (result)
             session.currentIndex++;
         return result;
     }
 
     // Practice mode: log the review for stats but do NOT change the schedule.
-    auto logged = m_db->LogReviewOnly(current.deckId, current.wordId, quality);
+    auto logged = m_db->LogReviewOnly(current.deckId, current.wordId, quality,
+                                      current.clozeOrdinal);
     if (logged)
         session.currentIndex++;
     return logged;

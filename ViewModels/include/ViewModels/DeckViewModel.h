@@ -94,6 +94,9 @@ public slots:
     Q_INVOKABLE QVariantMap  globalStats();
     Q_INVOKABLE bool         setNewCardsPerDay(qint64 deckId, int perDay);
     Q_INVOKABLE bool         setScheduler(qint64 deckId, const QString& scheduler, double retention);
+    // Fit FSRS weights to the deck's history on a worker thread. Emits
+    // optimizeFinished(success, message) when done; optimizeStarted() first.
+    Q_INVOKABLE void         optimizeDeck(qint64 deckId);
     Q_INVOKABLE QVariantList wordHistory(qint64 deckId, qint64 wordId);
     bool                     deleteDeck(qint64 deckId);
 
@@ -114,6 +117,8 @@ signals:
     void deckWordsChanged();
     void tagFiltersChanged();
     void errorOccurred(const QString& msg);
+    void optimizeStarted();
+    void optimizeFinished(bool success, const QString& message);
 
 private:
     void reloadDeckWords();

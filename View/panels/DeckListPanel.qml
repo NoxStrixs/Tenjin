@@ -48,6 +48,34 @@ Rectangle {
                         text: model.deckName; color: Platform.textPrimary
                         font.pixelSize: Platform.fontBase; elide: Text.ElideRight
                     }
+                    // Number of cards due for review now. Computed once per
+                    // delegate load and refreshed when the deck list changes.
+                    Rectangle {
+                        id: dueBadge
+                        property int dueCount: 0
+                        visible: dueCount > 0
+                        implicitWidth: Math.max(20, dueLabel.implicitWidth + 10)
+                        implicitHeight: 20
+                        radius: 10
+                        color: Platform.accent
+                        Text {
+                            id: dueLabel
+                            anchors.centerIn: parent
+                            text: dueBadge.dueCount > 99 ? "99+" : dueBadge.dueCount
+                            color: Platform.textOnDark
+                            font.pixelSize: Platform.fontSmall
+                            font.bold: true
+                        }
+                        function refresh() {
+                            var st = appVM.deckVM.deckStats(model.deckId)
+                            dueBadge.dueCount = (st && st.due !== undefined) ? st.due : 0
+                        }
+                        Component.onCompleted: refresh()
+                        Connections {
+                            target: appVM.deckVM.deckModel
+                            function onModelReset() { dueBadge.refresh() }
+                        }
+                    }
                     Text {
                         text: "✦"; color: Platform.accent
                         font.pixelSize: Platform.fontBase; visible: model.isSmart

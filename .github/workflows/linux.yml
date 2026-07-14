@@ -155,6 +155,15 @@ jobs:
           wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage -O linuxdeploy-plugin-qt
           chmod +x linuxdeploy linuxdeploy-plugin-qt
 
+          # Static FUSE-less AppImage runtime. The default runtime needs
+          # libfuse.so.2 at launch, which Arch / Ubuntu 24.04+ don't ship, so
+          # users had to install libfuse2 or use --appimage-extract-and-run.
+          # The type2-runtime static build self-mounts without FUSE 2 and
+          # falls back to extraction, so the AppImage runs out of the box.
+          wget -q https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64 -O appimage-runtime
+          chmod +x appimage-runtime
+          export LDAI_RUNTIME_FILE="$PWD/appimage-runtime"
+
           # 4.5 Strip unused Qt SQL driver plugins before deployment.
           # linuxdeploy-plugin-qt bundles every .so it finds under
           # plugins/sqldrivers, not just the one Tenjin actually loads

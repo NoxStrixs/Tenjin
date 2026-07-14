@@ -42,7 +42,7 @@ Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name, bool isSmart,
 Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention "
+    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention, fsrs_weights "
               "FROM deck WHERE id = :id;");
     q.bindValue(":id", QVariant::fromValue(id));
 
@@ -63,13 +63,14 @@ Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
                   .createdAt      = q.value(4).toString().toStdString(),
                   .newCardsPerDay = q.value(5).toInt(),
                   .scheduler      = q.value(6).toString().toStdString(),
-                  .fsrsRetention  = q.value(7).toDouble()};
+                  .fsrsRetention  = q.value(7).toDouble(),
+                  .fsrsWeights    = q.value(8).toString().toStdString()};
 }
 
 Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
 {
     QSqlQuery q(m_db);
-    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention "
+    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention, fsrs_weights "
                 "FROM deck ORDER BY name ASC;"))
         return std::unexpected(q.lastError().text().toStdString());
 
@@ -86,7 +87,8 @@ Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
                                .createdAt      = q.value(4).toString().toStdString(),
                                .newCardsPerDay = q.value(5).toInt(),
                                .scheduler      = q.value(6).toString().toStdString(),
-                               .fsrsRetention  = q.value(7).toDouble()});
+                               .fsrsRetention  = q.value(7).toDouble(),
+                               .fsrsWeights    = q.value(8).toString().toStdString()});
     }
     return decks;
 }
@@ -137,6 +139,70 @@ Result_t<bool> DatabaseManager::SetDeckScheduler(ID_t id, const std::string& sch
     if (q.numRowsAffected() == 0)
         return std::unexpected("No deck found with id: " + std::to_string(id));
     return true;
+}
+
+Result_t<bool> DatabaseManager::SetDeckWeights(ID_t id, const std::string& weightsJson)
+{
+    QSqlQuery q(m_db);
+    q.prepare("UPDATE deck SET fsrs_weights = :w WHERE id = :id;");
+    q.bindValue(":w", QString::fromStdString(weightsJson));
+    q.bindValue(":id", QVariant::fromValue(id));
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+    if (q.numRowsAffected() == 0)
+        return std::unexpected("No deck found with id: " + std::to_string(id));
+    return true;
+}
+
+Result_t<std::vector<Fsrs::CardHistory>> DatabaseManager::GetReviewSequences(ID_t deckId)
+{
+    // Pull every logged review for the deck, ordered by card then time, and
+    // fold each card's rows into a chronological sequence with elapsed-day gaps.
+    QSqlQuery q(m_db);
+    q.prepare("SELECT entry_id, quality, reviewed_at FROM review_log "
+              "WHERE deck_id = :d ORDER BY entry_id, reviewed_at;");
+    q.bindValue(":d", QVariant::fromValue(deckId));
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+
+    std::vector<Fsrs::CardHistory> sequences;
+    Fsrs::CardHistory              current;
+    ID_t                           currentEntry = -1;
+    qint64                         prevMs       = 0;
+
+    auto flush = [&]() {
+        if (!current.empty())
+            sequences.push_back(std::move(current));
+        current.clear();
+    };
+
+    while (q.next()) {
+        const ID_t   entry = q.value(0).toLongLong();
+        const int    ui    = q.value(1).toInt();          // 0..3
+        const qint64 ms    = q.value(2).toLongLong();
+
+        if (entry != currentEntry) {
+            flush();
+            currentEntry = entry;
+            prevMs       = ms;
+        }
+
+        // Elapsed days since this card's previous review (0 for the first).
+        double elapsedDays = 0.0;
+        if (!current.empty())
+            elapsedDays = static_cast<double>(ms - prevMs) / 86400000.0;
+        prevMs = ms;
+
+        // UI grade 0..3 (Forgot/Hard/Good/Easy) -> FSRS 1..4.
+        const int grade = std::clamp(ui, 0, 3) + 1;
+        current.push_back(Fsrs::ReviewEvent{
+            .elapsedDays = elapsedDays < 0.0 ? 0.0 : elapsedDays,
+            .grade       = grade,
+            .passed      = grade >= 2});
+    }
+    flush();
+
+    return sequences;
 }
 
 Result_t<bool> DatabaseManager::AddEntryToDeck(ID_t deckId, ID_t wordId)

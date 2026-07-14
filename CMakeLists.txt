@@ -49,7 +49,7 @@ include(cmake/StaticAnalysis.cmake)
 include(cmake/Vendor.cmake)
 
 find_package(Qt6 6.9 REQUIRED COMPONENTS
-    Core Gui Qml Network Sql
+    Core Concurrent Gui Qml Network Sql
 )
 
 if(TENJIN_BUILD_GUI)

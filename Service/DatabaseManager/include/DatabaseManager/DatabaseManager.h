@@ -2,6 +2,7 @@
 
 #include <DatabaseManager/Types.h>
 #include <DatabaseManager/Fsrs.h>
+#include <DatabaseManager/FsrsOptimizer.h>
 
 #include <QSqlDatabase>
 #include <QString>
@@ -99,6 +100,12 @@ public:
     Result_t<bool>                DeleteDeck(ID_t id);
     Result_t<bool>                SetDeckNewCardsPerDay(ID_t id, int perDay);
     Result_t<bool>                SetDeckScheduler(ID_t id, const std::string& scheduler, double retention);
+    // Persist optimized FSRS weights (JSON array of 19 numbers) for a deck.
+    Result_t<bool>                SetDeckWeights(ID_t id, const std::string& weightsJson);
+    // Build per-card chronological review sequences for the optimizer from
+    // review_log: each inner vector is one card's events (elapsed days since the
+    // card's previous review, FSRS grade 1..4, pass flag), oldest first.
+    Result_t<std::vector<Fsrs::CardHistory>> GetReviewSequences(ID_t deckId);
 
     Result_t<bool> AddEntryToDeck(ID_t deckId, ID_t wordId);
     Result_t<bool> RemoveEntryFromDeck(ID_t deckId, ID_t wordId);
@@ -113,10 +120,12 @@ public:
 
     // Reviews + analytics
     Result_t<Review_t>                        InitReview(ID_t deckId, ID_t wordId);
-    Result_t<Review_t>                        SubmitReview(ID_t deckId, ID_t wordId, int quality);
+    Result_t<Review_t>                        SubmitReview(ID_t deckId, ID_t wordId, int quality,
+                                                           int clozeOrdinal = 0);
     // Log a practice review for stats WITHOUT advancing the SRS schedule. Used
     // by cram / study-ahead filtered sessions. Returns the unchanged review row.
-    Result_t<Review_t>                        LogReviewOnly(ID_t deckId, ID_t wordId, int quality);
+    Result_t<Review_t>                        LogReviewOnly(ID_t deckId, ID_t wordId, int quality,
+                                                            int clozeOrdinal = 0);
     Result_t<std::vector<Review_t>>           GetDueReviews(ID_t deckId);
     // Filtered queue for custom study. mode: 0=Due, 1=Ahead(<= aheadDays),
     // 2=Cram(any). tagIds/language narrow the set (empty = any). deckId -1 spans
@@ -145,9 +154,10 @@ public:
 
 private:
     // Scheduler backends dispatched by SubmitReview based on deck.scheduler.
-    Result_t<Review_t> submitReviewSm2(ID_t deckId, ID_t wordId, int quality);
+    Result_t<Review_t> submitReviewSm2(ID_t deckId, ID_t wordId, int quality, int clozeOrdinal);
     Result_t<Review_t> submitReviewFsrs(ID_t deckId, ID_t wordId, int quality,
-                                        double retention);
+                                        double retention, const QString& weightsJson,
+                                        int clozeOrdinal);
 
     // Assigns a fresh guid to any pre-existing row that lacks one.
     void backfillGuids();

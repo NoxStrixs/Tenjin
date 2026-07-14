@@ -1,3 +1,5 @@
+#include <QtConcurrent>
+#include <QFutureWatcher>
 #include <DeckService/DeckService.h>
 #include <EntryService/EntryService.h>
 #include <ViewModels/DeckViewModel.h>
@@ -216,6 +218,58 @@ bool DeckViewModel::setScheduler(qint64 deckId, const QString& scheduler, double
     }
     reloadDecks();
     return true;
+}
+
+void DeckViewModel::optimizeDeck(qint64 deckId)
+{
+    emit optimizeStarted();
+
+    // QSqlDatabase connections are bound to the thread that created them, so all
+    // DB access stays on this (main) thread: read the review sequences here,
+    // run ONLY the pure CPU-bound fit on a worker, then persist on completion
+    // back on this thread.
+    auto sequences = m_deckService->GetReviewSequencesFor(static_cast<Service::ID_t>(deckId));
+    if (!sequences) {
+        emit optimizeFinished(false, QString::fromStdString(sequences.error()));
+        return;
+    }
+
+    auto* watcher = new QFutureWatcher<Fsrs::OptimizeResult>(this);
+    connect(watcher, &QFutureWatcher<Fsrs::OptimizeResult>::finished, this,
+            [this, watcher, deckId]() {
+                const Fsrs::OptimizeResult r = watcher->result();
+                QString msg;
+                bool ok = r.optimized;
+                if (!r.optimized) {
+                    msg = tr("Not enough review history yet to optimize "
+                             "(need ~400 reviews). Keeping default weights.");
+                } else {
+                    // Persist the fitted weights (main thread).
+                    auto saved = m_deckService->SaveDeckWeights(
+                        static_cast<Service::ID_t>(deckId), r.weights);
+                    if (!saved) {
+                        ok = false;
+                        msg = QString::fromStdString(saved.error());
+                    } else {
+                        const double pct = r.initialLoss > 0.0
+                            ? 100.0 * (r.initialLoss - r.finalLoss) / r.initialLoss
+                            : 0.0;
+                        msg = tr("Optimized from %1 reviews — prediction error down %2%.")
+                                  .arg(r.reviewCount)
+                                  .arg(QString::number(pct, 'f', 1));
+                    }
+                }
+                emit optimizeFinished(ok, msg);
+                if (ok)
+                    reloadDecks();
+                watcher->deleteLater();
+            });
+
+    // Move the sequences into the worker; only pure computation runs there.
+    auto data = std::make_shared<std::vector<Fsrs::CardHistory>>(std::move(*sequences));
+    watcher->setFuture(QtConcurrent::run([data]() {
+        return Fsrs::optimize(*data);
+    }));
 }
 
 bool DeckViewModel::addWordToDeck(qint64 deckId, qint64 wordId)

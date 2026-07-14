@@ -258,7 +258,8 @@ Rectangle {
                         Layout.fillWidth: true
                         visible: appVM.reviewVM.currentHasCloze
                         text: appVM.renderCloze(appVM.reviewVM.currentClozeText,
-                                                !appVM.reviewVM.showingAnswer)
+                                                !appVM.reviewVM.showingAnswer,
+                                                appVM.reviewVM.currentClozeOrdinal)
                         textFormat: Text.RichText
                         color: Platform.textPrimary
                         font.pixelSize: Platform.fontLarge

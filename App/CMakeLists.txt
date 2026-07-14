@@ -251,14 +251,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     endif()
 
     if(MEDIA_SUPPORT)
-        if(CMAKE_VERSION VERSION_LESS "3.28")
-            message(FATAL_ERROR "iOS + MEDIA_SUPPORT=ON needs CMake >= 3.28")
-        endif()
-        if(COMMAND qt_add_ios_ffmpeg_libraries)
-            qt_add_ios_ffmpeg_libraries(Tenjin)
-        else()
-            message(FATAL_ERROR "qt_add_ios_ffmpeg_libraries is not available.")
-        endif()
+        # Tenjin only PLAYS audio/video (no recording/transcoding), so on iOS
+        # the native AVFoundation backend (QDarwinMediaPlugin) is sufficient and
+        # preferred. The aqt-installed Qt iOS kit links the static FFmpeg media
+        # plugin (libQt6FFmpegMediaPluginImpl.a) but does NOT ship the FFmpeg
+        # libraries it depends on, so every av_*/swr_*/sws_* symbol is undefined
+        # at link. Exclude the FFmpeg plugin and import the Darwin one instead.
+        qt_import_plugins(Tenjin
+            INCLUDE Qt6::QDarwinMediaPlugin
+            EXCLUDE Qt6::QFFmpegMediaPlugin
+        )
     endif()
 endif()
 
@@ -267,6 +269,7 @@ qt_finalize_executable(Tenjin)
 install(TARGETS Tenjin
     BUNDLE  DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
 # Linux/macOS: CMake-driven deploy. Windows deliberately excluded — windeployqt

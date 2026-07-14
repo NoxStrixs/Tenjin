@@ -1,3 +1,5 @@
+#include <QRegularExpression>
+#include <set>
 #include <DatabaseManager/DatabaseManager.h>
 #include <DatabaseManager/Schema.h>
 
@@ -19,23 +21,61 @@
 
 namespace Service {
 
+namespace {
+// Extract distinct cloze numbers ({{cN::...}}) from an entry's cloze blocks,
+// sorted ascending. Empty => the entry has no cloze deletions.
+std::vector<int> clozeOrdinalsFromBlocks(
+    const std::vector<ContentBlock_t>& blocks)
+{
+    static const QRegularExpression re(QStringLiteral("\\{\\{c(\\d+)::"));
+    std::set<int> found;
+    for (const auto& b : blocks) {
+        if (b.type != ContentType_t::Cloze)
+            continue;
+        const QString text = QString::fromStdString(b.content);
+        auto it = re.globalMatch(text);
+        while (it.hasNext()) {
+            const int n = it.next().captured(1).toInt();
+            if (n > 0)
+                found.insert(n);
+        }
+    }
+    return {found.begin(), found.end()};
+}
+} // namespace
+
 Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
 {
+    // Determine the ordinals this entry needs: 0 for a normal card, or one per
+    // distinct cloze deletion (c1,c2,…) for a cloze entry. Pure-cloze entries
+    // don't get an ordinal-0 card (it would redundantly show every blank).
+    std::vector<int> ordinals;
+    if (auto blocks = GetContentForEntry(wordId)) {
+        ordinals = clozeOrdinalsFromBlocks(*blocks);
+    }
+    if (ordinals.empty())
+        ordinals.push_back(0);
+
+    for (const int ord : ordinals) {
+        QSqlQuery ins(m_db);
+        ins.prepare("INSERT OR IGNORE INTO review "
+                    "(deck_id, entry_id, cloze_ordinal, next_review_date) "
+                    "VALUES (:deckId, :wordId, :ord, date('now', 'localtime'));");
+        ins.bindValue(":deckId", QVariant::fromValue(deckId));
+        ins.bindValue(":wordId", QVariant::fromValue(wordId));
+        ins.bindValue(":ord", ord);
+        if (!ins.exec())
+            return std::unexpected(ins.lastError().text().toStdString());
+    }
+
+    // Return the first ordinal's row (representative).
     QSqlQuery q(m_db);
-    q.prepare("INSERT OR IGNORE INTO review (deck_id, entry_id, next_review_date) "
-              "VALUES (:deckId, :wordId, date('now', 'localtime'));");
-    q.bindValue(":deckId", QVariant::fromValue(deckId));
-    q.bindValue(":wordId", QVariant::fromValue(wordId));
-
-    if (!q.exec())
-        return std::unexpected(q.lastError().text().toStdString());
-
     q.prepare("SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
-              "lapses, is_leech, next_review_date, last_review_date "
-              "FROM review WHERE deck_id = :deckId AND entry_id = :wordId;");
+              "lapses, is_leech, cloze_ordinal, next_review_date, last_review_date "
+              "FROM review WHERE deck_id = :deckId AND entry_id = :wordId "
+              "ORDER BY cloze_ordinal LIMIT 1;");
     q.bindValue(":deckId", QVariant::fromValue(deckId));
     q.bindValue(":wordId", QVariant::fromValue(wordId));
-
     if (!q.exec() || !q.next())
         return std::unexpected(q.lastError().text().toStdString());
 
@@ -47,36 +87,42 @@ Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
                     .repetitions    = static_cast<uint16_t>(q.value(5).toInt()),
                     .lapses         = static_cast<uint16_t>(q.value(6).toInt()),
                     .isLeech        = q.value(7).toInt() != 0,
-                    .nextReviewDate = q.value(8).toString().toStdString(),
-                    .lastReviewDate = q.value(9).toString().toStdString()};
+                    .clozeOrdinal   = q.value(8).toInt(),
+                    .nextReviewDate = q.value(9).toString().toStdString(),
+                    .lastReviewDate = q.value(10).toString().toStdString()};
 }
 
-Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int quality)
+Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int quality,
+                                                 int clozeOrdinal)
 {
     // Determine the deck's scheduler. Default 'sm2' keeps existing behaviour.
     QString scheduler = QStringLiteral("sm2");
     double  retention = 0.9;
+    QString weights;
     {
         QSqlQuery dq(m_db);
-        dq.prepare("SELECT scheduler, fsrs_retention FROM deck WHERE id = :d;");
+        dq.prepare("SELECT scheduler, fsrs_retention, fsrs_weights FROM deck WHERE id = :d;");
         dq.bindValue(":d", QVariant::fromValue(deckId));
         if (dq.exec() && dq.next()) {
             scheduler = dq.value(0).toString();
             retention = dq.value(1).toDouble();
+            weights   = dq.value(2).toString();
         }
     }
     if (scheduler == QStringLiteral("fsrs"))
-        return submitReviewFsrs(deckId, wordId, quality, retention);
-    return submitReviewSm2(deckId, wordId, quality);
+        return submitReviewFsrs(deckId, wordId, quality, retention, weights, clozeOrdinal);
+    return submitReviewSm2(deckId, wordId, quality, clozeOrdinal);
 }
 
-Result_t<Review_t> DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, int quality)
+Result_t<Review_t> DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, int quality,
+                                                    int clozeOrdinal)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, ease_factor, interval_days, repetitions, lapses, is_leech "
-              "FROM review WHERE deck_id = :deckId AND entry_id = :wordId;");
+              "FROM review WHERE deck_id = :deckId AND entry_id = :wordId AND cloze_ordinal = :ord;");
     q.bindValue(":deckId", QVariant::fromValue(deckId));
     q.bindValue(":wordId", QVariant::fromValue(wordId));
+    q.bindValue(":ord", clozeOrdinal);
 
     if (!q.exec() || !q.next())
         return std::unexpected("Review not found. Call initReview first.");
@@ -133,7 +179,7 @@ Result_t<Review_t> DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, in
         "UPDATE review SET ease_factor = :ef, interval_days = :interval, repetitions = :reps, "
         "lapses = :lapses, is_leech = :leech, "
         "next_review_date = :nextDate, last_review_date = :lastDate "
-        "WHERE deck_id = :deckId AND entry_id = :wordId;");
+        "WHERE deck_id = :deckId AND entry_id = :wordId AND cloze_ordinal = :ord;");
     q.bindValue(":ef", easeFactor);
     q.bindValue(":interval", intervalDays);
     q.bindValue(":reps", repetitions);
@@ -143,6 +189,7 @@ Result_t<Review_t> DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, in
     q.bindValue(":lastDate", today);
     q.bindValue(":deckId", QVariant::fromValue(deckId));
     q.bindValue(":wordId", QVariant::fromValue(wordId));
+    q.bindValue(":ord", clozeOrdinal);
 
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
@@ -175,13 +222,16 @@ Result_t<Review_t> DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, in
 }
 
 Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t deckId, ID_t wordId,
-                                                     int quality, double retention)
+                                                     int quality, double retention,
+                                                     const QString& weightsJson,
+                                                     int clozeOrdinal)
 {
     QSqlQuery q(m_db);
     q.prepare("SELECT id, stability, difficulty, lapses, is_leech, last_review_date "
-              "FROM review WHERE deck_id = :deckId AND entry_id = :wordId;");
+              "FROM review WHERE deck_id = :deckId AND entry_id = :wordId AND cloze_ordinal = :ord;");
     q.bindValue(":deckId", QVariant::fromValue(deckId));
     q.bindValue(":wordId", QVariant::fromValue(wordId));
+    q.bindValue(":ord", clozeOrdinal);
     if (!q.exec() || !q.next())
         return std::unexpected("Review not found. Call initReview first.");
 
@@ -204,6 +254,18 @@ Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t deckId, ID_t wordId,
 
     Fsrs::Params p;
     p.requestRetention = std::clamp(retention, 0.70, 0.97);
+    // Apply the deck's optimized weights if present (JSON array of 19 numbers);
+    // otherwise the default weights stand.
+    if (!weightsJson.isEmpty()) {
+        const QJsonDocument doc = QJsonDocument::fromJson(weightsJson.toUtf8());
+        if (doc.isArray()) {
+            const QJsonArray arr = doc.array();
+            if (arr.size() == 19) {
+                for (int i = 0; i < 19; ++i)
+                    p.w[static_cast<size_t>(i)] = arr[i].toDouble(p.w[static_cast<size_t>(i)]);
+            }
+        }
+    }
     const Fsrs::Schedule sched = Fsrs::schedule(p, st, elapsed, fsrsGrade);
 
     constexpr int kLeechThreshold = 8;
@@ -220,7 +282,7 @@ Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t deckId, ID_t wordId,
     up.prepare("UPDATE review SET stability = :s, difficulty = :d, "
                "interval_days = :iv, lapses = :lapses, is_leech = :leech, "
                "next_review_date = :nextDate, last_review_date = :lastDate "
-               "WHERE deck_id = :deckId AND entry_id = :wordId;");
+               "WHERE deck_id = :deckId AND entry_id = :wordId AND cloze_ordinal = :ord;");
     up.bindValue(":s", sched.state.stability);
     up.bindValue(":d", sched.state.difficulty);
     up.bindValue(":iv", sched.intervalDays);
@@ -230,6 +292,7 @@ Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t deckId, ID_t wordId,
     up.bindValue(":lastDate", today);
     up.bindValue(":deckId", QVariant::fromValue(deckId));
     up.bindValue(":wordId", QVariant::fromValue(wordId));
+    up.bindValue(":ord", clozeOrdinal);
     if (!up.exec())
         return std::unexpected(up.lastError().text().toStdString());
 
@@ -261,7 +324,8 @@ Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t deckId, ID_t wordId,
                     .lastReviewDate = today.toStdString()};
 }
 
-Result_t<Review_t> DatabaseManager::LogReviewOnly(ID_t deckId, ID_t wordId, int quality)
+Result_t<Review_t> DatabaseManager::LogReviewOnly(ID_t deckId, ID_t wordId, int quality,
+                                                  int clozeOrdinal)
 {
     // Read the current review row (for the ease/interval snapshot in the log)
     // without modifying it.
@@ -270,9 +334,10 @@ Result_t<Review_t> DatabaseManager::LogReviewOnly(ID_t deckId, ID_t wordId, int 
     {
         QSqlQuery r(m_db);
         r.prepare("SELECT ease_factor, interval_days FROM review "
-                  "WHERE deck_id = :d AND entry_id = :w;");
+                  "WHERE deck_id = :d AND entry_id = :w AND cloze_ordinal = :ord;");
         r.bindValue(":d", QVariant::fromValue(deckId));
         r.bindValue(":w", QVariant::fromValue(wordId));
+        r.bindValue(":ord", clozeOrdinal);
         if (r.exec() && r.next()) {
             ef = r.value(0).toFloat();
             iv = r.value(1).toInt();
@@ -339,8 +404,9 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
                                    .repetitions    = static_cast<uint16_t>(q.value(5).toInt()),
                                    .lapses         = static_cast<uint16_t>(q.value(6).toInt()),
                                    .isLeech        = q.value(7).toInt() != 0,
-                                   .nextReviewDate = q.value(8).toString().toStdString(),
-                                   .lastReviewDate = q.value(9).toString().toStdString()});
+                                   .clozeOrdinal   = q.value(8).toInt(),
+                                   .nextReviewDate = q.value(9).toString().toStdString(),
+                                   .lastReviewDate = q.value(10).toString().toStdString()});
         }
     };
 
@@ -350,7 +416,7 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
     {
         QSqlQuery q(m_db);
         q.prepare("SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
-                  "lapses, is_leech, next_review_date, last_review_date "
+                  "lapses, is_leech, cloze_ordinal, next_review_date, last_review_date "
                   "FROM review WHERE deck_id = :deckId AND repetitions >= 1 "
                   "AND next_review_date <= date('now', 'localtime') "
                   "ORDER BY next_review_date ASC;");
@@ -364,7 +430,7 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
     if (newAllowance > 0) {
         QSqlQuery q(m_db);
         q.prepare("SELECT id, deck_id, entry_id, ease_factor, interval_days, repetitions, "
-                  "lapses, is_leech, next_review_date, last_review_date "
+                  "lapses, is_leech, cloze_ordinal, next_review_date, last_review_date "
                   "FROM review WHERE deck_id = :deckId AND repetitions = 0 "
                   "AND next_review_date <= date('now', 'localtime') "
                   "ORDER BY entry_id ASC LIMIT :lim;");
@@ -387,7 +453,7 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetFilteredReviews(
     // aheadDays; Cram = no schedule predicate (any matching card).
     QString sql =
         "SELECT DISTINCT r.id, r.deck_id, r.entry_id, r.ease_factor, r.interval_days, "
-        "r.repetitions, r.lapses, r.is_leech, r.next_review_date, r.last_review_date "
+        "r.repetitions, r.lapses, r.is_leech, r.cloze_ordinal, r.next_review_date, r.last_review_date "
         "FROM review r JOIN entry e ON e.id = r.entry_id ";
 
     if (!tagIds.empty())
@@ -442,8 +508,9 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetFilteredReviews(
             .repetitions    = static_cast<uint16_t>(q.value(5).toInt()),
             .lapses         = static_cast<uint16_t>(q.value(6).toInt()),
             .isLeech        = q.value(7).toInt() != 0,
-            .nextReviewDate = q.value(8).toString().toStdString(),
-            .lastReviewDate = q.value(9).toString().toStdString()});
+            .clozeOrdinal   = q.value(8).toInt(),
+            .nextReviewDate = q.value(9).toString().toStdString(),
+            .lastReviewDate = q.value(10).toString().toStdString()});
     }
     return reviews;
 }
