@@ -34,7 +34,7 @@ ThemedDialog {
     }
 
     ColumnLayout {
-        spacing: 12
+        spacing: Platform.spacingLg
         width: parent.width
 
         Text {
@@ -66,9 +66,9 @@ ThemedDialog {
 
             ListView {
                 id: filesList
-                anchors { fill: parent; margins: 4 }
+                anchors { fill: parent; margins: Platform.spacingSm }
                 clip: true
-                spacing: 2
+                spacing: Platform.spacingXs
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                 model: root._files
@@ -87,7 +87,7 @@ ThemedDialog {
 
                     RowLayout {
                         anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                        spacing: 8
+                        spacing: Platform.spacingMd
 
                         Text {
                             text: TenjinIcons.document
@@ -128,7 +128,7 @@ ThemedDialog {
                 Column {
                     anchors.centerIn: parent
                     visible: filesList.count === 0
-                    spacing: 8
+                    spacing: Platform.spacingMd
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: TenjinIcons.folder

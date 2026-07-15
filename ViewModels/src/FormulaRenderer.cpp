@@ -220,8 +220,8 @@ QString maybeParen(const QString& body)
 
 QString convert(const QString& in)
 {
-    QString   out;
-    int       i = 0;
+    QString         out;
+    int             i = 0;
     const qsizetype n = in.size();
 
     while (i < n) {

@@ -5,8 +5,8 @@
 
 #include <ViewModels/TimePickerService.h>
 
-#include <QJniEnvironment>
 #include <QCoreApplication>
+#include <QJniEnvironment>
 #include <QJniObject>
 #include <QtCore/qnativeinterface.h>
 
@@ -28,25 +28,40 @@ public:
     }
     ~TimePickerServiceAndroid() override
     {
-        if (g_activeAndroid == this) g_activeAndroid = nullptr;
+        if (g_activeAndroid == this)
+            g_activeAndroid = nullptr;
     }
 
-    void emitPicked(int h, int m) { emit timePicked(h, m); }
-    void emitCancelled() { emit pickCancelled(); }
+    void emitPicked(int h, int m)
+    {
+        emit timePicked(h, m);
+    }
+    void emitCancelled()
+    {
+        emit pickCancelled();
+    }
 
 protected:
     void pickTimeNative(int hour, int minute) override
     {
         QJniObject activity = QNativeInterface::QAndroidApplication::context();
-        if (!activity.isValid()) { emit pickCancelled(); return; }
+        if (!activity.isValid()) {
+            emit pickCancelled();
+            return;
+        }
 
-        QJniObject::callStaticMethod<void>(
-            "app/tenjin/Tenjin/TimePickerClient", "show",
-            "(Landroid/app/Activity;II)V",
-            activity.object<jobject>(), static_cast<jint>(hour), static_cast<jint>(minute));
+        QJniObject::callStaticMethod<void>("app/tenjin/Tenjin/TimePickerClient",
+                                           "show",
+                                           "(Landroid/app/Activity;II)V",
+                                           activity.object<jobject>(),
+                                           static_cast<jint>(hour),
+                                           static_cast<jint>(minute));
     }
 
-    bool hasNativePickerImpl() const override { return true; }
+    bool hasNativePickerImpl() const override
+    {
+        return true;
+    }
 };
 
 // JNI callbacks invoked from TimePickerClient.java.
@@ -65,13 +80,12 @@ void JNICALL nativeOnTimeCancelled(JNIEnv*, jclass)
 // Register the natives once, matching the Java declarations.
 bool registerTimePickerNatives()
 {
-    QJniEnvironment env;
+    QJniEnvironment       env;
     const JNINativeMethod methods[] = {
-        { "onTimePicked",    "(II)V", reinterpret_cast<void*>(nativeOnTimePicked) },
-        { "onTimeCancelled", "()V",   reinterpret_cast<void*>(nativeOnTimeCancelled) },
+        {"onTimePicked", "(II)V", reinterpret_cast<void*>(nativeOnTimePicked)},
+        {"onTimeCancelled", "()V", reinterpret_cast<void*>(nativeOnTimeCancelled)},
     };
-    return env.registerNativeMethods("app/tenjin/Tenjin/TimePickerClient",
-                                     methods, 2);
+    return env.registerNativeMethods("app/tenjin/Tenjin/TimePickerClient", methods, 2);
 }
 
 const bool g_registered = registerTimePickerNatives();

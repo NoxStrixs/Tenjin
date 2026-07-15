@@ -116,13 +116,13 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 12
+        anchors.margins: Platform.spacingLg
         spacing: 8
 
         // Header: drag handle, type chip, remove button.
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Platform.spacingMd
 
             Text {
                 visible: root.editMode
@@ -175,8 +175,8 @@ Rectangle {
                     id: noteLabelEdit
                     visible: root.isNote && root.editMode
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
+                    anchors.leftMargin: Platform.spacingMd
+                    anchors.rightMargin: Platform.spacingMd
                     text: root.blockPos
                     placeholderText: qsTr("Label (e.g. Etymology)")
                     placeholderTextColor: Platform.textMuted
@@ -300,7 +300,7 @@ Rectangle {
             RowLayout {
                 visible: root.editMode && !Platform.isMobile
                 Layout.alignment: Qt.AlignVCenter
-                spacing: 4
+                spacing: Platform.spacingSm
 
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
@@ -513,7 +513,7 @@ Rectangle {
                     readonly property string tenseName: modelData
                     property string formValue: tenseRoot._data[tenseName] || ""
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: Platform.spacingMd
 
                     Rectangle {
                         Layout.preferredWidth: 110
@@ -601,11 +601,12 @@ Rectangle {
         id: clozeEdit
         ColumnLayout {
             width: contentLoader.width
-            spacing: 4
+            spacing: Platform.spacingSm
             TextArea {
                 Layout.fillWidth: true
                 text: root.blockContent
                 placeholderText: qsTr("She {{c1::went}} to the {{c2::market::place}}.")
+                placeholderTextColor: Platform.textMuted
                 wrapMode: TextEdit.Wrap
                 color: Platform.textPrimary
                 font.pixelSize: Platform.fontLarge
@@ -638,7 +639,7 @@ Rectangle {
         id: formulaEdit
         ColumnLayout {
             width: contentLoader.width
-            spacing: 4
+            spacing: Platform.spacingSm
             TextField {
                 Layout.fillWidth: true
                 text: root.blockContent
@@ -955,7 +956,7 @@ Rectangle {
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: root.editMode
-                spacing: 8
+                spacing: Platform.spacingMd
 
                 Rectangle {
                     implicitHeight: Platform.touchTarget
@@ -1191,7 +1192,7 @@ Rectangle {
             // compiles without the QtWebView module present.
             Loader {
                 anchors.fill: parent
-                anchors.margins: 4
+                anchors.margins: Platform.spacingSm
                 source: Qt.resolvedUrl("WebEmbed.qml")
                 onLoaded: if (item) item.src = appVM.entryVM.resolveMediaUrl(root.blockContent)
             }
@@ -1202,7 +1203,7 @@ Rectangle {
     Component {
         id: embedLinkComponent
         ColumnLayout {
-            spacing: 4
+            spacing: Platform.spacingSm
             Text {
                 Layout.fillWidth: true
                 text: root.blockContent
@@ -1237,9 +1238,9 @@ Rectangle {
             border.color: Platform.border
             border.width: 1
             RowLayout {
-                anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                 spacing: 10
-                Text { text: TenjinIcons.attach; font.family: TenjinIcons.family; font.pixelSize: Platform.fontLarge }
+                Text { text: TenjinIcons.attach; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                 Text {
                     Layout.fillWidth: true
                     text: root.mediaFileName
@@ -1287,7 +1288,7 @@ Rectangle {
             AnimatedImage {
                 id: fullImg
                 anchors.fill: parent
-                anchors.margins: 12
+                anchors.margins: Platform.spacingLg
                 source: mediaViewer.currentSource
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true

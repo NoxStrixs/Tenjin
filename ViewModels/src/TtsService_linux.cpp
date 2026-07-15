@@ -55,7 +55,8 @@ void TtsService::speak(const QString& text, const QString& language)
     d->proc = new QProcess();
     QObject::connect(d->proc,
                      QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                     d->proc, &QObject::deleteLater);
+                     d->proc,
+                     &QObject::deleteLater);
     d->proc->start(exe, args);
 }
 

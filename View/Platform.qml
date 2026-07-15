@@ -87,6 +87,16 @@ QtObject {
     readonly property color textOnDark:  "#ffffff"
     readonly property color overlayDim:  "#80000000"
 
+    // ── Review grade scale ────────────────────────────────────────────────────
+    // The four answer grades (Forgot/Hard/Good/Easy) need to stay visually
+    // distinct — users learn them as a scale — so they get their own tokens
+    // rather than being folded into danger/success. Dark variants are lightened
+    // so they stay legible on the dark review background.
+    readonly property color gradeForgot: isDark ? "#e05a4c" : "#e74c3c"
+    readonly property color gradeHard:   isDark ? "#e8944a" : "#e67e22"
+    readonly property color gradeGood:   isDark ? "#8fbf7a" : "#2ecc71"
+    readonly property color gradeEasy:   isDark ? "#5aa9e0" : "#3498db"
+
     // ── Sizing ────────────────────────────────────────────────────────────────
     readonly property int touchTarget:  Math.round((isMobile ? 44 : 36) * uiScale)
     readonly property int iconSize:     Math.round((isMobile ? 22 : 16) * uiScale)

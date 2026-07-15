@@ -52,7 +52,7 @@ Dialog {
     }
 
     ColumnLayout {
-        spacing: 12
+        spacing: Platform.spacingLg
         width: parent.width
 
         Text { text: qsTr("Name:"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
@@ -69,6 +69,7 @@ Dialog {
                 id: renameField
                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                 placeholderText: qsTr("Tag name")
+                placeholderTextColor: Platform.textMuted
                 font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
                 background: Rectangle { color: "transparent" }

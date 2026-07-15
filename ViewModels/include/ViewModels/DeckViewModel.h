@@ -24,6 +24,7 @@ public:
         IsSmartRole,
         FilterModeRole,
         CreatedAtRole,
+        LanguageRole,
     };
 
     explicit DeckListModel(QObject* parent = nullptr);
@@ -45,6 +46,10 @@ class DeckViewModel : public QObject
     Q_PROPERTY(DeckListModel* deckModel READ deckModel CONSTANT)
     Q_PROPERTY(qint64 selectedDeckId READ selectedDeckId NOTIFY selectedDeckChanged)
     Q_PROPERTY(QString selectedDeckName READ selectedDeckName NOTIFY selectedDeckChanged)
+    // Deck-list language filter (empty = show all). Distinct from
+    // entryVM.currentLanguageFilter, which filters vocabulary entries.
+    Q_PROPERTY(QString deckLanguageFilter READ deckLanguageFilter WRITE setDeckLanguageFilter NOTIFY
+                   deckLanguageFilterChanged)
     Q_PROPERTY(bool selectedDeckIsSmart READ selectedDeckIsSmart NOTIFY selectedDeckChanged)
     Q_PROPERTY(QVariantList deckWords READ deckWords NOTIFY deckWordsChanged)
     Q_PROPERTY(QVariantList tagFilters READ tagFilters NOTIFY tagFiltersChanged)
@@ -85,15 +90,24 @@ public slots:
     void clearSelection();
 
     // FilterMode: 0 = And, 1 = Or
-    bool createDeck(const QString& name, bool isSmart, int filterMode);
+    QString deckLanguageFilter() const
+    {
+        return m_deckLanguageFilter;
+    }
+    void setDeckLanguageFilter(const QString& code);
+    // Set/clear an existing deck's language.
+    Q_INVOKABLE bool setDeckLanguage(qint64 deckId, const QString& code);
+
+    bool
+    createDeck(const QString& name, bool isSmart, int filterMode, const QString& language = {});
     Q_INVOKABLE bool
     createSmartDeck(const QString& name, int filterMode, const QVariantList& tagIds);
     Q_INVOKABLE QVariantMap deckStats(qint64 deckId);
     Q_INVOKABLE QVariantMap deckAnalytics(qint64 deckId);
     // Collection-wide statistics for the dashboard.
-    Q_INVOKABLE QVariantMap  globalStats();
-    Q_INVOKABLE bool         setNewCardsPerDay(qint64 deckId, int perDay);
-    Q_INVOKABLE bool         setScheduler(qint64 deckId, const QString& scheduler, double retention);
+    Q_INVOKABLE QVariantMap globalStats();
+    Q_INVOKABLE bool        setNewCardsPerDay(qint64 deckId, int perDay);
+    Q_INVOKABLE bool        setScheduler(qint64 deckId, const QString& scheduler, double retention);
     // Fit FSRS weights to the deck's history on a worker thread. Emits
     // optimizeFinished(success, message) when done; optimizeStarted() first.
     Q_INVOKABLE void         optimizeDeck(qint64 deckId);
@@ -119,6 +133,7 @@ signals:
     void errorOccurred(const QString& msg);
     void optimizeStarted();
     void optimizeFinished(bool success, const QString& message);
+    void deckLanguageFilterChanged();
 
 private:
     void reloadDeckWords();
@@ -127,6 +142,7 @@ private:
     std::shared_ptr<Service::DeckService>  m_deckService;
     std::shared_ptr<Service::EntryService> m_entryService;
     std::unique_ptr<DeckListModel>         m_deckModel;
+    QString                                m_deckLanguageFilter;
 
     qint64       m_selectedDeckId = -1;
     QString      m_selectedDeckName;

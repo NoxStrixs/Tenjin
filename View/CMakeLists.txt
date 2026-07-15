@@ -170,6 +170,7 @@ qt_add_qml_module(TenjinView
         pages/NewsPage.qml
         pages/SettingsPage.qml
         pages/StatsPage.qml
+        pages/DeckAnalyticsPage.qml
         # ── panels ──
         panels/AnalyticsPanel.qml
         panels/DeckDetailPanel.qml

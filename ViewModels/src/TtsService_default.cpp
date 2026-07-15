@@ -3,11 +3,15 @@
 
 #include <ViewModels/TtsService.h>
 
-struct TtsService::Impl {};
+struct TtsService::Impl {
+};
 
 TtsService::TtsService(QObject* parent) : QObject(parent), d(std::make_unique<Impl>()) {}
 TtsService::~TtsService() = default;
-bool TtsService::hasTts() const { return false; }
+bool TtsService::hasTts() const
+{
+    return false;
+}
 void TtsService::speak(const QString&, const QString&) {}
 void TtsService::stop() {}
 

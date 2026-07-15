@@ -4,11 +4,19 @@ namespace Service {
 
 DeckService::DeckService(std::shared_ptr<DatabaseManager> db) : m_db(std::move(db)) {}
 
-Result_t<Deck_t> DeckService::CreateDeck(const std::string& name, bool isSmart, FilterMode_t mode)
+Result_t<Deck_t> DeckService::CreateDeck(const std::string& name,
+                                         bool               isSmart,
+                                         FilterMode_t       mode,
+                                         const std::string& language)
 {
     if (name.empty())
         return std::unexpected("Deck name cannot be empty.");
-    return m_db->AddDeck(name, isSmart, mode);
+    return m_db->AddDeck(name, isSmart, mode, language);
+}
+
+Result_t<bool> DeckService::SetLanguage(ID_t deckId, const std::string& language)
+{
+    return m_db->SetDeckLanguage(deckId, language);
 }
 
 Result_t<Deck_t> DeckService::GetDeck(ID_t deckId) const
@@ -31,8 +39,8 @@ Result_t<bool> DeckService::SetNewCardsPerDay(ID_t deckId, int perDay)
     return m_db->SetDeckNewCardsPerDay(deckId, perDay);
 }
 
-Result_t<bool> DeckService::SetScheduler(ID_t deckId, const std::string& scheduler,
-                                         double retention)
+Result_t<bool>
+DeckService::SetScheduler(ID_t deckId, const std::string& scheduler, double retention)
 {
     return m_db->SetDeckScheduler(deckId, scheduler, retention);
 }
@@ -42,12 +50,12 @@ Result_t<std::vector<Fsrs::CardHistory>> DeckService::GetReviewSequencesFor(ID_t
     return m_db->GetReviewSequences(deckId);
 }
 
-Result_t<bool> DeckService::SaveDeckWeights(ID_t deckId,
-                                            const std::array<double, 19>& weights)
+Result_t<bool> DeckService::SaveDeckWeights(ID_t deckId, const std::array<double, 19>& weights)
 {
     std::string json = "[";
     for (size_t i = 0; i < weights.size(); ++i) {
-        if (i) json += ",";
+        if (i)
+            json += ",";
         json += std::to_string(weights[i]);
     }
     json += "]";
@@ -138,9 +146,12 @@ Result_t<ReviewSession_t> DeckService::StartFilteredSession(const StudyFilter_t&
         }
     }
 
-    auto rows = m_db->GetFilteredReviews(
-        static_cast<int>(filter.mode), filter.tagIds, filter.language,
-        filter.deckId, filter.aheadDays, filter.limit);
+    auto rows = m_db->GetFilteredReviews(static_cast<int>(filter.mode),
+                                         filter.tagIds,
+                                         filter.language,
+                                         filter.deckId,
+                                         filter.aheadDays,
+                                         filter.limit);
     if (!rows)
         return std::unexpected(rows.error());
 
@@ -162,17 +173,18 @@ Result_t<Review_t> DeckService::SubmitCard(ReviewSession_t& session, int quality
     const auto& current = session.queue[session.currentIndex];
 
     if (session.reschedule) {
-        auto result = m_db->SubmitReview(session.deckId >= 0 ? session.deckId
-                                                             : current.deckId,
-                                         current.wordId, quality, current.clozeOrdinal);
+        auto result = m_db->SubmitReview(session.deckId >= 0 ? session.deckId : current.deckId,
+                                         current.wordId,
+                                         quality,
+                                         current.clozeOrdinal);
         if (result)
             session.currentIndex++;
         return result;
     }
 
     // Practice mode: log the review for stats but do NOT change the schedule.
-    auto logged = m_db->LogReviewOnly(current.deckId, current.wordId, quality,
-                                      current.clozeOrdinal);
+    auto logged =
+        m_db->LogReviewOnly(current.deckId, current.wordId, quality, current.clozeOrdinal);
     if (logged)
         session.currentIndex++;
     return logged;

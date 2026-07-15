@@ -31,6 +31,14 @@
         <source>No tags yet — create some first.</source>
         <translation>Aún no hay etiquetas — crear algunas primeras.</translation>
     </message>
+    <message>
+        <source>Language (optional):</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>AddEntryDialog</name>
@@ -197,6 +205,62 @@
         <source>Some deletes failed — see logs.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Export failed: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exported collection to %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exported CSV to %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import failed: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Import complete.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Anki import failed: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Imported %1 cards from Anki.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not delete tag: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not delete words: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deleted %1 word(s).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not delete tags: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deleted %1 tag(s).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not delete decks: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deleted %1 deck(s).</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>BugReportDialog</name>
@@ -254,6 +318,43 @@ Email your report to support@tenjin.app</source>
     </message>
     <message>
         <source>Sync is disabled until age and consent are confirmed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>News response is not a JSON array.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CloudSyncService</name>
+    <message>
+        <source>Cloud sync isn&apos;t available on this platform</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CloudSyncServiceAndroid</name>
+    <message>
+        <source>No folder selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Selected folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Couldn&apos;t write to the selected cloud folder.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CloudSyncServiceDesktop</name>
+    <message>
+        <source>No folder selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>That folder doesn&apos;t exist.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -345,6 +446,41 @@ Email your report to support@tenjin.app</source>
         <source>Open</source>
         <translation>Abierto</translation>
     </message>
+    <message>
+        <source>(empty cloze — type text with {{c1::answer}})</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>She {{c1::went}} to the {{c2::market::place}}.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use {{c1::answer}} or {{c1::answer::hint}} to hide words.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Media playback isn&apos;t available on this platform</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DeckAnalyticsPage</name>
+    <message>
+        <source>Back to decks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Analytics</source>
+        <translation type="unfinished">Análisis</translation>
+    </message>
+    <message>
+        <source>No deck selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pick a deck to see its analytics.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>DeckDetailPanel</name>
@@ -361,20 +497,12 @@ Email your report to support@tenjin.app</source>
         <translation>↑ Review</translation>
     </message>
     <message>
-        <source>Hide analytics</source>
-        <translation>Ocultar análisis</translation>
-    </message>
-    <message>
         <source>Analytics</source>
         <translation>Análisis</translation>
     </message>
     <message>
         <source>Delete</source>
         <translation>Suprimir</translation>
-    </message>
-    <message>
-        <source>Hide</source>
-        <translation>Oculto</translation>
     </message>
     <message>
         <source>Tag filters</source>
@@ -424,6 +552,106 @@ Email your report to support@tenjin.app</source>
         <source>Use + Add word to populate this deck.</source>
         <translation>Uso + Añadir palabra para poblar esta cubierta.</translation>
     </message>
+    <message>
+        <source>Custom study</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scheduler</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Custom</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Algorithm</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SM-2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>FSRS-5</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>FSRS-5 adapts intervals to your memory for better retention.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SM-2 is the classic SuperMemo algorithm.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Desired retention: %1%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Higher retention schedules reviews more often.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Optimize weights</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fit the scheduler to your own review history for more accurate intervals. Needs enough reviews to be useful.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Optimizing…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Optimize now</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Analyzing review history…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation type="unfinished">Guardar</translation>
+    </message>
+    <message>
+        <source>Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Due</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Ahead</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cram reviews cards for practice without changing their schedule.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tags (optional)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Language (optional)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Any</source>
+        <translation type="unfinished">Cualquier</translation>
+    </message>
+    <message>
+        <source>Start studying</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>DeckListPage</name>
@@ -441,6 +669,21 @@ Email your report to support@tenjin.app</source>
     <message>
         <source>Decks</source>
         <translation>Decks</translation>
+    </message>
+    <message>
+        <source>All languages</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DeckViewModel</name>
+    <message>
+        <source>Not enough review history yet to optimize (need ~400 reviews). Keeping default weights.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Optimized from %1 reviews — prediction error down %2%.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -468,6 +711,14 @@ Email your report to support@tenjin.app</source>
     <message>
         <source>Export collection</source>
         <translation type="unfinished">Export collection</translation>
+    </message>
+    <message>
+        <source>Choose a cloud-synced folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>CSV spreadsheet (*.csv)</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -611,6 +862,18 @@ Email your report to support@tenjin.app</source>
         <source>No related words yet.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Cloze</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Expand related words</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Collapse related words</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>EntryListPanel</name>
@@ -644,6 +907,37 @@ Email your report to support@tenjin.app</source>
     <message>
         <source>or click + Word to add a new one</source>
         <translation>o haga clic + Palabra para añadir una nueva</translation>
+    </message>
+</context>
+<context>
+    <name>EntryViewModel</name>
+    <message>
+        <source>Cannot update: block %1 not found.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Empty media path.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot read media file: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not create media directory.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to copy media file to %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Entry name cannot be empty.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tag name cannot be empty.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -916,10 +1210,6 @@ Email your report to support@tenjin.app</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Change language</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Switch to light mode</source>
         <translation type="unfinished"></translation>
     </message>
@@ -995,6 +1285,18 @@ Email your report to support@tenjin.app</source>
         <source>Toggle light and dark from the header at any time. Open Help anytime to revisit the basics, or News to see what&apos;s new.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Export as</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>JSON (full backup)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>CSV (spreadsheet)</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>MediaPickerDialog</name>
@@ -1025,6 +1327,25 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
     </message>
     <message>
         <source>Close</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MediaSourceChooser</name>
+    <message>
+        <source>Add media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose a file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Photo library</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Take a photo</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1079,10 +1400,6 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
         <translation>Estudio de la repetición espacial</translation>
     </message>
     <message>
-        <source>Version 1.0</source>
-        <translation>Versión 1.0</translation>
-    </message>
-    <message>
         <source>Statistics</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1100,6 +1417,10 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
     </message>
     <message>
         <source>About</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Version %1</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1246,6 +1567,46 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
         <source>time</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>⇄ Reverse</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>⇄ Normal</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>⌨ Typing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>⌨ Type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Type the word…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>✓ Correct</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>✗ Not quite</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You typed: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open entry ↗</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>SearchBox</name>
@@ -1261,6 +1622,10 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
         <source>No matches</source>
         <translation>No hay coincidencias</translation>
     </message>
+    <message>
+        <source>Search</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>SettingsPage</name>
@@ -1271,10 +1636,6 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
     <message>
         <source>Appearance</source>
         <translation>Apariencia</translation>
-    </message>
-    <message>
-        <source>Language</source>
-        <translation>Idioma</translation>
     </message>
     <message>
         <source>Interface language</source>
@@ -1508,6 +1869,66 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
         <source>Wipes every word, tag, and deck. Cannot be undone.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Interface &amp; display language</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Filter vocabulary by language</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cloud sync</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Back up to your own cloud storage. Snapshots are plain Tenjin exports — nothing is sent to us.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Change…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Back up now</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Backed up to %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Backup failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restore…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restore from cloud</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restoring replaces your current collection with the selected snapshot.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restored from %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Restore failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No snapshots yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use “Back up now” to create one.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Sidebar</name>
@@ -1556,15 +1977,15 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Language</source>
-        <translation type="unfinished">Idioma</translation>
-    </message>
-    <message>
         <source>Syncing…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Sync now</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Filter by language</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1616,6 +2037,24 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
     </message>
     <message>
         <source>Review a deck to start building your statistics.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Stepper</name>
+    <message>
+        <source>Value</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TagChip</name>
+    <message>
+        <source>Filter by this tag</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove tag %1</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1745,6 +2184,17 @@ Suelta uno en la carpeta Documentos, y luego vuelve a abrir este selector.</tran
     </message>
     <message>
         <source>Enter colors as #rrggbb. Other shades are derived automatically.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TimePicker</name>
+    <message>
+        <source>PM</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>AM</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

@@ -90,7 +90,7 @@ Rectangle {
                         border.width: 1
                         ColumnLayout {
                             anchors.centerIn: parent
-                            spacing: 2
+                            spacing: Platform.spacingXs
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: statCell.value
@@ -222,7 +222,7 @@ Rectangle {
                 border.color: Platform.border; border.width: 1
 
                 ColumnLayout {
-                    anchors.centerIn: parent; spacing: 24
+                    anchors.centerIn: parent; spacing: Platform.spacingXl
                     width: parent.width - 40
 
                     // Leech badge — shown when this card has been failed many
@@ -299,11 +299,12 @@ Rectangle {
                     ColumnLayout {
                         Layout.fillWidth: true
                         visible: reviewRoot.typedMode && !appVM.reviewVM.showingAnswer
-                        spacing: 8
+                        spacing: Platform.spacingMd
                         TextField {
                             id: typedField
                             Layout.fillWidth: true
                             placeholderText: qsTr("Type the word…")
+                            placeholderTextColor: Platform.textMuted
                             font.pixelSize: Platform.fontLarge
                             color: Platform.textPrimary
                             background: Rectangle { radius: Platform.radius; color: Platform.bg; border.color: typedField.activeFocus ? Platform.accent : Platform.border }
@@ -345,7 +346,7 @@ Rectangle {
                     RowLayout {
                         Layout.alignment: Qt.AlignHCenter
                         visible: appVM.reviewVM.showingAnswer && reviewRoot.typedMode && reviewRoot.typedState !== 0
-                        spacing: 8
+                        spacing: Platform.spacingMd
                         Text {
                             text: reviewRoot.typedState === 1 ? qsTr("✓ Correct") : qsTr("✗ Not quite")
                             color: reviewRoot.typedState === 1 ? Platform.success : Platform.danger
@@ -388,10 +389,10 @@ Rectangle {
                 visible: appVM.reviewVM.showingAnswer; spacing: Platform.isMobile ? 4 : 8
                 Repeater {
                     model: [
-                        { q: 0, label: Platform.isMobile ? qsTr("0") : qsTr("0 – Forgot"), color: "#e74c3c" },
-                        { q: 1, label: Platform.isMobile ? qsTr("1") : qsTr("1 – Hard"),   color: "#e67e22" },
-                        { q: 2, label: Platform.isMobile ? qsTr("2") : qsTr("2 – Good"),   color: "#2ecc71" },
-                        { q: 3, label: Platform.isMobile ? qsTr("3") : qsTr("3 – Easy"),   color: "#3498db" }
+                        { q: 0, label: Platform.isMobile ? qsTr("0") : qsTr("0 – Forgot"), color: Platform.gradeForgot },
+                        { q: 1, label: Platform.isMobile ? qsTr("1") : qsTr("1 – Hard"),   color: Platform.gradeHard },
+                        { q: 2, label: Platform.isMobile ? qsTr("2") : qsTr("2 – Good"),   color: Platform.gradeGood },
+                        { q: 3, label: Platform.isMobile ? qsTr("3") : qsTr("3 – Easy"),   color: Platform.gradeEasy }
                     ]
                     Button {
                         id: qBtn
@@ -460,7 +461,7 @@ Rectangle {
                     border.width: 1
                     ColumnLayout {
                         anchors.centerIn: parent
-                        spacing: 2
+                        spacing: Platform.spacingXs
                         Text {
                             Layout.alignment: Qt.AlignHCenter
                             text: sumCell.value

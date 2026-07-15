@@ -86,7 +86,7 @@ ThemedDialog {
 
             ScrollView {
                 anchors.fill: parent
-                anchors.margins: 8
+                anchors.margins: Platform.spacingMd
                 TextArea {
                     id: descInput
                     placeholderText: qsTr("e.g. The app froze when I tapped Delete on a deck.")

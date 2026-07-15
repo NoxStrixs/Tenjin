@@ -6,7 +6,6 @@
 
 #include <limits>
 
-
 NotificationService::NotificationService(QObject* parent) : QObject(parent)
 {
     loadSettings();
@@ -178,8 +177,8 @@ void NotificationService::rescheduleDaily()
     // in-process timer is needed. Desktop returns false and falls back to the
     // QTimer, which only fires while the app runs.
     const QString title = tr("Time to review");
-    const QString body  = m_reminderBody.isEmpty()
-        ? tr("You have cards ready to review.") : m_reminderBody;
+    const QString body =
+        m_reminderBody.isEmpty() ? tr("You have cards ready to review.") : m_reminderBody;
     if (scheduleDailyNative(m_reminderHour, m_reminderMinute, title, body))
         return;
 
@@ -231,7 +230,8 @@ void NotificationService::deliverLocalPush(const QString&     title,
 // Platform subclasses override these; the base provides safe desktop behaviour
 // so the app runs everywhere. Base delivery does nothing at the OS level (the
 // caller falls back to an in-app toast); base permission is auto-granted.
-bool NotificationService::deliverNative(const QString& /*title*/, const QString& /*body*/,
+bool NotificationService::deliverNative(const QString& /*title*/,
+                                        const QString& /*body*/,
                                         const QVariantMap& /*payload*/)
 {
     return false;

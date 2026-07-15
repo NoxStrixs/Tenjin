@@ -52,7 +52,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Platform.spacingMd
-            spacing: 2
+            spacing: Platform.spacingXs
             RowLayout {
                 spacing: Platform.spacingSm
                 Text {

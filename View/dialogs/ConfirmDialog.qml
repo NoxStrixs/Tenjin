@@ -55,7 +55,7 @@ Dialog {
     // Themed footer OK / Cancel buttons.
     footer: DialogButtonBox {
         padding: 16
-        spacing: 8
+        spacing: Platform.spacingMd
         alignment: Qt.AlignRight
         background: Rectangle { color: "transparent" }
 

@@ -9,14 +9,26 @@ Rectangle {
 
     ColumnLayout {
         anchors { fill: parent; margins: 10 }
-        spacing: 8
+        spacing: Platform.spacingMd
 
         Text { text: qsTr("Decks"); color: Platform.textPrimary; font.pixelSize: Platform.fontLarge; font.bold: true }
+
+        // Filter the deck list by the deck's language. Decks without a language
+        // are hidden while a filter is active.
+        StyledComboBox {
+            Layout.fillWidth: true
+            visible: appVM.availableLanguages.length > 0
+            model: [qsTr("All languages")].concat(appVM.availableLanguages)
+            onActivated: (idx) => {
+                appVM.deckVM.deckLanguageFilter =
+                    idx === 0 ? "" : appVM.availableLanguages[idx - 1]
+            }
+        }
 
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true
             model: appVM.deckVM.deckModel
-            clip: true; spacing: 4
+            clip: true; spacing: Platform.spacingSm
             boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
@@ -42,7 +54,12 @@ Rectangle {
                 Behavior on scale { NumberAnimation { duration: Platform.effDurationFast; easing.type: Easing.OutCubic } }
 
                 contentItem: RowLayout {
-                    spacing: 8
+                    spacing: Platform.spacingMd
+                    // Language flag badge — shown when the deck has a language.
+                    LanguageFlagRow {
+                        codes: LanguageFlags.flags(model.deckLanguage || "")
+                        visible: (model.deckLanguage || "").length > 0
+                    }
                     Text {
                         Layout.fillWidth: true
                         text: model.deckName; color: Platform.textPrimary

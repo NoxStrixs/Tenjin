@@ -60,7 +60,7 @@ ThemedDialog {
 
             TextField {
                 id: wordInput
-                anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                 topPadding: 0
                 bottomPadding: 0
                 verticalAlignment: TextInput.AlignVCenter

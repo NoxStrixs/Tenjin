@@ -36,7 +36,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Build options
 option(MEDIA_SUPPORT    "Enable audio/video playback (QtMultimedia)" ON)
 option(WEBVIEW_SUPPORT  "Enable web/YouTube embeds (QtWebView)"      OFF)
-option(TTS_SUPPORT      "Enable native text-to-speech pronunciation"      ON)
 option(TENJIN_DEBUG_UI  "Include debug console drawer in the build"  OFF)
 # Escape hatch: the aqt Qt iOS kit links a static FFmpeg media plugin without
 # its libs. App/CMakeLists whitelists only the Darwin plugin to avoid that. If a
@@ -73,12 +72,6 @@ if(TENJIN_BUILD_GUI AND MEDIA_SUPPORT)
 endif()
 if(TENJIN_BUILD_GUI AND WEBVIEW_SUPPORT)
     find_package(Qt6 6.9 REQUIRED COMPONENTS WebView)
-endif()
-if(TENJIN_BUILD_GUI AND TTS_SUPPORT)
-    # TTS is now implemented with each platform's native speech API
-    # (AVSpeechSynthesizer, Android TextToSpeech, System.Speech, spd-say) — no
-    # QtTextToSpeech / qtspeech module dependency. Nothing to find here; the
-    # per-platform backend TU is selected in ViewModels/CMakeLists.txt.
 endif()
 
 qt_standard_project_setup(REQUIRES 6.9)

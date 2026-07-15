@@ -9,7 +9,9 @@ Item {
     id: panelRoot
     // Provided by the page so Review can be launched.
     property var reviewLoaderRef: null
-    property bool showAnalytics: false
+    // Analytics opens as a full page (see DeckAnalyticsPage); the parent
+    // handles navigation so this panel stays presentation-only.
+    signal analyticsRequested()
 
     ColumnLayout {
         anchors { fill: parent; margins: Platform.pagePadding }
@@ -23,7 +25,7 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Platform.spacingMd
                 Text {
                     text: appVM.deckVM.selectedDeckName
                     color: Platform.textPrimary
@@ -39,7 +41,7 @@ Item {
                 // Desktop: keep buttons inline with the title.
                 Row {
                     visible: !Platform.isMobile
-                    spacing: 8
+                    spacing: Platform.spacingMd
                     ActionButton {
                         text: qsTr("▶ Review"); variant: "success"
                         onClicked: {
@@ -56,8 +58,8 @@ Item {
                         onClicked: { schedulerSheet.load(); schedulerSheet.open() }
                     }
                     ActionButton {
-                        text: panelRoot.showAnalytics ? qsTr("Hide analytics") : qsTr("Analytics")
-                        onClicked: panelRoot.showAnalytics = !panelRoot.showAnalytics
+                        text: qsTr("Analytics")
+                        onClicked: panelRoot.analyticsRequested()
                     }
                     ActionButton {
                         text: qsTr("Delete"); variant: "danger"
@@ -70,7 +72,7 @@ Item {
             RowLayout {
                 visible: Platform.isMobile
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Platform.spacingMd
                 ActionButton {
                     Layout.fillWidth: true
                     text: qsTr("▶ Review"); variant: "success"
@@ -86,8 +88,8 @@ Item {
                 }
                 ActionButton {
                     Layout.fillWidth: true
-                    text: panelRoot.showAnalytics ? qsTr("Hide") : qsTr("Analytics")
-                    onClicked: panelRoot.showAnalytics = !panelRoot.showAnalytics
+                    text: qsTr("Analytics")
+                    onClicked: panelRoot.analyticsRequested()
                 }
                 ActionButton {
                     Layout.fillWidth: true
@@ -95,14 +97,6 @@ Item {
                     onClicked: deleteDeckConfirm.open()
                 }
             }
-        }
-
-        // Analytics (toggled)
-        AnalyticsPanel {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 480
-            visible: panelRoot.showAnalytics
-            deckId: panelRoot.showAnalytics ? appVM.deckVM.selectedDeckId : -1
         }
 
         // Smart deck: tag-filter editor
@@ -167,7 +161,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             visible: !appVM.deckVM.selectedDeckIsSmart
-            spacing: 8
+            spacing: Platform.spacingMd
             Text {
                 text: appVM.deckVM.selectedDeckIsSmart ? qsTr("Matched words") : qsTr("Words")
                 color: Platform.textMuted; font.pixelSize: Platform.fontBase - 1
@@ -244,8 +238,8 @@ Item {
                 height: deckWordList.count > 0 ? Platform.touchTarget * 0.8 : 0
                 visible: deckWordList.count > 0
                 RowLayout {
-                    anchors { fill: parent; leftMargin: 4; rightMargin: 4 }
-                    spacing: 8
+                    anchors { fill: parent; leftMargin: Platform.spacingSm; rightMargin: Platform.spacingSm }
+                    spacing: Platform.spacingMd
                     Text {
                         Layout.fillWidth: true
                         text: deckWordList.count + (deckWordList.count === 1 ? qsTr(" word") : qsTr(" words"))
@@ -300,7 +294,7 @@ Item {
                     // the deck order at a glance.
                     Rectangle {
                         Layout.alignment: Qt.AlignVCenter
-                        Layout.leftMargin: 8
+                        Layout.leftMargin: Platform.spacingMd
                         implicitWidth: 28
                         implicitHeight: 22
                         radius: 11
@@ -384,7 +378,7 @@ Item {
             Column {
                 anchors.centerIn: parent
                 visible: deckWordList.count === 0
-                spacing: 12
+                spacing: Platform.spacingLg
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: appVM.deckVM.selectedDeckIsSmart ? TenjinIcons.autoAwesome : TenjinIcons.words
@@ -441,7 +435,7 @@ Item {
 
             AppText { text: qsTr("Algorithm"); font.bold: true; font.pixelSize: Platform.fontBase }
             Row {
-                spacing: 8
+                spacing: Platform.spacingMd
                 Repeater {
                     model: [
                         { label: qsTr("SM-2"), v: "sm2" },
@@ -479,7 +473,7 @@ Item {
             ColumnLayout {
                 visible: schedulerSheet.scheduler === "fsrs"
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: Platform.spacingSm
                 AppText {
                     text: qsTr("Desired retention: %1%").arg(Math.round(schedulerSheet.retention * 100))
                     font.bold: true; font.pixelSize: Platform.fontBase
@@ -572,7 +566,7 @@ Item {
 
             AppText { text: qsTr("Mode"); font.bold: true; font.pixelSize: Platform.fontBase }
             Row {
-                spacing: 8
+                spacing: Platform.spacingMd
                 Repeater {
                     model: [
                         { label: qsTr("Due"),   m: 0 },

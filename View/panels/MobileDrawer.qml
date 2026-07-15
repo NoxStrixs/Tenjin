@@ -46,7 +46,7 @@ Rectangle {
                 color: Platform.surface
                 RowLayout {
                     anchors { fill: parent; leftMargin: 16; rightMargin: 16; topMargin: Platform.safeAreaTop }
-                    spacing: 12
+                    spacing: Platform.spacingLg
                     Rectangle {
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
@@ -123,7 +123,7 @@ Rectangle {
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; Layout.topMargin: 8 }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; Layout.topMargin: Platform.spacingMd }
 
             // Utility nav — Help / News / Settings. Same navigate() signal as
             // the content rows; routing in Main.qml just sets appVM.currentPage.
@@ -178,7 +178,7 @@ Rectangle {
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; Layout.topMargin: 8 }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Platform.border; Layout.topMargin: Platform.spacingMd }
 
             // Theme toggle — convenience: still in the drawer beyond Settings.
             Rectangle {
@@ -210,8 +210,8 @@ Rectangle {
             // Import / Export (also reachable from Settings page Data section).
             RowLayout {
                 Layout.fillWidth: true
-                Layout.margins: 12
-                spacing: 8
+                Layout.margins: Platform.spacingLg
+                spacing: Platform.spacingMd
                 Repeater {
                     model: [
                         { label: qsTr("Import"), glyph: TenjinIcons.upload,   act: 0 },
@@ -251,9 +251,9 @@ Rectangle {
             // desktop sidebar (globe filter, top-bar globe) and sidebar sync.
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: 12
-                Layout.rightMargin: 12
-                spacing: 8
+                Layout.leftMargin: Platform.spacingLg
+                Layout.rightMargin: Platform.spacingLg
+                spacing: Platform.spacingMd
                 Repeater {
                     model: [
                         { label: qsTr("Language filter"),    glyph: TenjinIcons.globe, act: 0 },
@@ -270,8 +270,8 @@ Rectangle {
                         border.color: Platform.border
                         border.width: 1
                         RowLayout {
-                            anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
-                            spacing: 8
+                            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
+                            spacing: Platform.spacingMd
                             Text { text: extraItem.modelData.glyph; font.family: TenjinIcons.family; color: Platform.accentDark; font.pixelSize: Platform.fontBase }
                             Text { Layout.fillWidth: true; text: extraItem.modelData.label; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
                             Text { text: TenjinIcons.chevronForward; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
@@ -314,7 +314,7 @@ Rectangle {
                 Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: Platform.border }
                 RowLayout {
                     anchors { fill: parent; leftMargin: 20; rightMargin: 16; bottomMargin: Platform.safeAreaBottom }
-                    spacing: 8
+                    spacing: Platform.spacingMd
                     Text {
                         text: TenjinIcons.info
                         font.family: TenjinIcons.family

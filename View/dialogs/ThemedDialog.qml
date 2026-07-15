@@ -22,7 +22,7 @@ Dialog {
     // fact the QtQuick.Controls vs .Basic style mix, since fixed.)
     parent: Overlay.overlay
     // Consistent focus scrim behind every modal dialog.
-    Overlay.modal: Rectangle { color: "#66000000" }
+    Overlay.modal: Rectangle { color: Platform.overlayDim }
 
     property string okText: "OK"
     property string cancelText: "Cancel"
@@ -99,7 +99,7 @@ Dialog {
 
     footer: DialogButtonBox {
         padding: 16
-        spacing: 8
+        spacing: Platform.spacingMd
         alignment: Qt.AlignRight
         background: Rectangle { color: "transparent" }
 

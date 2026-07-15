@@ -259,6 +259,7 @@ Item {
                         text: TenjinIcons.tags
                         font.family: TenjinIcons.family
                         font.pixelSize: Platform.fontLarge
+                        color: Platform.textMuted
                     }
 
                     ColumnLayout {

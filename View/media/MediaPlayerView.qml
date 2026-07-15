@@ -45,7 +45,7 @@ ColumnLayout {
         RowLayout {
             anchors.centerIn: parent
             visible: !mpRoot.isVideo
-            spacing: 8
+            spacing: Platform.spacingMd
             Text {
                 text: TenjinIcons.audioFile
                 font.family: TenjinIcons.family
@@ -147,6 +147,7 @@ ColumnLayout {
                 anchors.centerIn: parent
                 text: muteBtn.muted || volumeSlider.value === 0 ? TenjinIcons.volumeOff : TenjinIcons.volumeUp
                 font.family: TenjinIcons.family
+                color: Platform.textOnDark
                 font.pixelSize: Platform.fontBase
             }
             MouseArea {
@@ -222,7 +223,7 @@ ColumnLayout {
                 color: Qt.rgba(0, 0, 0, 0.6)
                 RowLayout {
                     anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
-                    spacing: 12
+                    spacing: Platform.spacingLg
                     Rectangle {
                         implicitWidth: Platform.touchTarget; implicitHeight: Platform.touchTarget
                         radius: Platform.radius; color: Platform.accent
@@ -252,7 +253,7 @@ ColumnLayout {
                 radius: Platform.radius; color: Qt.rgba(0, 0, 0, 0.6)
                 RowLayout {
                     anchors.centerIn: parent
-                    spacing: 8
+                    spacing: Platform.spacingMd
                     Text {
                         text: TenjinIcons.close
                         font.family: TenjinIcons.family

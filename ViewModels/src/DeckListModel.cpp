@@ -30,6 +30,8 @@ QVariant DeckListModel::data(const QModelIndex& index, int role) const
         return static_cast<int>(d.filterMode);
     case CreatedAtRole:
         return QString::fromStdString(d.createdAt);
+    case LanguageRole:
+        return QString::fromStdString(d.language);
     }
     return {};
 }
@@ -42,5 +44,6 @@ QHash<int, QByteArray> DeckListModel::roleNames() const
         {IsSmartRole, "isSmart"},
         {FilterModeRole, "filterMode"},
         {CreatedAtRole, "createdAt"},
+        {LanguageRole, "deckLanguage"},
     };
 }

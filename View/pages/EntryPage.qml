@@ -34,10 +34,10 @@ Item {
         Item {
             Column {
                 anchors.centerIn: parent
-                spacing: 12
+                spacing: Platform.spacingLg
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: TenjinIcons.words; font.family: TenjinIcons.family; font.pixelSize: 52
+                    text: TenjinIcons.words; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: 52
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter

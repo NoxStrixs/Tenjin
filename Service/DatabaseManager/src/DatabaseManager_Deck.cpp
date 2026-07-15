@@ -1,6 +1,6 @@
-#include <algorithm>
 #include <DatabaseManager/DatabaseManager.h>
 #include <DatabaseManager/Schema.h>
+#include <algorithm>
 
 #include <QDate>
 #include <QDateTime>
@@ -18,16 +18,20 @@
 
 namespace Service {
 
-Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name, bool isSmart, FilterMode_t mode)
+Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name,
+                                          bool               isSmart,
+                                          FilterMode_t       mode,
+                                          const std::string& language)
 {
     const QString filterMode = (mode == FilterMode_t::And) ? "AND" : "OR";
 
     QSqlQuery q(m_db);
-    q.prepare("INSERT INTO deck (name, is_smart, filter_mode) "
-              "VALUES (:name, :isSmart, :filterMode);");
+    q.prepare("INSERT INTO deck (name, is_smart, filter_mode, language) "
+              "VALUES (:name, :isSmart, :filterMode, :language);");
     q.bindValue(":name", QString::fromStdString(name));
     q.bindValue(":isSmart", isSmart ? 1 : 0);
     q.bindValue(":filterMode", filterMode);
+    q.bindValue(":language", QString::fromStdString(language));
 
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
@@ -36,13 +40,15 @@ Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name, bool isSmart,
                   .name       = name,
                   .bIsSmart   = isSmart,
                   .filterMode = mode,
-                  .createdAt  = {}};
+                  .createdAt  = {},
+                  .language   = language};
 }
 
 Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention, fsrs_weights "
+    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, "
+              "fsrs_retention, fsrs_weights, language "
               "FROM deck WHERE id = :id;");
     q.bindValue(":id", QVariant::fromValue(id));
 
@@ -64,13 +70,15 @@ Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
                   .newCardsPerDay = q.value(5).toInt(),
                   .scheduler      = q.value(6).toString().toStdString(),
                   .fsrsRetention  = q.value(7).toDouble(),
-                  .fsrsWeights    = q.value(8).toString().toStdString()};
+                  .fsrsWeights    = q.value(8).toString().toStdString(),
+                  .language       = q.value(9).toString().toStdString()};
 }
 
 Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
 {
     QSqlQuery q(m_db);
-    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention, fsrs_weights "
+    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, "
+                "fsrs_retention, fsrs_weights, language "
                 "FROM deck ORDER BY name ASC;"))
         return std::unexpected(q.lastError().text().toStdString());
 
@@ -88,7 +96,8 @@ Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
                                .newCardsPerDay = q.value(5).toInt(),
                                .scheduler      = q.value(6).toString().toStdString(),
                                .fsrsRetention  = q.value(7).toDouble(),
-                               .fsrsWeights    = q.value(8).toString().toStdString()});
+                               .fsrsWeights    = q.value(8).toString().toStdString(),
+                               .language       = q.value(9).toString().toStdString()});
     }
     return decks;
 }
@@ -124,12 +133,12 @@ Result_t<bool> DatabaseManager::SetDeckNewCardsPerDay(ID_t id, int perDay)
     return true;
 }
 
-Result_t<bool> DatabaseManager::SetDeckScheduler(ID_t id, const std::string& scheduler,
-                                                 double retention)
+Result_t<bool>
+DatabaseManager::SetDeckScheduler(ID_t id, const std::string& scheduler, double retention)
 {
     const std::string sched = (scheduler == "fsrs") ? "fsrs" : "sm2";
-    const double ret = std::clamp(retention, 0.70, 0.97);
-    QSqlQuery q(m_db);
+    const double      ret   = std::clamp(retention, 0.70, 0.97);
+    QSqlQuery         q(m_db);
     q.prepare("UPDATE deck SET scheduler = :s, fsrs_retention = :r WHERE id = :id;");
     q.bindValue(":s", QString::fromStdString(sched));
     q.bindValue(":r", ret);
@@ -146,6 +155,19 @@ Result_t<bool> DatabaseManager::SetDeckWeights(ID_t id, const std::string& weigh
     QSqlQuery q(m_db);
     q.prepare("UPDATE deck SET fsrs_weights = :w WHERE id = :id;");
     q.bindValue(":w", QString::fromStdString(weightsJson));
+    q.bindValue(":id", QVariant::fromValue(id));
+    if (!q.exec())
+        return std::unexpected(q.lastError().text().toStdString());
+    if (q.numRowsAffected() == 0)
+        return std::unexpected("No deck found with id: " + std::to_string(id));
+    return true;
+}
+
+Result_t<bool> DatabaseManager::SetDeckLanguage(ID_t id, const std::string& language)
+{
+    QSqlQuery q(m_db);
+    q.prepare("UPDATE deck SET language = :lang WHERE id = :id;");
+    q.bindValue(":lang", QString::fromStdString(language));
     q.bindValue(":id", QVariant::fromValue(id));
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
@@ -178,7 +200,7 @@ Result_t<std::vector<Fsrs::CardHistory>> DatabaseManager::GetReviewSequences(ID_
 
     while (q.next()) {
         const ID_t   entry = q.value(0).toLongLong();
-        const int    ui    = q.value(1).toInt();          // 0..3
+        const int    ui    = q.value(1).toInt(); // 0..3
         const qint64 ms    = q.value(2).toLongLong();
 
         if (entry != currentEntry) {
@@ -195,10 +217,9 @@ Result_t<std::vector<Fsrs::CardHistory>> DatabaseManager::GetReviewSequences(ID_
 
         // UI grade 0..3 (Forgot/Hard/Good/Easy) -> FSRS 1..4.
         const int grade = std::clamp(ui, 0, 3) + 1;
-        current.push_back(Fsrs::ReviewEvent{
-            .elapsedDays = elapsedDays < 0.0 ? 0.0 : elapsedDays,
-            .grade       = grade,
-            .passed      = grade >= 2});
+        current.push_back(Fsrs::ReviewEvent{.elapsedDays = elapsedDays < 0.0 ? 0.0 : elapsedDays,
+                                            .grade       = grade,
+                                            .passed      = grade >= 2});
     }
     flush();
 

@@ -89,7 +89,12 @@ Item {
 
     Component {
         id: deckDetailComp
-        DeckDetailPanel { anchors.fill: parent; reviewLoaderRef: reviewLoader }
+        DeckDetailPanel {
+            anchors.fill: parent
+            reviewLoaderRef: reviewLoader
+            // Analytics is a full page now, not an inline half-panel.
+            onAnalyticsRequested: appVM.currentPage = 7 // _pageDeckAnalytics
+        }
     }
 
     Loader {

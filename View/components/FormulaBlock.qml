@@ -76,13 +76,13 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 12
+        anchors.margins: Platform.spacingLg
         spacing: 8
 
         // Header: kind chip and remove.
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Platform.spacingMd
 
             Rectangle {
                 radius: 4
@@ -115,6 +115,7 @@ Rectangle {
             Layout.fillWidth: true
             text: root.blockContent
             placeholderText: qsTr("LaTeX, e.g.  \\frac{a}{b}")
+            placeholderTextColor: Platform.textMuted
             wrapMode: TextEdit.WrapAnywhere
             font.family: Platform.fontMono
             color: Platform.textPrimary
@@ -130,7 +131,7 @@ Rectangle {
         Flow {
             visible: root.editMode
             Layout.fillWidth: true
-            spacing: 4
+            spacing: Platform.spacingSm
 
             Repeater {
                 model: root.palette

@@ -21,9 +21,8 @@ namespace Schema {
 // previous layout to be wiped and rebuilt (see Migrate). Start high (100) to
 // stay clear of the old 1/2/3 sequence, and bump again on any pre-release schema
 // change. Replace this wipe-on-mismatch policy with real migrations at launch.
-// Bumped to 103: added review.cloze_ordinal + extended the review unique key to
-// (deck_id, entry_id, cloze_ordinal) for per-deletion cloze card scheduling.
-inline constexpr int kSchemaVersion = 103;
+// Bumped to 104: added deck.language (flag badge + language filtering).
+inline constexpr int kSchemaVersion = 104;
 
 // Brings `db` from its current user_version up to kSchemaVersion. Throws
 // std::runtime_error on failure (transaction is rolled back first).

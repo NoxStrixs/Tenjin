@@ -20,16 +20,20 @@ ThemedDialog {
         const name = deckNameInput.text.trim()
         if (name.length === 0) return
         if (smartToggle.checked)
-            appVM.deckVM.createSmartDeck(name, orToggle.checked ? 1 : 0, root.selectedTagIds)
+            appVM.deckVM.createSmartDeck(name, orToggle.checked ? 1 : 0, root.selectedTagIds,
+                                         root.selectedLanguage)
         else
-            appVM.deckVM.createDeck(name, false, orToggle.checked ? 1 : 0)
+            appVM.deckVM.createDeck(name, false, orToggle.checked ? 1 : 0, root.selectedLanguage)
     }
 
     property var allTags: []
     property var selectedTagIds: []
+    // Deck language (optional). Drives the flag badge in the deck list and
+    // lets the deck list be filtered by language. Empty = unset.
+    property string selectedLanguage: ""
 
     ColumnLayout {
-        spacing: 12
+        spacing: Platform.spacingLg
         width: parent.width
 
         Text { text: qsTr("Name:"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
@@ -46,9 +50,24 @@ ThemedDialog {
                 id: deckNameInput
                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                 placeholderText: qsTr("e.g. JLPT N3")
+                placeholderTextColor: Platform.textMuted
                 font.pixelSize: Platform.fontBase
                 color: Platform.textPrimary
                 background: Rectangle { color: "transparent" }
+            }
+        }
+
+        Text {
+            text: qsTr("Language (optional):")
+            color: Platform.textPrimary
+            font.pixelSize: Platform.fontBase
+            font.bold: true
+        }
+        StyledComboBox {
+            Layout.fillWidth: true
+            model: [qsTr("None")].concat(appVM.availableLanguages)
+            onActivated: (idx) => {
+                root.selectedLanguage = idx === 0 ? "" : appVM.availableLanguages[idx - 1]
             }
         }
 
@@ -122,7 +141,7 @@ ThemedDialog {
 
             Flickable {
                 anchors.fill: parent
-                anchors.margins: 8
+                anchors.margins: Platform.spacingMd
                 contentHeight: tagFlow.implicitHeight
                 clip: true
 

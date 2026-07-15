@@ -32,7 +32,7 @@ ComboBox {
         anchors {
             right: parent.right
             verticalCenter: parent.verticalCenter
-            rightMargin: 12
+            rightMargin: Platform.spacingLg
         }
         text: "\u25BE"
         color: Platform.textMuted

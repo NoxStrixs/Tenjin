@@ -7,8 +7,8 @@
 
 #include <ViewModels/DocumentPickerService.h>
 
-#include <QJniEnvironment>
 #include <QCoreApplication>
+#include <QJniEnvironment>
 #include <QJniObject>
 #include <QtCore/private/qandroidextras_p.h>
 #include <QtCore/qnativeinterface.h>
@@ -32,11 +32,13 @@ public:
             return false;
 
         QJniObject context = QNativeInterface::QAndroidApplication::context();
-        QJniObject::callStaticMethod<void>(
-            "app/tenjin/Tenjin/MediaPickerClient", "handleResult",
-            "(Landroid/content/Context;IILandroid/content/Intent;)V",
-            context.object(),
-            requestCode, resultCode, data);
+        QJniObject::callStaticMethod<void>("app/tenjin/Tenjin/MediaPickerClient",
+                                           "handleResult",
+                                           "(Landroid/content/Context;IILandroid/content/Intent;)V",
+                                           context.object(),
+                                           requestCode,
+                                           resultCode,
+                                           data);
         return true;
     }
 };
@@ -56,12 +58,22 @@ public:
     }
     ~DocumentPickerServiceAndroid() override
     {
-        if (g_activeAndroid == this) g_activeAndroid = nullptr;
+        if (g_activeAndroid == this)
+            g_activeAndroid = nullptr;
     }
 
-    void emitMedia(const QString& p) { emit mediaPicked(p); }
-    void emitDocument(const QString& p) { emit documentPicked(p); }
-    void emitCancelled() { emit pickCancelled(); }
+    void emitMedia(const QString& p)
+    {
+        emit mediaPicked(p);
+    }
+    void emitDocument(const QString& p)
+    {
+        emit documentPicked(p);
+    }
+    void emitCancelled()
+    {
+        emit pickCancelled();
+    }
 
 protected:
     void pickImportDocumentNative() override
@@ -72,9 +84,15 @@ protected:
     void pickMediaNative(MediaSource source) override
     {
         switch (source) {
-            case MediaSource::Photos: callPicker("pickPhotos"); break;
-            case MediaSource::Camera: callPicker("pickCamera"); break;
-            case MediaSource::Files:  callPicker("pickFiles");  break;
+        case MediaSource::Photos:
+            callPicker("pickPhotos");
+            break;
+        case MediaSource::Camera:
+            callPicker("pickCamera");
+            break;
+        case MediaSource::Files:
+            callPicker("pickFiles");
+            break;
         }
     }
 
@@ -82,36 +100,43 @@ private:
     void callPicker(const char* method)
     {
         QJniObject activity = QNativeInterface::QAndroidApplication::context();
-        if (!activity.isValid()) { emit pickCancelled(); return; }
-        QJniObject::callStaticMethod<void>(
-            "app/tenjin/Tenjin/MediaPickerClient", method,
-            "(Landroid/app/Activity;)V",
-            activity.object<jobject>());
+        if (!activity.isValid()) {
+            emit pickCancelled();
+            return;
+        }
+        QJniObject::callStaticMethod<void>("app/tenjin/Tenjin/MediaPickerClient",
+                                           method,
+                                           "(Landroid/app/Activity;)V",
+                                           activity.object<jobject>());
     }
 };
 
 // JNI callbacks from MediaPickerClient. kind: 0 = media, 1 = import.
 void JNICALL nativeDeliverResult(JNIEnv* env, jclass, jstring path, jint kind)
 {
-    if (!g_activeAndroid) return;
-    const char* utf = env->GetStringUTFChars(path, nullptr);
-    const QString p = QString::fromUtf8(utf);
+    if (!g_activeAndroid)
+        return;
+    const char*   utf = env->GetStringUTFChars(path, nullptr);
+    const QString p   = QString::fromUtf8(utf);
     env->ReleaseStringUTFChars(path, utf);
-    if (kind == 1) g_activeAndroid->emitDocument(p);
-    else           g_activeAndroid->emitMedia(p);
+    if (kind == 1)
+        g_activeAndroid->emitDocument(p);
+    else
+        g_activeAndroid->emitMedia(p);
 }
 
 void JNICALL nativeDeliverCancelled(JNIEnv*, jclass)
 {
-    if (g_activeAndroid) g_activeAndroid->emitCancelled();
+    if (g_activeAndroid)
+        g_activeAndroid->emitCancelled();
 }
 
 bool registerMediaPickerNatives()
 {
-    QJniEnvironment env;
+    QJniEnvironment       env;
     const JNINativeMethod methods[] = {
-        { "deliverResult",    "(Ljava/lang/String;I)V", reinterpret_cast<void*>(nativeDeliverResult) },
-        { "deliverCancelled", "()V",                    reinterpret_cast<void*>(nativeDeliverCancelled) },
+        {"deliverResult", "(Ljava/lang/String;I)V", reinterpret_cast<void*>(nativeDeliverResult)},
+        {"deliverCancelled", "()V", reinterpret_cast<void*>(nativeDeliverCancelled)},
     };
     return env.registerNativeMethods("app/tenjin/Tenjin/MediaPickerClient", methods, 2);
 }

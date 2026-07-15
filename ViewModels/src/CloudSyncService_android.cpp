@@ -23,7 +23,7 @@
 
 namespace {
 
-constexpr const char* kClient = "app/tenjin/Tenjin/CloudSyncClient";
+constexpr const char* kClient      = "app/tenjin/Tenjin/CloudSyncClient";
 constexpr int         kReqPickTree = 4001;
 
 QJniObject appContext()
@@ -34,8 +34,8 @@ QJniObject appContext()
 // Local staging directory that mirrors the SAF tree.
 QString stagingDir()
 {
-    const QString d = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-                      + QStringLiteral("/cloudsync");
+    const QString d = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+                      QStringLiteral("/cloudsync");
     QDir().mkpath(d);
     return d;
 }
@@ -57,11 +57,11 @@ class CloudSyncServiceAndroid final : public CloudSyncService
 public:
     explicit CloudSyncServiceAndroid(QObject* parent = nullptr) : CloudSyncService(parent)
     {
-        g_instance = this;
+        g_instance     = this;
         QJniObject ctx = appContext();
         if (ctx.isValid()) {
-            QJniObject::callStaticMethod<void>(kClient, "init",
-                                               "(Landroid/content/Context;)V", ctx.object());
+            QJniObject::callStaticMethod<void>(
+                kClient, "init", "(Landroid/content/Context;)V", ctx.object());
         }
         QtAndroidPrivate::registerActivityResultListener(&m_listener);
     }
@@ -85,15 +85,17 @@ public:
     {
         if (!available())
             return tr("No folder selected");
-        QJniObject ctx = appContext();
+        QJniObject ctx  = appContext();
         QJniObject name = QJniObject::callStaticObjectMethod(
-            kClient, "treeLabel", "(Landroid/content/Context;)Ljava/lang/String;",
-            ctx.object());
+            kClient, "treeLabel", "(Landroid/content/Context;)Ljava/lang/String;", ctx.object());
         const QString n = name.isValid() ? name.toString() : QString();
         return n.isEmpty() ? tr("Selected folder") : n;
     }
 
-    QString syncFolder() const override { return stagingDir(); }
+    QString syncFolder() const override
+    {
+        return stagingDir();
+    }
 
     void chooseLocation() override
     {
@@ -105,31 +107,32 @@ public:
             emit locationChosen(false);
             return;
         }
-        QJniObject::callStaticMethod<void>(kClient, "pickTree",
-                                           "(Landroid/app/Activity;)V",
-                                           activity.object());
+        QJniObject::callStaticMethod<void>(
+            kClient, "pickTree", "(Landroid/app/Activity;)V", activity.object());
     }
 
     QVariantList listSnapshots() const override
     {
         QVariantList out;
-        QJniObject ctx = appContext();
+        QJniObject   ctx = appContext();
         if (!ctx.isValid() || !available())
             return out;
 
-        QJniObject arr = QJniObject::callStaticObjectMethod(
-            kClient, "listSnapshots",
-            "(Landroid/content/Context;)[Ljava/lang/String;", ctx.object());
+        QJniObject arr =
+            QJniObject::callStaticObjectMethod(kClient,
+                                               "listSnapshots",
+                                               "(Landroid/content/Context;)[Ljava/lang/String;",
+                                               ctx.object());
         if (!arr.isValid())
             return out;
 
         QJniEnvironment env;
-        auto  jarr = arr.object<jobjectArray>();
-        const jsize n = env->GetArrayLength(jarr);
+        auto            jarr = arr.object<jobjectArray>();
+        const jsize     n    = env->GetArrayLength(jarr);
         for (jsize i = 0; i < n; ++i) {
-            QJniObject item(env->GetObjectArrayElement(jarr, i));
-            const QString  s     = item.toString();       // name|size|millis
-            const QStringList p  = s.split(QLatin1Char('|'));
+            QJniObject        item(env->GetObjectArrayElement(jarr, i));
+            const QString     s = item.toString(); // name|size|millis
+            const QStringList p = s.split(QLatin1Char('|'));
             if (p.size() != 3)
                 continue;
             out.append(QVariantMap{
@@ -150,10 +153,12 @@ public:
         if (!ctx.isValid() || localPath.isEmpty())
             return;
         const QString name = QFileInfo(localPath).fileName();
-        const bool ok = QJniObject::callStaticMethod<jboolean>(
-            kClient, "pushFile",
+        const bool    ok   = QJniObject::callStaticMethod<jboolean>(
+            kClient,
+            "pushFile",
             "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Z",
-            ctx.object(), QJniObject::fromString(localPath).object<jstring>(),
+            ctx.object(),
+            QJniObject::fromString(localPath).object<jstring>(),
             QJniObject::fromString(name).object<jstring>());
         if (!ok)
             emit error(tr("Couldn't write to the selected cloud folder."));
@@ -167,10 +172,12 @@ public:
         if (!ctx.isValid())
             return {};
         const QString local = stagingDir() + QLatin1Char('/') + name;
-        const bool ok = QJniObject::callStaticMethod<jboolean>(
-            kClient, "pullFile",
+        const bool    ok    = QJniObject::callStaticMethod<jboolean>(
+            kClient,
+            "pullFile",
             "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Z",
-            ctx.object(), QJniObject::fromString(name).object<jstring>(),
+            ctx.object(),
+            QJniObject::fromString(name).object<jstring>(),
             QJniObject::fromString(local).object<jstring>());
         return ok ? local : QString();
     }
@@ -200,9 +207,11 @@ bool TreePickListener::handleActivityResult(jint requestCode, jint resultCode, j
     QJniObject uri = intent.callObjectMethod("getData", "()Landroid/net/Uri;");
     QJniObject ctx = appContext();
     if (uri.isValid() && ctx.isValid()) {
-        QJniObject::callStaticMethod<void>(
-            kClient, "saveTree", "(Landroid/content/Context;Landroid/net/Uri;)V",
-            ctx.object(), uri.object());
+        QJniObject::callStaticMethod<void>(kClient,
+                                           "saveTree",
+                                           "(Landroid/content/Context;Landroid/net/Uri;)V",
+                                           ctx.object(),
+                                           uri.object());
     }
     if (g_instance)
         g_instance->onTreeChosen(uri.isValid());

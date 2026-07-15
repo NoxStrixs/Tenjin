@@ -9,7 +9,7 @@ import TenjinView
 Row {
     id: root
     property var codes: []
-    spacing: 4
+    spacing: Platform.spacingSm
     visible: codes.length > 0
 
     Repeater {

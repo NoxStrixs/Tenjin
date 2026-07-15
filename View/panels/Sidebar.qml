@@ -271,7 +271,7 @@ Rectangle {
                     }
 
                     RowLayout {
-                        anchors { fill: parent; leftMargin: 14; rightMargin: 8 }
+                        anchors { fill: parent; leftMargin: 14; rightMargin: Platform.spacingMd }
                         spacing: 6
                         Text {
                             Layout.fillWidth: true
@@ -414,6 +414,7 @@ Rectangle {
                     text: TenjinIcons.tags
                     font.family: TenjinIcons.family
                     font.pixelSize: 14
+                    color: Platform.textMuted
                 }
                 Text {
                     elide: Text.ElideRight
@@ -452,8 +453,8 @@ Rectangle {
                 height: 1; color: Platform.border
             }
             RowLayout {
-                anchors { fill: parent; margins: 8 }
-                spacing: 8
+                anchors { fill: parent; margins: Platform.spacingMd }
+                spacing: Platform.spacingMd
                 Repeater {
                     model: [
                         { label: qsTr("Import"), glyph: TenjinIcons.upload,   act: 0 },
@@ -499,7 +500,7 @@ Rectangle {
                 height: 1; color: Platform.border
             }
             Rectangle {
-                anchors { fill: parent; margins: 8 }
+                anchors { fill: parent; margins: Platform.spacingMd }
                 radius: Platform.radius
                 color: syncArea.containsMouse ? Platform.surfaceAlt : Platform.bg
                 border.color: Platform.border
@@ -507,7 +508,7 @@ Rectangle {
                 opacity: cloudService.syncBusy ? 0.6 : 1.0
                 RowLayout {
                     anchors.centerIn: parent
-                    spacing: 8
+                    spacing: Platform.spacingMd
                     Text {
                         text: TenjinIcons.sync
                         font.family: TenjinIcons.family

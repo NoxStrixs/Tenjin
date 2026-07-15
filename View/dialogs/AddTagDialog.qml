@@ -77,7 +77,7 @@ ThemedDialog {
     }
 
     ColumnLayout {
-        spacing: 12
+        spacing: Platform.spacingLg
         width: parent.width
 
         Text {
@@ -138,9 +138,9 @@ ThemedDialog {
 
             ListView {
                 id: matchList
-                anchors { fill: parent; margins: 4 }
+                anchors { fill: parent; margins: Platform.spacingSm }
                 clip: true
-                spacing: 2
+                spacing: Platform.spacingXs
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
@@ -161,10 +161,11 @@ ThemedDialog {
 
                     RowLayout {
                         anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
-                        spacing: 8
+                        spacing: Platform.spacingMd
                         Text {
                             text: TenjinIcons.tags
                             font.family: TenjinIcons.family
+                            color: Platform.textMuted
                             font.pixelSize: Platform.fontBase
                         }
                         Text {

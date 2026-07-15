@@ -73,7 +73,7 @@ ThemedDialog {
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 2
+                    spacing: Platform.spacingXs
                     Text {
                         Layout.fillWidth: true
                         text: modelData.title

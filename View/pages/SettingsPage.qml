@@ -115,7 +115,7 @@ Item {
                 Layout.topMargin: Platform.pagePadding
                 Layout.rightMargin: Platform.pagePadding
                 Layout.bottomMargin: Platform.spacingMd
-                spacing: 8
+                spacing: Platform.spacingMd
 
                 Rectangle {
                     Layout.preferredWidth: Platform.touchTarget
@@ -224,12 +224,13 @@ Item {
                         text: TenjinIcons.globe
                         font.family: TenjinIcons.family
                         font.pixelSize: Platform.fontLarge
+                        color: Platform.textMuted
                         Layout.alignment: Qt.AlignTop
                     }
                     ColumnLayout {
                         id: uiLangCol
                         Layout.fillWidth: true
-                        spacing: 4
+                        spacing: Platform.spacingSm
                         Text {
                             text: qsTr("Interface language")
                             color: Platform.textPrimary
@@ -246,7 +247,7 @@ Item {
                         StyledComboBox {
                             id: uiLangCombo
                             Layout.fillWidth: true
-                            Layout.topMargin: 4
+                            Layout.topMargin: Platform.spacingSm
                             Layout.preferredHeight: Platform.touchTarget
                             // {code, name, flags} per supported UI language. Name
                             // and flag codes come from the generated LanguageFlags
@@ -365,7 +366,7 @@ Item {
                         id: langComboRow
                         Layout.fillWidth: true
                         Layout.topMargin: 6
-                        spacing: 8
+                        spacing: Platform.spacingMd
 
                         function buildOptions() {
                             // Unified { code, name, flags } shape shared with the
@@ -535,7 +536,7 @@ Item {
                         Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                         TextField {
                             id: customLangInput
-                            anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                             topPadding: 0
                             bottomPadding: 0
                             verticalAlignment: TextInput.AlignVCenter
@@ -788,7 +789,7 @@ Item {
                 RowLayout {
                     anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: Platform.spacingMd
-                    Text { text: TenjinIcons.bugReport; font.family: TenjinIcons.family; font.pixelSize: Platform.fontLarge }
+                    Text { text: TenjinIcons.bugReport; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontLarge }
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 1
                         Text { text: qsTr("Send feedback"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; font.bold: true }
@@ -1074,7 +1075,7 @@ Item {
                 Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                 TextField {
                     id: confirmInput
-                    anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     topPadding: 0
                     bottomPadding: 0
                     verticalAlignment: TextInput.AlignVCenter
@@ -1121,8 +1122,8 @@ Item {
                     color: snapArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     radius: Platform.radius
                     RowLayout {
-                        anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
-                        spacing: 8
+                        anchors { fill: parent; leftMargin: Platform.spacingMd; rightMargin: Platform.spacingMd }
+                        spacing: Platform.spacingMd
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 1

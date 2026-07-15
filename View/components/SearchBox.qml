@@ -127,6 +127,7 @@ Item {
                 Layout.fillWidth: true
                 text: root.queryText
                 placeholderText: qsTr("Search words, tags, decks\u2026")
+                placeholderTextColor: Platform.textMuted
                 Accessible.role: Accessible.EditableText
                 Accessible.name: qsTr("Search")
                 Accessible.description: placeholderText
@@ -215,7 +216,7 @@ Item {
         }
 
         contentItem: ColumnLayout {
-            spacing: 4
+            spacing: Platform.spacingSm
 
             ListView {
                 Layout.fillWidth: true
@@ -241,7 +242,7 @@ Item {
                         // Kind badge — three colors so word / tag / deck stay distinct.
                         Rectangle {
                             Layout.alignment: Qt.AlignTop
-                            Layout.topMargin: 4
+                            Layout.topMargin: Platform.spacingSm
                             implicitWidth: kindText.implicitWidth + 12
                             implicitHeight: 18
                             radius: height / 2

@@ -23,7 +23,7 @@ enum class ContentType_t : int {
     Tense      = 6, // Verb conjugation table; body is JSON object of
                     // tense → form pairs ({"present":"go","past":"went",
                     // "future":"will go","conditional":"would go"})
-    Cloze      = 7, // Fill-in-the-blank text with Anki-style {{cN::answer::hint}}
+    Cloze = 7,      // Fill-in-the-blank text with Anki-style {{cN::answer::hint}}
                     // markers. Masked on the review front, revealed on answer.
 };
 
@@ -137,9 +137,10 @@ struct Deck_t {
     FilterMode_t filterMode = FilterMode_t::And;
     std::string  createdAt;
     int          newCardsPerDay = 20;
-    std::string  scheduler = "sm2";   // "sm2" or "fsrs"
-    double       fsrsRetention = 0.9; // FSRS desired retention (0.7..0.97)
-    std::string  fsrsWeights;         // JSON array of 19 weights, empty = defaults
+    std::string  scheduler      = "sm2"; // "sm2" or "fsrs"
+    double       fsrsRetention  = 0.9;   // FSRS desired retention (0.7..0.97)
+    std::string  fsrsWeights;            // JSON array of 19 weights, empty = defaults
+    std::string  language;               // deck language code, empty = unset
 };
 
 // SM-2 scheduling state for one (deck, word) pair.

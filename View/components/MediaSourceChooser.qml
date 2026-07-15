@@ -28,7 +28,7 @@ SheetPopup {
 
     ColumnLayout {
         width: parent.width
-        spacing: 8
+        spacing: Platform.spacingMd
 
         Repeater {
             model: [

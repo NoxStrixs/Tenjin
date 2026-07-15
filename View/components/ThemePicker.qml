@@ -136,7 +136,7 @@ ColumnLayout {
                         border.width: 1
                         TextInput {
                             id: hexInput
-                            anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+                            anchors { fill: parent; leftMargin: Platform.spacingMd; rightMargin: Platform.spacingMd }
                             verticalAlignment: TextInput.AlignVCenter
                             text: root._hexFor(modelData.key)
                             color: Platform.textPrimary

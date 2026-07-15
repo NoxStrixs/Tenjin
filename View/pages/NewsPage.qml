@@ -179,7 +179,7 @@ Item {
             Column {
                 anchors.centerIn: parent
                 visible: newsList.count === 0
-                spacing: 12
+                spacing: Platform.spacingLg
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: TenjinIcons.news; font.family: TenjinIcons.family; font.pixelSize: 52; color: Platform.textMuted

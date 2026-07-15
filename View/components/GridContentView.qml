@@ -179,7 +179,7 @@ Flickable {
                                     anchors.left: parent.left
                                     anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 8
+                                    spacing: Platform.spacingMd
                                     Text {
                                         visible: text.length > 0
                                         text: cell.modelData.content
@@ -225,6 +225,7 @@ Flickable {
                                         width: 240
                                         text: cell.modelData.content
                                         placeholderText: qsTr("Optional label")
+                                        placeholderTextColor: Platform.textMuted
                                         color: Platform.textPrimary
                                         background: Rectangle {
                                             radius: Platform.radius

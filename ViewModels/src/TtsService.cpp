@@ -1,15 +1,14 @@
 #include <ViewModels/TtsService.h>
 
 #ifdef TENJIN_TTS
-#include <QLocale>
-#include <QTextToSpeech>
-#include <QVoice>
+#    include <QLocale>
+#    include <QTextToSpeech>
+#    include <QVoice>
 #endif
 
 #ifdef TENJIN_TTS
 
-struct TtsService::Impl
-{
+struct TtsService::Impl {
     QTextToSpeech engine;
 };
 
@@ -60,14 +59,18 @@ std::unique_ptr<TtsService> TtsService::create(QObject* parent)
     return std::make_unique<TtsService>(parent);
 }
 
-#else  // TTS_SUPPORT off — stub
+#else // TTS_SUPPORT off — stub
 
-struct TtsService::Impl {};
+struct TtsService::Impl {
+};
 TtsService::TtsService(QObject* parent) : QObject(parent) {}
 TtsService::~TtsService() = default;
-bool TtsService::hasTts() const { return false; }
-void TtsService::speak(const QString&, const QString&) {}
-void TtsService::stop() {}
+bool TtsService::hasTts() const
+{
+    return false;
+}
+void                        TtsService::speak(const QString&, const QString&) {}
+void                        TtsService::stop() {}
 std::unique_ptr<TtsService> TtsService::create(QObject* parent)
 {
     return std::make_unique<TtsService>(parent);

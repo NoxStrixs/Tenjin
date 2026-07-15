@@ -112,7 +112,7 @@ Item {
                 Layout.topMargin: Platform.pagePadding
                 Layout.rightMargin: Platform.pagePadding
                 Layout.bottomMargin: Platform.spacingSm
-                spacing: 8
+                spacing: Platform.spacingMd
 
                 Rectangle {
                     Layout.preferredWidth: Platform.touchTarget

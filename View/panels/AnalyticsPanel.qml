@@ -193,7 +193,7 @@ Item {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            spacing: 2
+                            spacing: Platform.spacingXs
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: kpiCard.modelData.value

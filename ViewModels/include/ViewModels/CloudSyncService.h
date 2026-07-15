@@ -43,7 +43,10 @@ public:
 
     virtual bool    available() const;
     virtual QString locationLabel() const;
-    bool            busy() const { return m_busy; }
+    bool            busy() const
+    {
+        return m_busy;
+    }
 
     // Let the user choose/authorize the sync location. On Apple this is a no-op
     // (iCloud container is implicit); on Android it opens the SAF tree picker;

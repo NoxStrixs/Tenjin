@@ -131,9 +131,9 @@ ThemedDialog {
 
             ListView {
                 id: matchList
-                anchors { fill: parent; margins: 4 }
+                anchors { fill: parent; margins: Platform.spacingSm }
                 clip: true
-                spacing: 2
+                spacing: Platform.spacingXs
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
@@ -152,7 +152,7 @@ ThemedDialog {
                     Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
                     Text {
-                        anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                        anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                         verticalAlignment: Text.AlignVCenter
                         text: parent.modelData.word
                         color: Platform.textPrimary
@@ -185,7 +185,7 @@ ThemedDialog {
         Flow {
             Layout.fillWidth: true
             visible: root.pickedId >= 0
-            spacing: 8
+            spacing: Platform.spacingMd
 
             Repeater {
                 model: root._kinds

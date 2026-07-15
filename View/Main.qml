@@ -60,6 +60,7 @@ ApplicationWindow {
     readonly property int _pageNews:     4
     readonly property int _pageSettings: 5
     readonly property int _pageStats:    6
+    readonly property int _pageDeckAnalytics: 7
 
     // ── Keyboard shortcuts (desktop, iPad, Android tablets w/ keyboard) ──────
     // StandardKey maps to the platform-native chord automatically
@@ -210,7 +211,7 @@ ApplicationWindow {
         // Desktop header
         RowLayout {
             anchors { fill: parent; leftMargin: 16; rightMargin: 16; topMargin: Platform.safeAreaTop }
-            spacing: 12
+            spacing: Platform.spacingLg
             visible: Platform.useWideLayout
 
             // Sidebar toggle
@@ -330,7 +331,7 @@ ApplicationWindow {
         // Mobile header — drawer toggle, search box (now universal), and
         // the contextual + Add button (only on content pages).
         RowLayout {
-            anchors { fill: parent; leftMargin: 12; rightMargin: 12; topMargin: Platform.safeAreaTop }
+            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg; topMargin: Platform.safeAreaTop }
             spacing: 10
             visible: !Platform.useWideLayout
 
@@ -481,7 +482,7 @@ ApplicationWindow {
 
         ColumnLayout {
             width: parent.width
-            spacing: 8
+            spacing: Platform.spacingMd
             Repeater {
                 model: [
                     { label: qsTr("JSON (full backup)"), fmt: "json" },
@@ -522,7 +523,7 @@ ApplicationWindow {
         parent: Overlay.overlay
         modal: true
         dim: true
-        Overlay.modal: Rectangle { color: "#66000000" }
+        Overlay.modal: Rectangle { color: Platform.overlayDim }
         width: Platform.isMobile ? Math.min(root.width - 32, 360) : 360
         height: Math.min(root.height - Platform.safeAreaTop - Platform.safeAreaBottom - 80, 520)
         anchors.centerIn: Overlay.overlay
@@ -549,7 +550,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                spacing: 2
+                spacing: Platform.spacingXs
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 // "All languages" sentinel (empty code) followed by the codes
@@ -610,7 +611,7 @@ ApplicationWindow {
         parent: Overlay.overlay
         modal: true
         dim: true
-        Overlay.modal: Rectangle { color: "#66000000" }
+        Overlay.modal: Rectangle { color: Platform.overlayDim }
         padding: 0
         width: Platform.isMobile ? Math.min(root.width - 32, 360) : 360
         height: Math.min(root.height - Platform.safeAreaTop - Platform.safeAreaBottom - 80, 520)
@@ -637,7 +638,7 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 clip: true
                 model: appVM.supportedUiLanguages
-                spacing: 2
+                spacing: Platform.spacingXs
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                 delegate: Rectangle {
@@ -1145,6 +1146,9 @@ ApplicationWindow {
                     onBackRequested: appVM.currentPage = root._pageWords
                 }
                 StatsPage    { onBackRequested: appVM.currentPage = root._pageWords }
+                DeckAnalyticsPage {
+                    onBackRequested: appVM.currentPage = root._pageDecks
+                }
             }
         }
     }
@@ -1290,8 +1294,8 @@ ApplicationWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 8
-            spacing: 8
+            anchors.margins: Platform.spacingMd
+            spacing: Platform.spacingMd
 
             RowLayout {
                 Layout.fillWidth: true
@@ -1398,6 +1402,7 @@ ApplicationWindow {
                         TextArea {
                             id: evalInput
                             placeholderText: qsTr("e.g. appVM.theme  /  Platform.toggleTheme()")
+                            placeholderTextColor: Platform.textMuted
                             color: Platform.textPrimary
                             font.pixelSize: 12
                             font.family: Platform.fontMono

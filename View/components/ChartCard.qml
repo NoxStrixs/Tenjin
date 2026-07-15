@@ -41,13 +41,13 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
+        anchors.margins: Platform.spacingLg
         spacing: 6
 
         // Title row — title at left, optional trend chip on the right.
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Platform.spacingMd
             Text {
                 Layout.fillWidth: true
                 text: card.title

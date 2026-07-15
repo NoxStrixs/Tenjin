@@ -33,7 +33,10 @@ public:
         return f.isEmpty() ? tr("No folder selected") : QDir::toNativeSeparators(f);
     }
 
-    QString syncFolder() const override { return folder(); }
+    QString syncFolder() const override
+    {
+        return folder();
+    }
 
     // The desktop folder picker lives in QML (the project links no QtWidgets, so
     // QFileDialog isn't available). QML opens its FolderDialog and calls
@@ -63,21 +66,20 @@ public:
 
     QVariantList listSnapshots() const override
     {
-        QVariantList out;
+        QVariantList  out;
         const QString f = folder();
         if (f.isEmpty())
             return out;
         QDir dir(f);
         // Tenjin snapshots are JSON exports; sort newest first.
-        const auto entries = dir.entryInfoList({QStringLiteral("tenjin-*.json")},
-                                               QDir::Files, QDir::Time);
+        const auto entries =
+            dir.entryInfoList({QStringLiteral("tenjin-*.json")}, QDir::Files, QDir::Time);
         for (const QFileInfo& fi : entries) {
-            out.append(QVariantMap{
-                {QStringLiteral("name"), fi.fileName()},
-                {QStringLiteral("path"), fi.absoluteFilePath()},
-                {QStringLiteral("sizeBytes"), fi.size()},
-                {QStringLiteral("modified"),
-                 fi.lastModified().toString(Qt::ISODate)}});
+            out.append(
+                QVariantMap{{QStringLiteral("name"), fi.fileName()},
+                            {QStringLiteral("path"), fi.absoluteFilePath()},
+                            {QStringLiteral("sizeBytes"), fi.size()},
+                            {QStringLiteral("modified"), fi.lastModified().toString(Qt::ISODate)}});
         }
         return out;
     }

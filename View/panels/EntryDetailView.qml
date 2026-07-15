@@ -81,7 +81,7 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 12
+                spacing: Platform.spacingLg
 
                 ActionButton {
                     visible: detailRoot.showBack
@@ -106,35 +106,6 @@ Item {
                     elide: Text.ElideRight
                 }
 
-                // Speak the word using the platform TTS engine, voiced in the
-                // entry's language. Hidden when no engine is available or in
-                // edit mode.
-                Rectangle {
-                    visible: !appVM.entryVM.editMode && tts.hasTts()
-                             && appVM.entryVM.selectedWord.length > 0
-                    Layout.preferredWidth: Platform.touchTarget
-                    Layout.preferredHeight: Platform.touchTarget
-                    radius: Platform.radius
-                    color: speakArea.containsMouse ? Platform.surfaceAlt : "transparent"
-                    Text {
-                        anchors.centerIn: parent
-                        text: TenjinIcons.volumeUp
-                        font.family: TenjinIcons.family
-                        font.pixelSize: Platform.iconSize
-                        color: Platform.accent
-                    }
-                    Accessible.role: Accessible.Button
-                    Accessible.name: qsTr("Speak word")
-                    MouseArea {
-                        id: speakArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: tts.speak(
-                            appVM.entryVM.selectedWord,
-                            appVM.entryVM.entryLanguage(appVM.entryVM.selectedEntryId))
-                    }
-                }
                 Rectangle {
                     visible: appVM.entryVM.editMode
                     Layout.fillWidth: true
@@ -210,7 +181,7 @@ Item {
                 RowLayout {
                     visible: appVM.entryVM.editMode && !Platform.isMobile
                     Layout.alignment: Qt.AlignRight
-                    spacing: 8
+                    spacing: Platform.spacingMd
                     ActionButton { text: qsTr("Save");        variant: "success"; onClicked: appVM.entryVM.saveEdit() }
                     ActionButton { text: qsTr("Cancel");      variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
                     ActionButton { text: qsTr("Delete Word"); variant: "danger";  onClicked: deleteEntryConfirm.open() }
@@ -221,7 +192,7 @@ Item {
             RowLayout {
                 visible: appVM.entryVM.editMode && Platform.isMobile
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: Platform.spacingMd
                 ActionButton { Layout.fillWidth: true; compact: true; text: qsTr("Save");   variant: "success"; onClicked: appVM.entryVM.saveEdit() }
                 ActionButton { Layout.fillWidth: true; compact: true; text: qsTr("Cancel"); variant: "neutral"; onClicked: appVM.entryVM.cancelEdit() }
                 ActionButton { Layout.fillWidth: true; compact: true; text: qsTr("Delete"); variant: "danger";  onClicked: deleteEntryConfirm.open() }
@@ -231,7 +202,7 @@ Item {
         // Tags
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Platform.spacingMd
 
             Text { text: qsTr("Tags:"); color: Platform.textMuted; font.pixelSize: Platform.fontBase }
 
@@ -413,7 +384,7 @@ Item {
         RowLayout {
             id: langRow
             Layout.fillWidth: true
-            spacing: 8
+            spacing: Platform.spacingMd
             visible: appVM.entryVM.selectedEntryId > 0
 
             readonly property string currentCode:
@@ -551,7 +522,7 @@ Item {
                     anchors {
                         right: parent.right
                         verticalCenter: parent.verticalCenter
-                        rightMargin: 12
+                        rightMargin: Platform.spacingLg
                     }
                     text: TenjinIcons.expandMore
         font.family: TenjinIcons.family
@@ -669,7 +640,7 @@ Item {
                     Behavior on border.color { ColorAnimation { duration: Platform.effDurationFast } }
                     TextField {
                         id: entryCustomLangInput
-                        anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                        anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                         topPadding: 0
                         bottomPadding: 0
                         verticalAlignment: TextInput.AlignVCenter
@@ -699,7 +670,7 @@ Item {
         Flow {
             Layout.fillWidth: true
             visible: appVM.entryVM.editMode
-            spacing: 8
+            spacing: Platform.spacingMd
 
             Repeater {
                 model: [
@@ -954,7 +925,7 @@ Item {
                         return g[kindGroup.modelData.id] || []
                     }
                     visible: kindGroup.entries.length > 0
-                    spacing: 4
+                    spacing: Platform.spacingSm
 
                     Text {
                         text: kindGroup.modelData.label + " \u00B7 " + kindGroup.entries.length

@@ -42,7 +42,8 @@ public:
 
 protected:
     // Immediate desktop notification via notify-send.
-    bool deliverNative(const QString& title, const QString& body,
+    bool deliverNative(const QString& title,
+                       const QString& body,
                        const QVariantMap& /*payload*/) override
     {
         const QString exe = notifySendPath();
@@ -52,12 +53,15 @@ protected:
             exe, {QStringLiteral("-a"), QStringLiteral("Tenjin"), title, body});
     }
 
-    bool requestPermissionNative() override { return true; }
+    bool requestPermissionNative() override
+    {
+        return true;
+    }
 
     // Write + enable a systemd user timer that fires daily at hour:minute and
     // runs notify-send, so the reminder appears with the app closed.
-    bool scheduleDailyNative(int hour, int minute, const QString& title,
-                             const QString& body) override
+    bool
+    scheduleDailyNative(int hour, int minute, const QString& title, const QString& body) override
     {
         const QString exe = notifySendPath();
         if (exe.isEmpty())
@@ -77,8 +81,7 @@ protected:
               << "Description=Tenjin daily study reminder\n\n"
               << "[Service]\n"
               << "Type=oneshot\n"
-              << "ExecStart=" << exe << " -a Tenjin \""
-              << title << "\" \"" << body << "\"\n";
+              << "ExecStart=" << exe << " -a Tenjin \"" << title << "\" \"" << body << "\"\n";
         }
 
         // .timer — fires every day at the chosen local time, and catches up if
@@ -91,8 +94,7 @@ protected:
             t << "[Unit]\n"
               << "Description=Tenjin daily study reminder timer\n\n"
               << "[Timer]\n"
-              << "OnCalendar=*-*-* "
-              << QString::asprintf("%02d:%02d:00", hour, minute) << "\n"
+              << "OnCalendar=*-*-* " << QString::asprintf("%02d:%02d:00", hour, minute) << "\n"
               << "Persistent=true\n\n"
               << "[Install]\n"
               << "WantedBy=timers.target\n";
@@ -101,18 +103,20 @@ protected:
         // Reload the user manager and enable+start the timer.
         QProcess::execute(QStringLiteral("systemctl"),
                           {QStringLiteral("--user"), QStringLiteral("daemon-reload")});
-        return QProcess::execute(
-                   QStringLiteral("systemctl"),
-                   {QStringLiteral("--user"), QStringLiteral("enable"),
-                    QStringLiteral("--now"), QStringLiteral("tenjin-reminder.timer")}) == 0;
+        return QProcess::execute(QStringLiteral("systemctl"),
+                                 {QStringLiteral("--user"),
+                                  QStringLiteral("enable"),
+                                  QStringLiteral("--now"),
+                                  QStringLiteral("tenjin-reminder.timer")}) == 0;
     }
 
     void cancelDailyNative() override
     {
-        QProcess::execute(
-            QStringLiteral("systemctl"),
-            {QStringLiteral("--user"), QStringLiteral("disable"),
-             QStringLiteral("--now"), QStringLiteral("tenjin-reminder.timer")});
+        QProcess::execute(QStringLiteral("systemctl"),
+                          {QStringLiteral("--user"),
+                           QStringLiteral("disable"),
+                           QStringLiteral("--now"),
+                           QStringLiteral("tenjin-reminder.timer")});
         const QString dir = userSystemdDir();
         QFile::remove(dir + QStringLiteral("/tenjin-reminder.timer"));
         QFile::remove(dir + QStringLiteral("/tenjin-reminder.service"));

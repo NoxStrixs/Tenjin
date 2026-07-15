@@ -58,12 +58,11 @@ Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 #include <ViewModels/AppViewModel.h>
 #include <ViewModels/CloudService.h>
 #include <ViewModels/CloudSyncService.h>
+#include <ViewModels/DocumentPickerService.h>
 #include <ViewModels/HapticsService.h>
 #include <ViewModels/LogViewModel.h>
 #include <ViewModels/NotificationService.h>
-#include <ViewModels/DocumentPickerService.h>
 #include <ViewModels/TimePickerService.h>
-#include <ViewModels/TtsService.h>
 
 static LogViewModel*    g_logModel        = nullptr;
 static QtMessageHandler g_previousHandler = nullptr;
@@ -242,20 +241,18 @@ int main(int argc, char* argv[])
     // Standalone services (compile-time platform factories)
     // create() returns the platform-appropriate subclass; only the target
     // platform's backend TU is compiled in (see ViewModels/CMakeLists.txt).
-    auto notifServicePtr = NotificationService::create();
-    auto cloudServicePtr = CloudService::create();
-    auto cloudSyncPtr    = CloudSyncService::create();
-    auto hapticsPtr      = HapticsService::create();
-    auto pickerPtr       = DocumentPickerService::create();
-    auto timePickerPtr   = TimePickerService::create();
-    auto ttsPtr          = TtsService::create();
-    NotificationService&   notifService = *notifServicePtr;
-    CloudService&          cloudService = *cloudServicePtr;
-    CloudSyncService&      cloudSync    = *cloudSyncPtr;
-    HapticsService&        haptics      = *hapticsPtr;
-    DocumentPickerService& picker       = *pickerPtr;
-    TimePickerService&     timePicker   = *timePickerPtr;
-    TtsService&            tts          = *ttsPtr;
+    auto                   notifServicePtr = NotificationService::create();
+    auto                   cloudServicePtr = CloudService::create();
+    auto                   cloudSyncPtr    = CloudSyncService::create();
+    auto                   hapticsPtr      = HapticsService::create();
+    auto                   pickerPtr       = DocumentPickerService::create();
+    auto                   timePickerPtr   = TimePickerService::create();
+    NotificationService&   notifService    = *notifServicePtr;
+    CloudService&          cloudService    = *cloudServicePtr;
+    CloudSyncService&      cloudSync       = *cloudSyncPtr;
+    HapticsService&        haptics         = *hapticsPtr;
+    DocumentPickerService& picker          = *pickerPtr;
+    TimePickerService&     timePicker      = *timePickerPtr;
 
     // Inject the picker so AppViewModel can drive native import and receive the
     // async documentPicked() result.
@@ -288,7 +285,6 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("cloudSync"), &cloudSync);
     engine.rootContext()->setContextProperty(QStringLiteral("haptics"), &haptics);
     engine.rootContext()->setContextProperty(QStringLiteral("timePicker"), &timePicker);
-    engine.rootContext()->setContextProperty(QStringLiteral("tts"), &tts);
 
     // Capture QML warnings/errors so a load failure writes the real cause to
     // fatal.log instead of crashing silently before the window appears.

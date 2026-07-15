@@ -89,6 +89,9 @@ const Step kV1 = {
     "name        TEXT NOT NULL,"
     "is_smart    INTEGER DEFAULT 0,"
     "filter_mode TEXT DEFAULT 'AND',"
+    // Optional language for the deck (BCP-47-ish code matching entry.language).
+    // Empty = no language set; used for the flag badge and language filtering.
+    "language    TEXT NOT NULL DEFAULT '',"
     "created_at  TEXT DEFAULT (datetime('now')),"
     "guid TEXT DEFAULT '',"
     "updated_at INTEGER DEFAULT 0,"

@@ -9,7 +9,7 @@
 #include <QStringList>
 
 #ifdef Q_OS_WIN
-#include <windows.h>
+#    include <windows.h>
 #endif
 
 struct TtsService::Impl {
@@ -44,28 +44,32 @@ void TtsService::speak(const QString& text, const QString& language)
     lang.replace(QStringLiteral("_"), QStringLiteral("-"));
 
     // Build a script that selects a voice matching the language when possible.
-    const QString script = QStringLiteral(
-        "Add-Type -AssemblyName System.Speech;"
-        "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer;"
-        "try { if ('%1' -ne '') { "
-        "  $v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -like '%1*' } | Select-Object -First 1;"
-        "  if ($v) { $s.SelectVoice($v.VoiceInfo.Name) } } } catch {};"
-        "$s.Speak('%2');").arg(lang, safe);
+    const QString script =
+        QStringLiteral("Add-Type -AssemblyName System.Speech;"
+                       "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer;"
+                       "try { if ('%1' -ne '') { "
+                       "  $v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name "
+                       "-like '%1*' } | Select-Object -First 1;"
+                       "  if ($v) { $s.SelectVoice($v.VoiceInfo.Name) } } } catch {};"
+                       "$s.Speak('%2');")
+            .arg(lang, safe);
 
     d->proc = new QProcess();
     d->proc->setProgram(QStringLiteral("powershell"));
-    d->proc->setArguments({QStringLiteral("-NoProfile"), QStringLiteral("-WindowStyle"),
-                           QStringLiteral("Hidden"), QStringLiteral("-NonInteractive"),
-                           QStringLiteral("-Command"), script});
+    d->proc->setArguments({QStringLiteral("-NoProfile"),
+                           QStringLiteral("-WindowStyle"),
+                           QStringLiteral("Hidden"),
+                           QStringLiteral("-NonInteractive"),
+                           QStringLiteral("-Command"),
+                           script});
 #ifdef Q_OS_WIN
     d->proc->setCreateProcessArgumentsModifier(
-        [](QProcess::CreateProcessArguments* args) {
-            args->flags |= CREATE_NO_WINDOW;
-        });
+        [](QProcess::CreateProcessArguments* args) { args->flags |= CREATE_NO_WINDOW; });
 #endif
     QObject::connect(d->proc,
                      QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                     d->proc, &QObject::deleteLater);
+                     d->proc,
+                     &QObject::deleteLater);
     d->proc->start();
 }
 
