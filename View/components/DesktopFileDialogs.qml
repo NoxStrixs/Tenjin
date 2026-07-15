@@ -15,9 +15,11 @@ Item {
     // Injected from the parent so this file has no direct appVM dependency.
     signal importAccepted(url file)
     signal exportAccepted(url file)
+    signal syncFolderAccepted(url folder)
 
     function openImport() { importDlg.open() }
     function openExport() { exportDlg.open() }
+    function openSyncFolder() { syncFolderDlg.open() }
 
     FileDialog {
         id: importDlg
@@ -29,6 +31,15 @@ Item {
                       qsTr("Anki package (*.apkg)"),
                       qsTr("All files (*)")]
         onAccepted: root.importAccepted(selectedFile)
+    }
+
+    // Cloud-sync target: a folder the user's cloud client already syncs
+    // (OneDrive/Dropbox/Drive/Nextcloud, or any directory).
+    FolderDialog {
+        id: syncFolderDlg
+        title: qsTr("Choose a cloud-synced folder")
+        currentFolder: StandardPaths.writableLocation(StandardPaths.HomeLocation)
+        onAccepted: root.syncFolderAccepted(selectedFolder)
     }
 
     FileDialog {

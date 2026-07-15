@@ -57,6 +57,7 @@ Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 #include <TenjinConfig.h>
 #include <ViewModels/AppViewModel.h>
 #include <ViewModels/CloudService.h>
+#include <ViewModels/CloudSyncService.h>
 #include <ViewModels/HapticsService.h>
 #include <ViewModels/LogViewModel.h>
 #include <ViewModels/NotificationService.h>
@@ -243,12 +244,14 @@ int main(int argc, char* argv[])
     // platform's backend TU is compiled in (see ViewModels/CMakeLists.txt).
     auto notifServicePtr = NotificationService::create();
     auto cloudServicePtr = CloudService::create();
+    auto cloudSyncPtr    = CloudSyncService::create();
     auto hapticsPtr      = HapticsService::create();
     auto pickerPtr       = DocumentPickerService::create();
     auto timePickerPtr   = TimePickerService::create();
     auto ttsPtr          = TtsService::create();
     NotificationService&   notifService = *notifServicePtr;
     CloudService&          cloudService = *cloudServicePtr;
+    CloudSyncService&      cloudSync    = *cloudSyncPtr;
     HapticsService&        haptics      = *hapticsPtr;
     DocumentPickerService& picker       = *pickerPtr;
     TimePickerService&     timePicker   = *timePickerPtr;
@@ -282,6 +285,7 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("logModel"), &logModel);
     engine.rootContext()->setContextProperty(QStringLiteral("notifService"), &notifService);
     engine.rootContext()->setContextProperty(QStringLiteral("cloudService"), &cloudService);
+    engine.rootContext()->setContextProperty(QStringLiteral("cloudSync"), &cloudSync);
     engine.rootContext()->setContextProperty(QStringLiteral("haptics"), &haptics);
     engine.rootContext()->setContextProperty(QStringLiteral("timePicker"), &timePicker);
     engine.rootContext()->setContextProperty(QStringLiteral("tts"), &tts);

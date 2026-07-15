@@ -32,14 +32,18 @@ ThemedDialog {
     function _refresh() { _allEntries = appVM.entryVM.getAllEntries() }
     function _matches() {
         const q = _query.toLowerCase().trim()
-        if (q.length === 0) return []
         const out = []
         for (let i = 0; i < _allEntries.length; i++) {
             const e = _allEntries[i]
             // Skip the source entry itself — a word can't relate to itself.
             if (e.wordId === sourceEntryId) continue
-            if (e.word && e.word.toLowerCase().indexOf(q) !== -1) out.push(e)
-            if (out.length >= 12) break
+            // Empty query: list all candidates (capped). Otherwise filter by word.
+            if (q.length === 0) {
+                out.push(e)
+            } else if (e.word && e.word.toLowerCase().indexOf(q) !== -1) {
+                out.push(e)
+            }
+            if (out.length >= 50) break
         }
         return out
     }

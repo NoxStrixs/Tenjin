@@ -1067,9 +1067,27 @@ Rectangle {
             // VIDEO / AUDIO (QtMultimedia, no autoplay)
             Loader {
                 Layout.fillWidth: true
-                active: root.mediaKind === "video" || root.mediaKind === "audio"
+                active: (root.mediaKind === "video" || root.mediaKind === "audio")
+                        && appVM.mediaAvailable
                 visible: active
                 sourceComponent: mediaPlayerComponent
+            }
+            // Fallback shown when a media block exists but playback isn't
+            // compiled in (e.g. an iOS build without QtMultimedia).
+            Rectangle {
+                Layout.fillWidth: true
+                visible: (root.mediaKind === "video" || root.mediaKind === "audio")
+                         && !appVM.mediaAvailable
+                implicitHeight: 44
+                radius: Platform.radius
+                color: Platform.surfaceAlt
+                border.color: Platform.border
+                Text {
+                    anchors.centerIn: parent
+                    text: qsTr("Media playback isn't available on this platform")
+                    color: Platform.textMuted
+                    font.pixelSize: Platform.fontSmall
+                }
             }
 
             // WEB EMBED (QtWebEngine if available, else link)

@@ -8,6 +8,7 @@
 #include <ViewModels/DocumentPickerService.h>
 
 #include <QJniEnvironment>
+#include <QCoreApplication>
 #include <QJniObject>
 #include <QtCore/private/qandroidextras_p.h>
 #include <QtCore/qnativeinterface.h>

@@ -3,6 +3,7 @@
 
 #include <ViewModels/HapticsService.h>
 
+#include <QCoreApplication>
 #include <QJniObject>
 #include <QtCore/qnativeinterface.h>
 

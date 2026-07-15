@@ -6,6 +6,7 @@
 // only on Android.
 
 #include <ViewModels/PlatformHooks.h>
+#include <QCoreApplication>
 #include <QJniObject>
 #include <QtCore/qnativeinterface.h>
 

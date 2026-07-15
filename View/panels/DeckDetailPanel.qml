@@ -435,8 +435,9 @@ Item {
         }
 
         ColumnLayout {
-            width: parent.width
-            spacing: 14
+            width: parent.width - Platform.spacingLg * 2
+            x: Platform.spacingLg
+            spacing: 16
 
             AppText { text: qsTr("Algorithm"); font.bold: true; font.pixelSize: Platform.fontBase }
             Row {

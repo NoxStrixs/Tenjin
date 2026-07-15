@@ -69,6 +69,9 @@ class AppViewModel : public QObject
     Q_PROPERTY(SidebarViewModel* sidebarVM READ sidebarVM CONSTANT)
     Q_PROPERTY(ReviewViewModel* reviewVM READ reviewVM CONSTANT)
     Q_PROPERTY(bool webEngineAvailable READ webEngineAvailable CONSTANT)
+    // True when QtMultimedia playback is compiled in. Off on an iOS build that
+    // dropped media to dodge the FFmpeg plugin; QML hides media blocks then.
+    Q_PROPERTY(bool mediaAvailable READ mediaAvailable CONSTANT)
 
 public:
     enum Page_t {
@@ -229,6 +232,15 @@ public:
 #endif
     }
 
+    bool mediaAvailable() const
+    {
+#ifdef TENJIN_MEDIA
+        return true;
+#else
+        return false;
+#endif
+    }
+
     Q_INVOKABLE QString renderFormula(const QString& latex) const;
     // Render Anki-style cloze text ({{cN::answer::hint}}). When masked, each
     // deletion becomes "[…]" (or "[hint]" if a hint is present); when revealed,
@@ -294,6 +306,10 @@ public:
     //   when the user taps a row in the picker.
     Q_INVOKABLE QString      exportToDocuments();
     Q_INVOKABLE QString      exportToDocumentsCsv();
+    // Write a timestamped JSON snapshot into an arbitrary folder (used by cloud
+    // sync to drop a snapshot into the user's synced folder). Returns the
+    // written absolute path, or empty on failure.
+    Q_INVOKABLE QString      exportToFolder(const QString& folderPath);
     Q_INVOKABLE QVariantList availableExports() const;
     // Like availableExports but also lists *.apkg (Anki) files so the mobile
     // import picker can offer both formats.

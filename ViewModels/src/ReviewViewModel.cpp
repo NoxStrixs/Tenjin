@@ -199,7 +199,22 @@ QString ReviewViewModel::normalizedWord() const
 bool ReviewViewModel::checkTypedAnswer(const QString& typed) const
 {
     const QString a = normalizeAnswer(typed);
-    const QString b = normalizeAnswer(currentWord());
+
+    // Reverse mode: the answer is the word title. Cloze card (normal mode): the
+    // answer is the current deletion's text. Otherwise fall back to the word.
+    QString target = currentWord();
+    if (!m_reverseMode && currentHasCloze()) {
+        // Extract the cN answer for the current ordinal from the cloze text.
+        static const QRegularExpression re(
+            QStringLiteral("\\{\\{c(\\d+)::(.*?)(?:::(.*?))?\\}\\}"));
+        const int ord = currentClozeOrdinal();
+        auto it = re.globalMatch(currentClozeText());
+        while (it.hasNext()) {
+            const auto m = it.next();
+            if (m.captured(1).toInt() == ord) { target = m.captured(2); break; }
+        }
+    }
+    const QString b = normalizeAnswer(target);
     return !b.isEmpty() && a == b;
 }
 

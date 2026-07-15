@@ -36,8 +36,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Build options
 option(MEDIA_SUPPORT    "Enable audio/video playback (QtMultimedia)" ON)
 option(WEBVIEW_SUPPORT  "Enable web/YouTube embeds (QtWebView)"      OFF)
-option(TTS_SUPPORT      "Enable text-to-speech (QtTextToSpeech)"       ON)
+option(TTS_SUPPORT      "Enable native text-to-speech pronunciation"      ON)
 option(TENJIN_DEBUG_UI  "Include debug console drawer in the build"  OFF)
+# Escape hatch: the aqt Qt iOS kit links a static FFmpeg media plugin without
+# its libs. App/CMakeLists whitelists only the Darwin plugin to avoid that. If a
+# given kit still force-links FFmpeg, set this ON to drop QtMultimedia on iOS
+# entirely (loses in-entry audio/video playback on iOS only; every other
+# platform keeps it). Off by default so the whitelist is tried first.
+option(IOS_DISABLE_MEDIA "Force-disable QtMultimedia on iOS (FFmpeg workaround)" OFF)
+if((IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS") AND IOS_DISABLE_MEDIA)
+    set(MEDIA_SUPPORT OFF)
+    message(STATUS "Tenjin iOS: MEDIA_SUPPORT forced OFF (IOS_DISABLE_MEDIA).")
+endif()
 option(TENJIN_BUILD_GUI "Build the QML GUI application"              ON)
 
 # SANITIZERS: comma-separated list (asan,lsan,tsan,ubsan,msan). Empty = off.
@@ -65,15 +75,10 @@ if(TENJIN_BUILD_GUI AND WEBVIEW_SUPPORT)
     find_package(Qt6 6.9 REQUIRED COMPONENTS WebView)
 endif()
 if(TENJIN_BUILD_GUI AND TTS_SUPPORT)
-    # Optional, not REQUIRED: if the qtspeech module isn't installed (e.g. a CI
-    # kit without it, or an iOS-static Qt that lacks it), disable TTS and build
-    # the no-op stub rather than failing the whole configure. TtsService is
-    # written to compile either way.
-    find_package(Qt6 6.9 QUIET COMPONENTS TextToSpeech)
-    if(NOT Qt6TextToSpeech_FOUND)
-        message(STATUS "QtTextToSpeech not found — building without TTS (stub).")
-        set(TTS_SUPPORT OFF)
-    endif()
+    # TTS is now implemented with each platform's native speech API
+    # (AVSpeechSynthesizer, Android TextToSpeech, System.Speech, spd-say) — no
+    # QtTextToSpeech / qtspeech module dependency. Nothing to find here; the
+    # per-platform backend TU is selected in ViewModels/CMakeLists.txt.
 endif()
 
 qt_standard_project_setup(REQUIRES 6.9)

@@ -18,6 +18,10 @@
 #include <QDir>
 #include <QFile>
 #include <QProcess>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 #include <QStandardPaths>
 #include <QTextStream>
 
@@ -64,10 +68,27 @@ bool runToast(const QString& title, const QString& body)
     const QString script = ensureToastScript();
     if (script.isEmpty())
         return false;
-    return QProcess::startDetached(
-        QStringLiteral("powershell"),
-        {QStringLiteral("-NoProfile"), QStringLiteral("-ExecutionPolicy"),
-         QStringLiteral("Bypass"), QStringLiteral("-File"), script, title, body});
+    // Fully suppress the console window: -WindowStyle Hidden hides the
+    // PowerShell host, and CREATE_NO_WINDOW (applied via the arguments modifier,
+    // which only runs for start(), NOT startDetached) prevents the conhost
+    // window from flashing. The process is short-lived and self-completes.
+    auto* proc = new QProcess();
+    proc->setProgram(QStringLiteral("powershell"));
+    proc->setArguments({QStringLiteral("-NoProfile"), QStringLiteral("-WindowStyle"),
+                        QStringLiteral("Hidden"), QStringLiteral("-NonInteractive"),
+                        QStringLiteral("-ExecutionPolicy"), QStringLiteral("Bypass"),
+                        QStringLiteral("-File"), script, title, body});
+#ifdef Q_OS_WIN
+    proc->setCreateProcessArgumentsModifier(
+        [](QProcess::CreateProcessArguments* args) {
+            args->flags |= CREATE_NO_WINDOW;
+        });
+#endif
+    QObject::connect(proc,
+                     QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                     proc, &QObject::deleteLater);
+    proc->start();
+    return proc->waitForStarted(3000);
 }
 
 const char* kTaskName = "TenjinDailyReminder";
@@ -98,7 +119,7 @@ protected:
         const QString startTime = QString::asprintf("%02d:%02d", hour, minute);
         // The action: powershell running the toast script with title/body.
         const QString action =
-            QStringLiteral("powershell -NoProfile -ExecutionPolicy Bypass -File \"%1\" \"%2\" \"%3\"")
+            QStringLiteral("powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%1\" \"%2\" \"%3\"")
                 .arg(script, title, body);
 
         return QProcess::execute(

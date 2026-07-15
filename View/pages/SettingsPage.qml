@@ -20,6 +20,12 @@ Item {
     function _openWhatsNew() { if (applicationRoot && applicationRoot.openWhatsNew) applicationRoot.openWhatsNew() }
     function _openImport()   { if (applicationRoot && applicationRoot.openImportDialog) applicationRoot.openImportDialog() }
     function _openExport()   { if (applicationRoot && applicationRoot.openExportDialog) applicationRoot.openExportDialog() }
+    // Desktop opens a QML FolderDialog via Main; mobile defers to the platform
+    // (iCloud implicit, Android SAF picker).
+    function _chooseSyncFolder() {
+        if (applicationRoot && applicationRoot.chooseSyncFolder) applicationRoot.chooseSyncFolder()
+        else cloudSync.chooseLocation()
+    }
 
     // Asks Main.qml to return to Words. Wired in Main.qml's StackLayout host.
     signal backRequested()
@@ -654,6 +660,70 @@ Item {
                 }
                 MouseArea { id: exportArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: settingsRoot._openExport() }
             }
+
+            // ── Cloud sync (the user's own storage) ────────────────────────
+            SectionHeader { text: qsTr("Cloud sync") }
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: cloudCol.implicitHeight + Platform.spacingLg * 2
+                color: "transparent"
+                ColumnLayout {
+                    id: cloudCol
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg; topMargin: Platform.spacingMd }
+                    spacing: Platform.spacingSm
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: qsTr("Back up to your own cloud storage. Snapshots are plain Tenjin exports — nothing is sent to us.")
+                        color: Platform.textMuted; font.pixelSize: Platform.fontSmall
+                        wrapMode: Text.WordWrap
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Platform.spacingSm
+                        Text {
+                            Layout.fillWidth: true
+                            text: cloudSync.locationLabel
+                            color: cloudSync.available ? Platform.textPrimary : Platform.textMuted
+                            font.pixelSize: Platform.fontSmall
+                            elide: Text.ElideMiddle
+                        }
+                        ActionButton {
+                            // Apple resolves iCloud implicitly; Android opens the
+                            // system folder picker; desktop uses a QML FolderDialog.
+                            text: qsTr("Change…")
+                            onClicked: settingsRoot._chooseSyncFolder()
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Platform.spacingSm
+                        ActionButton {
+                            Layout.fillWidth: true
+                            enabled: cloudSync.available
+                            text: qsTr("Back up now")
+                            variant: "success"
+                            onClicked: {
+                                const p = appVM.exportToFolder(cloudSync.syncFolder())
+                                if (p && p.length > 0) {
+                                    cloudSync.publish(p)
+                                    appVM.statusMessage = qsTr("Backed up to %1").arg(cloudSync.locationLabel)
+                                    cloudRestoreList.refresh()
+                                } else {
+                                    appVM.statusMessage = qsTr("Backup failed")
+                                }
+                            }
+                        }
+                        ActionButton {
+                            Layout.fillWidth: true
+                            enabled: cloudSync.available
+                            text: qsTr("Restore…")
+                            onClicked: { cloudRestoreList.refresh(); cloudRestoreSheet.open() }
+                        }
+                    }
+                }
+            }
+
             Rectangle {
                 visible: !Platform.isMobile
                 Layout.fillWidth: true
@@ -1018,6 +1088,81 @@ Item {
             }
         }
     }
+
+    // ── Restore-from-cloud picker ──────────────────────────────────────────
+    SheetPopup {
+        id: cloudRestoreSheet
+        title: qsTr("Restore from cloud")
+
+        ColumnLayout {
+            width: parent.width - Platform.spacingLg * 2
+            x: Platform.spacingLg
+            spacing: Platform.spacingMd
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Restoring replaces your current collection with the selected snapshot.")
+                color: Platform.textMuted; font.pixelSize: Platform.fontSmall
+                wrapMode: Text.WordWrap
+            }
+
+            ListView {
+                id: cloudRestoreList
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(contentHeight, 260)
+                clip: true
+                model: []
+                function refresh() { model = cloudSync.listSnapshots() }
+
+                delegate: Rectangle {
+                    required property var modelData
+                    width: ListView.view.width
+                    height: Platform.touchTarget + 12
+                    color: snapArea.containsMouse ? Platform.surfaceAlt : "transparent"
+                    radius: Platform.radius
+                    RowLayout {
+                        anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+                        spacing: 8
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            Text {
+                                text: modelData.name
+                                color: Platform.textPrimary; font.pixelSize: Platform.fontBase
+                                elide: Text.ElideMiddle; Layout.fillWidth: true
+                            }
+                            Text {
+                                text: modelData.modified + "  ·  " + Math.round(modelData.sizeBytes / 1024) + " KB"
+                                color: Platform.textMuted; font.pixelSize: Platform.fontSmall
+                            }
+                        }
+                    }
+                    MouseArea {
+                        id: snapArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            // Android must copy the file out of the SAF tree
+                            // first; other backends return the real path.
+                            const local = cloudSync.materialize(modelData.name)
+                            if (local && local.length > 0 && appVM.importFromPath(local)) {
+                                appVM.statusMessage = qsTr("Restored from %1").arg(modelData.name)
+                                cloudRestoreSheet.close()
+                            } else {
+                                appVM.statusMessage = qsTr("Restore failed")
+                            }
+                        }
+                    }
+                }
+
+                EmptyState {
+                    anchors.centerIn: parent
+                    visible: cloudRestoreList.count === 0
+                    title: qsTr("No snapshots yet")
+                    subtitle: qsTr("Use \u201cBack up now\u201d to create one.")
+                }
+            }
+        }
+    }
 }
-
-

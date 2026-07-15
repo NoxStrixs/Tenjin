@@ -28,6 +28,7 @@ class ReviewViewModel : public QObject
     Q_PROPERTY(bool currentHasCloze READ currentHasCloze NOTIFY sessionChanged)
     // Which cloze deletion (cN) this card tests; 0 = normal card.
     Q_PROPERTY(int currentClozeOrdinal READ currentClozeOrdinal NOTIFY sessionChanged)
+    Q_PROPERTY(bool reverseMode READ reverseMode WRITE setReverseMode NOTIFY reverseModeChanged)
     // True when the current card has been flagged a leech (failed many times).
     // The review UI surfaces this so the user can give it extra attention.
     Q_PROPERTY(bool currentIsLeech READ currentIsLeech NOTIFY sessionChanged)
@@ -61,6 +62,15 @@ public:
     QString currentClozeText() const;
     bool    currentHasCloze() const;
     int     currentClozeOrdinal() const;
+    // Reverse study: show the definition and recall the word. Per-session,
+    // toggled from the review UI. Front/back swap happens in the view.
+    bool reverseMode() const { return m_reverseMode; }
+    void setReverseMode(bool on)
+    {
+        if (m_reverseMode == on) return;
+        m_reverseMode = on;
+        emit reverseModeChanged();
+    }
     bool    showingAnswer() const
     {
         return m_showingAnswer;
@@ -103,6 +113,7 @@ public slots:
 
 signals:
     void sessionChanged();
+    void reverseModeChanged();
     void showingAnswerChanged();
     void errorOccurred(const QString& msg);
 
@@ -111,6 +122,7 @@ private:
     std::shared_ptr<Service::EntryService> m_entryService;
 
     std::optional<Service::ReviewSession_t> m_session;
+    bool                                    m_reverseMode = false;
     bool                                    m_showingAnswer = false;
 
     // Per-session summary counters (reset in startSession).

@@ -169,7 +169,18 @@ Rectangle {
                 }
                 Item { Layout.fillWidth: true }
                 Button {
+                    id: reverseToggle
+                    text: appVM.reviewVM.reverseMode ? qsTr("⇄ Reverse") : qsTr("⇄ Normal")
+                    implicitHeight: Platform.touchTarget
+                    onClicked: appVM.reviewVM.reverseMode = !appVM.reviewVM.reverseMode
+                    background: Rectangle { color: appVM.reviewVM.reverseMode ? Platform.accent : Platform.surface; radius: Platform.radius; border.color: Platform.border; border.width: 1 }
+                    contentItem: Text { text: reverseToggle.text; color: appVM.reviewVM.reverseMode ? Platform.textOnDark : Platform.textPrimary; font.pixelSize: Platform.fontBase; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                }
+                Button {
                     id: typedToggle
+                    // Typing only makes sense when there's a definite answer to
+                    // type: a cloze card, or reverse mode (type the word).
+                    visible: appVM.reviewVM.currentHasCloze || appVM.reviewVM.reverseMode
                     text: reviewRoot.typedMode ? qsTr("⌨ Typing") : qsTr("⌨ Type")
                     implicitHeight: Platform.touchTarget
                     onClicked: {
@@ -250,7 +261,23 @@ Rectangle {
                         }
                     }
 
-                    Text { Layout.alignment: Qt.AlignHCenter; text: appVM.reviewVM.currentWord; color: Platform.textPrimary; font.pixelSize: Platform.fontTitle; font.bold: true; visible: !reviewRoot.typedMode || appVM.reviewVM.showingAnswer }
+                    // Front: the word (normal) or the definition (reverse mode).
+                    // In reverse mode the definition is the prompt and the word
+                    // is the answer.
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
+                        text: appVM.reviewVM.reverseMode
+                              ? appVM.reviewVM.currentAnswer
+                              : appVM.reviewVM.currentWord
+                        textFormat: appVM.reviewVM.reverseMode ? Text.RichText : Text.PlainText
+                        color: Platform.textPrimary
+                        font.pixelSize: appVM.reviewVM.reverseMode ? Platform.fontLarge : Platform.fontTitle
+                        font.bold: !appVM.reviewVM.reverseMode
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                        visible: !reviewRoot.typedMode || appVM.reviewVM.showingAnswer || appVM.reviewVM.reverseMode
+                    }
 
                     // Cloze sentence: masked before reveal, revealed after. Only
                     // shown when the current entry has a cloze block.
@@ -335,6 +362,22 @@ Rectangle {
                         Layout.fillWidth: true
                         visible: appVM.reviewVM.showingAnswer; spacing: 14
                         Text { Layout.alignment: Qt.AlignLeft; Layout.fillWidth: true; text: appVM.reviewVM.currentAnswer; textFormat: Text.RichText; color: Platform.accentDark; font.pixelSize: Platform.fontLarge; horizontalAlignment: Text.AlignLeft; wrapMode: Text.WordWrap }
+
+                        // Jump to the full entry page. The review session stays
+                        // alive in the loader underneath, so returning to the
+                        // deck resumes exactly where you left off.
+                        Button {
+                            id: openEntryBtn
+                            Layout.alignment: Qt.AlignHCenter
+                            text: qsTr("Open entry ↗")
+                            implicitHeight: Platform.touchTarget
+                            onClicked: {
+                                appVM.entryVM.selectEntry(appVM.reviewVM.currentWordId)
+                                appVM.currentPage = 0 // Words page
+                            }
+                            background: Rectangle { color: Platform.surface; radius: Platform.radius; border.color: Platform.border; border.width: 1 }
+                            contentItem: Text { text: openEntryBtn.text; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                        }
                     }
                 }
             }

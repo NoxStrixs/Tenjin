@@ -10,6 +10,8 @@ if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(_TENJIN_TIME_BACKEND     src/TimePickerService_ios.mm)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_ios.mm)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_ios.mm)
+    set(_TENJIN_TTS_BACKEND      src/TtsService_apple.mm)
+    set(_TENJIN_CLOUDSYNC_BACKEND src/CloudSyncService_apple.mm)
 elseif(ANDROID)
     set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_android.cpp)
     set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_android.cpp)
@@ -19,6 +21,8 @@ elseif(ANDROID)
     set(_TENJIN_TIME_BACKEND     src/TimePickerService_android.cpp)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_android.cpp)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
+    set(_TENJIN_TTS_BACKEND      src/TtsService_android.cpp)
+    set(_TENJIN_CLOUDSYNC_BACKEND src/CloudSyncService_android.cpp)
 elseif(APPLE)
     # macOS: shares the Apple UserNotifications backend with iOS. Other native
     # backends (haptics/picker/time/motion/share) aren't macOS-specialized yet,
@@ -29,6 +33,8 @@ elseif(APPLE)
     set(_TENJIN_TIME_BACKEND     src/TimePickerService_default.cpp)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_default.cpp)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
+    set(_TENJIN_TTS_BACKEND      src/TtsService_apple.mm)
+    set(_TENJIN_CLOUDSYNC_BACKEND src/CloudSyncService_apple.mm)
 else()
     # Windows and Linux now have native closed-app daily-reminder backends
     # (Scheduled Task / systemd user timer). Other desktop OSes fall back to
@@ -45,6 +51,15 @@ else()
     set(_TENJIN_TIME_BACKEND     src/TimePickerService_default.cpp)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_default.cpp)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
+    if(WIN32)
+        set(_TENJIN_TTS_BACKEND  src/TtsService_windows.cpp)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(_TENJIN_TTS_BACKEND  src/TtsService_linux.cpp)
+    else()
+        set(_TENJIN_TTS_BACKEND  src/TtsService_default.cpp)
+    endif()
+    # Desktop cloud sync: the user points at a folder their cloud client syncs.
+    set(_TENJIN_CLOUDSYNC_BACKEND src/CloudSyncService_desktop.cpp)
 endif()
 
 qt_add_library(TenjinViewModels STATIC
@@ -72,7 +87,9 @@ qt_add_library(TenjinViewModels STATIC
     ${_TENJIN_PICKER_BACKEND}
     src/TimePickerService.cpp
     ${_TENJIN_TIME_BACKEND}
-    src/TtsService.cpp
+    ${_TENJIN_TTS_BACKEND}
+    src/CloudSyncService.cpp
+    ${_TENJIN_CLOUDSYNC_BACKEND}
     src/CloudService.cpp
 
     # Stateless platform hooks (free functions; one TU each).
@@ -92,6 +109,7 @@ qt_add_library(TenjinViewModels STATIC
     include/ViewModels/TimePickerService.h
     include/ViewModels/TtsService.h
     include/ViewModels/CloudService.h
+    include/ViewModels/CloudSyncService.h
     include/ViewModels/PlatformHooks.h
 )
 
@@ -126,13 +144,15 @@ if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
         "-framework UIKit"
         "-framework UniformTypeIdentifiers"
         "-framework PhotosUI"
-        "-framework Photos")
+        "-framework Photos"
+        "-framework AVFoundation")
 elseif(APPLE)
     # macOS: the shared Apple notification backend needs UserNotifications
     # (available on macOS 10.14+) and Foundation.
     target_link_libraries(TenjinViewModels PRIVATE
         "-framework UserNotifications"
-        "-framework Foundation")
+        "-framework Foundation"
+        "-framework AVFoundation")
 endif()
 
 # Android: runtime notification permission + JNI use QtAndroidPrivate/CorePrivate.
@@ -141,9 +161,3 @@ if(ANDROID)
     target_link_libraries(TenjinViewModels PRIVATE Qt6::CorePrivate)
 endif()
 
-# Text-to-speech (QtTextToSpeech). Gated: when off, TtsService compiles as a
-# no-op stub and hasTts() returns false so the QML speaker button hides.
-if(TTS_SUPPORT)
-    target_link_libraries(TenjinViewModels PRIVATE Qt6::TextToSpeech)
-    target_compile_definitions(TenjinViewModels PRIVATE TENJIN_TTS)
-endif()

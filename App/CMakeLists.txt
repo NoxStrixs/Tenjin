@@ -250,17 +250,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         )
     endif()
 
+    # The Qt iOS toolchain auto-imports the static FFmpeg media plugin
+    # (libQt6FFmpegMediaPluginImpl.a) into every app, INDEPENDENT of whether we
+    # link QtMultimedia — so this must run even when MEDIA_SUPPORT is OFF. The
+    # aqt kit ships the plugin but none of the FFmpeg libraries it needs, so
+    # av_*/swr_*/sws_* are undefined at link. Overriding the multimedia plugin
+    # set removes it:
+    #  - media ON  -> whitelist ONLY the native Darwin plugin (keeps playback).
+    #  - media OFF -> whitelist nothing for multimedia (no plugin linked).
     if(MEDIA_SUPPORT)
-        # Tenjin only PLAYS audio/video (no recording/transcoding), so on iOS
-        # the native AVFoundation backend (QDarwinMediaPlugin) is sufficient and
-        # preferred. The aqt-installed Qt iOS kit links the static FFmpeg media
-        # plugin (libQt6FFmpegMediaPluginImpl.a) but does NOT ship the FFmpeg
-        # libraries it depends on, so every av_*/swr_*/sws_* symbol is undefined
-        # at link. Exclude the FFmpeg plugin and import the Darwin one instead.
-        qt_import_plugins(Tenjin
-            INCLUDE Qt6::QDarwinMediaPlugin
-            EXCLUDE Qt6::QFFmpegMediaPlugin
-        )
+        qt_import_plugins(Tenjin INCLUDE_BY_TYPE multimedia Qt6::QDarwinMediaPlugin)
+    else()
+        qt_import_plugins(Tenjin EXCLUDE_BY_TYPE multimedia)
     endif()
 endif()
 

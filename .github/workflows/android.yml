@@ -62,7 +62,7 @@ jobs:
           host: "linux"
           target: "desktop"
           arch: "linux_gcc_64"
-          modules: "qtmultimedia qtspeech"
+          modules: "qtmultimedia"
           dir: ${{ github.workspace }}/Qt
           cache: true
           cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-android-host
@@ -75,7 +75,7 @@ jobs:
           host: "linux"
           target: "android"
           arch: "android_arm64_v8a"
-          modules: "qtmultimedia qtspeech"
+          modules: "qtmultimedia"
           dir: ${{ github.workspace }}/Qt
           cache: true
           cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-android-arm64

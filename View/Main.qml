@@ -1196,7 +1196,22 @@ ApplicationWindow {
                 else
                     appVM.exportData(f)
             })
+            item.syncFolderAccepted.connect(function(f) {
+                // Desktop has no C++ folder picker (no QtWidgets), so QML hands
+                // the chosen folder to the backend, which validates+persists it.
+                cloudSync.setFolder(f.toString())
+            })
         }
+    }
+
+    // Opens the desktop folder picker for the cloud-sync target. Mobile uses the
+    // platform's own mechanism (iCloud is implicit; Android opens the SAF tree
+    // picker), so this is desktop-only.
+    function chooseSyncFolder() {
+        if (!Platform.isMobile && desktopFileDialogsLoader.item)
+            desktopFileDialogsLoader.item.openSyncFolder()
+        else
+            cloudSync.chooseLocation()
     }
 
     // Import picker for mobile (FileDialog unavailable on iOS)

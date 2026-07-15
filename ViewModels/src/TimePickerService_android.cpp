@@ -6,6 +6,7 @@
 #include <ViewModels/TimePickerService.h>
 
 #include <QJniEnvironment>
+#include <QCoreApplication>
 #include <QJniObject>
 #include <QtCore/qnativeinterface.h>
 

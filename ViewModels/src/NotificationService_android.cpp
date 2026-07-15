@@ -5,6 +5,7 @@
 
 #include <ViewModels/NotificationService.h>
 
+#include <QCoreApplication>
 #include <QJniObject>
 
 #include <QtCore/private/qandroidextras_p.h>

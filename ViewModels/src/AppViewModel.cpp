@@ -626,6 +626,21 @@ QString AppViewModel::exportToDocumentsCsv()
     return path;
 }
 
+QString AppViewModel::exportToFolder(const QString& folderPath)
+{
+    if (folderPath.isEmpty())
+        return {};
+    QDir().mkpath(folderPath);
+    // Same naming as exportToDocuments so cloud listings and the local picker
+    // recognize the same snapshots. Device name would help disambiguate
+    // multi-device snapshots; timestamp alone is enough for manual restore.
+    const QString stamp = QDateTime::currentDateTime().toString("yyyy-MM-dd-HHmmss");
+    const QString path  = folderPath + "/tenjin-export-" + stamp + ".json";
+    if (!exportData(QUrl::fromLocalFile(path).toString()))
+        return {};
+    return path;
+}
+
 QVariantList AppViewModel::availableExports() const
 {
     QVariantList  out;

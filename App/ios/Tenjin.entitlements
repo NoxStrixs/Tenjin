@@ -6,5 +6,40 @@
          enabling iCloud, push notifications, associated domains, etc.
          An entitlements file must still exist (even if minimal) for the
          Xcode archive + export pipeline to succeed. -->
+
+    <!-- ===================================================================
+         iCloud Drive sync (CloudSyncService_apple.mm)
+         ===================================================================
+         CloudSyncService writes snapshots to the app's iCloud ubiquity
+         container so they sync across the user's Apple devices. Until that
+         container exists in the Apple Developer portal AND the iCloud
+         capability is on the provisioning profile, LEAVE THIS COMMENTED OUT:
+         shipping entitlements that reference an unprovisioned container makes
+         code signing fail.
+
+         Commented out, URLForUbiquityContainerIdentifier returns nil,
+         CloudSyncService::available() is false, and the UI shows
+         "iCloud unavailable" - the app still builds and runs fine.
+
+         To enable:
+           1. Developer portal -> Identifiers -> iCloud Containers ->
+              create "iCloud.app.tenjin.Tenjin".
+           2. Enable the iCloud capability (CloudDocuments) on the app ID and
+              regenerate the provisioning profile.
+           3. Uncomment the block below.
+
+    <key>com.apple.developer.icloud-container-identifiers</key>
+    <array>
+        <string>iCloud.app.tenjin.Tenjin</string>
+    </array>
+    <key>com.apple.developer.ubiquity-container-identifiers</key>
+    <array>
+        <string>iCloud.app.tenjin.Tenjin</string>
+    </array>
+    <key>com.apple.developer.icloud-services</key>
+    <array>
+        <string>CloudDocuments</string>
+    </array>
+    -->
 </dict>
 </plist>

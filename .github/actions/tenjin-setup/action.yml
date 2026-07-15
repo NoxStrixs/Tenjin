@@ -4,7 +4,7 @@ description: >
   install (parameterized, full module set by default), ccache, .env loading,
   and translation stubs. Centralizing this prevents per-workflow dependency
   drift — the Qt module list defaults to the COMPLETE set so no platform can
-  silently omit qtmultimedia/qtspeech.
+  silently omit qtmultimedia.
 
 inputs:
   qt-version:
@@ -27,7 +27,7 @@ inputs:
       Space-separated Qt modules. Defaults to the full set the app links so no
       workflow drops one. Override only to ADD, never to shrink below this.
     required: false
-    default: "qtmultimedia qtspeech"
+    default: "qtmultimedia"
   qt-dir:
     description: "Install directory for Qt"
     required: false

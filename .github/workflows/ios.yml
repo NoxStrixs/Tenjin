@@ -60,7 +60,7 @@ jobs:
           host: "mac"
           target: "desktop"
           arch: "clang_64"
-          modules: "qtmultimedia qtspeech"
+          modules: "qtmultimedia"
           dir: ${{ github.workspace }}/Qt
           cache: true
           cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-ios-host
@@ -72,7 +72,7 @@ jobs:
           version: "6.9.3"
           host: "mac"
           target: "ios"
-          modules: "qtmultimedia qtspeech"
+          modules: "qtmultimedia"
           dir: ${{ github.workspace }}/Qt
           cache: true
           cache-key-prefix: ${{ env.CACHE_VERSION }}-install-qt-ios-target
