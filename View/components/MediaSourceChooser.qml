@@ -45,8 +45,8 @@ SheetPopup {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 16
+                    anchors.leftMargin: Platform.spacingLg
+                    anchors.rightMargin: Platform.spacingLg
                     spacing: 14
                     Text {
                         text: parent.parent.modelData.glyph

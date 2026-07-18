@@ -56,6 +56,20 @@ else()
     set(_TENJIN_CLOUDSYNC_BACKEND src/CloudSyncService_desktop.cpp)
 endif()
 
+# Math typesetting (MicroTeX + a QQuickPaintedItem) only exists in GUI builds:
+# the headless test build has neither Qt6::Quick nor the MicroTeX target, and
+# doesn't render formulas.
+set(_TENJIN_FORMULA_SOURCES "")
+set(_TENJIN_FORMULA_HEADERS "")
+if(TENJIN_BUILD_GUI)
+    set(_TENJIN_FORMULA_SOURCES
+        src/FormulaItem.cpp
+        src/MicroTexGraphics_qt.cpp)
+    set(_TENJIN_FORMULA_HEADERS
+        include/ViewModels/FormulaItem.h
+        include/ViewModels/MicroTexGraphics_qt.h)
+endif()
+
 qt_add_library(TenjinViewModels STATIC
     src/AppViewModel.cpp
     src/ContentBlockModel.cpp
@@ -71,6 +85,7 @@ qt_add_library(TenjinViewModels STATIC
     src/SidebarViewModel.cpp
     src/ReviewViewModel.cpp
     src/FormulaRenderer.cpp
+    ${_TENJIN_FORMULA_SOURCES}
 
     # Platform services: shared base + selected backend TU.
     src/NotificationService.cpp
@@ -96,6 +111,7 @@ qt_add_library(TenjinViewModels STATIC
     include/ViewModels/SidebarViewModel.h
     include/ViewModels/LogViewModel.h
     include/ViewModels/FormulaRenderer.h
+    ${_TENJIN_FORMULA_HEADERS}
     include/ViewModels/NotificationService.h
     include/ViewModels/HapticsService.h
     include/ViewModels/DocumentPickerService.h
@@ -127,6 +143,33 @@ target_link_libraries(TenjinViewModels
         tenjin_warnings
         tenjin_sanitizers
 )
+
+# GUI-only deps: FormulaItem is a QQuickPaintedItem (real math typesetting needs
+# a painter, not rich text) and MicroTeX does the layout. PRIVATE so MicroTeX's
+# headers don't leak past this layer — FormulaItem PIMPLs it away.
+if(TENJIN_BUILD_GUI)
+    target_link_libraries(TenjinViewModels
+        PUBLIC  Qt6::Quick
+        PRIVATE MicroTeX::microtex)
+    tenjin_microtex_add_resources(TenjinViewModels)
+
+    # FormulaItem.cpp and MicroTexGraphics_qt.cpp #include MicroTeX headers, whose
+    # include chain (graphic.h -> graphic_basic.h -> common.h -> string_utils.h)
+    # uses a std::not1/unary_negate idiom removed from the C++23 standard library.
+    # The rest of Tenjin builds at C++23; compile just these two MicroTeX-facing
+    # TUs at C++17 so that header is valid. Their public interface
+    # (FormulaItem.h — no MicroTeX headers, PIMPL'd) stays C++23-clean, so the
+    # rest of the app is unaffected.
+    if(MSVC)
+        set_source_files_properties(
+            src/FormulaItem.cpp src/MicroTexGraphics_qt.cpp
+            PROPERTIES COMPILE_OPTIONS "/std:c++17")
+    else()
+        set_source_files_properties(
+            src/FormulaItem.cpp src/MicroTexGraphics_qt.cpp
+            PROPERTIES COMPILE_OPTIONS "-std=c++17")
+    endif()
+endif()
 
 # iOS frameworks: notifications (UserNotifications), share/picker (UIKit),
 # document types (UniformTypeIdentifiers).

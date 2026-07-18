@@ -73,7 +73,7 @@ ThemedDialog {
 
         RowLayout {
             Layout.fillWidth: true
-            Text { Layout.fillWidth: true; text: qsTr("Smart deck (tag-based):"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
+            Text { Layout.fillWidth: true; text: qsTr("Smart deck (tag-based):"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; elide: Text.ElideRight }
             Switch {
                 id: smartToggle
                 indicator: Rectangle {
@@ -99,7 +99,7 @@ ThemedDialog {
         RowLayout {
             Layout.fillWidth: true
             visible: smartToggle.checked
-            Text { Layout.fillWidth: true; text: qsTr("Match ANY tag (default: ALL):"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
+            Text { Layout.fillWidth: true; text: qsTr("Match ANY tag (default: ALL):"); color: Platform.textPrimary; font.pixelSize: Platform.fontBase; elide: Text.ElideRight }
             Switch {
                 id: orToggle
                 indicator: Rectangle {

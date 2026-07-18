@@ -144,12 +144,9 @@ QString ReviewViewModel::currentAnswer() const
     return out;
 }
 
-void ReviewViewModel::startFilteredSession(int                 mode,
-                                           const QVariantList& tagIds,
-                                           const QString&      language,
-                                           qint64              deckId,
-                                           int                 aheadDays,
-                                           int                 limit)
+void ReviewViewModel::startFilteredSession(int mode, const QVariantList& tagIds,
+                                           const QString& language, qint64 deckId,
+                                           int aheadDays, int limit)
 {
     Service::StudyFilter_t filter;
     filter.mode      = static_cast<Service::StudyMode_t>(mode);
@@ -185,10 +182,8 @@ QString normalizeAnswer(const QString& in)
     QString out;
     out.reserve(s.size());
     for (const QChar c : s) {
-        if (c.category() == QChar::Mark_NonSpacing)
-            continue; // combining accents
-        if (c.isLetterOrNumber() || c.isSpace())
-            out.append(c.toCaseFolded());
+        if (c.category() == QChar::Mark_NonSpacing) continue; // combining accents
+        if (c.isLetterOrNumber() || c.isSpace()) out.append(c.toCaseFolded());
         // punctuation dropped
     }
     return out.simplified(); // collapse internal whitespace + trim
@@ -213,13 +208,10 @@ bool ReviewViewModel::checkTypedAnswer(const QString& typed) const
         static const QRegularExpression re(
             QStringLiteral("\\{\\{c(\\d+)::(.*?)(?:::(.*?))?\\}\\}"));
         const int ord = currentClozeOrdinal();
-        auto      it  = re.globalMatch(currentClozeText());
+        auto it = re.globalMatch(currentClozeText());
         while (it.hasNext()) {
             const auto m = it.next();
-            if (m.captured(1).toInt() == ord) {
-                target = m.captured(2);
-                break;
-            }
+            if (m.captured(1).toInt() == ord) { target = m.captured(2); break; }
         }
     }
     const QString b = normalizeAnswer(target);

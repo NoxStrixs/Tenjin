@@ -99,11 +99,11 @@ QtObject {
 
     // ── Sizing ────────────────────────────────────────────────────────────────
     readonly property int touchTarget:  Math.round((isMobile ? 44 : 36) * uiScale)
-    readonly property int iconSize:     Math.round((isMobile ? 22 : 16) * uiScale)
-    readonly property int iconSizeLg:    isMobile ? 32 : 24
+    readonly property int iconSize:     Math.round((isMobile ? 18 : 16) * uiScale)
+    readonly property int iconSizeLg:    isMobile ? 26 : 24
     readonly property int iconSizeXl:    isMobile ? 44 : 36
     readonly property int iconSizeHero:  isMobile ? 64 : 56
-    readonly property int headerHeight: isMobile ? 56 : 48
+    readonly property int headerHeight: isMobile ? 48 : 48
     readonly property int sidebarWidth: 220
 
     // Bundled monospace family (JetBrainsMono, loaded in main.cpp via
@@ -140,14 +140,20 @@ QtObject {
     readonly property string fontFamily:
         _uiName === "" ? ""
         : (_cjkName === "" ? _uiName : _uiName + ", " + _cjkName)
-    readonly property int fontLarge:  Math.round((isMobile ? 17 : 15) * uiScale)
-    readonly property int fontTitle:  Math.round((isMobile ? 22 : 20) * uiScale)
+    readonly property int fontLarge:  Math.round((isMobile ? 15 : 15) * uiScale)
+    readonly property int fontTitle:  Math.round((isMobile ? 19 : 20) * uiScale)
 
-    readonly property int spacingXs:   isMobile ?  3 :  2
-    readonly property int spacingSm:   isMobile ?  6 :  4
-    readonly property int spacingMd:   isMobile ? 10 :  8
-    readonly property int spacingLg:   isMobile ? 16 : 12
-    readonly property int spacingXl:   isMobile ? 24 : 18
+    // ── Spacing ───────────────────────────────────────────────────────────────
+    // Mobile spacing is only marginally larger than desktop. Phones have far
+    // less vertical room, so generous padding costs visible rows — the density
+    // Anki gets comes from tight spacing, NOT from small tap targets. Touch
+    // targets stay at the 44px HIG minimum (see touchTarget above); it's the
+    // gaps between things that shrink.
+    readonly property int spacingXs:   isMobile ?  2 :  2
+    readonly property int spacingSm:   isMobile ?  4 :  4
+    readonly property int spacingMd:   isMobile ?  7 :  8
+    readonly property int spacingLg:   isMobile ? 12 : 12
+    readonly property int spacingXl:   isMobile ? 18 : 18
     readonly property int pagePadding: isMobile ? 12 : 24
 
     // Softer, rounder shape language: larger radii + a slightly heavier

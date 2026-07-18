@@ -32,11 +32,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # fontTools + Pillow for the icon/font generation build steps.
 RUN pip3 install --no-cache-dir aqtinstall fonttools pillow
 
-# Install Qt (desktop gcc_64) pinned to QT_VERSION. Modules: base is enough for
-# a QtQuick app; add multimedia/texttospeech since the app links them.
+# Install Qt (desktop linux_gcc_64) pinned to QT_VERSION. Base is enough for a
+# QtQuick app; multimedia is added because the app links it. The arch id is
+# The aqt ARCH id is `linux_gcc_64` (Qt 6.7+), but aqt WRITES the kit to a
+# `gcc_64` directory (it drops the `linux_` prefix on disk) — so the install arg
+# and the path differ. `ln -s` succeeds even on a missing target, so a mismatch
+# here yields a dangling `current` symlink and a confusing failure much later;
+# the `test -d` guards against exactly that.
 RUN python3 -m aqt install-qt linux desktop ${QT_VERSION} linux_gcc_64 \
-        -m qtmultimedia qtspeech \
+        -m qtmultimedia \
         -O ${QT_ROOT} \
+    && test -d ${QT_ROOT}/${QT_VERSION}/gcc_64 \
     && ln -s ${QT_ROOT}/${QT_VERSION}/gcc_64 ${QT_ROOT}/current
 
 ENV CMAKE_PREFIX_PATH=${QT_ROOT}/current

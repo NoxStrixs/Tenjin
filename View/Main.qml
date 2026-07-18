@@ -210,7 +210,7 @@ ApplicationWindow {
 
         // Desktop header
         RowLayout {
-            anchors { fill: parent; leftMargin: 16; rightMargin: 16; topMargin: Platform.safeAreaTop }
+            anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg; topMargin: Platform.safeAreaTop }
             spacing: Platform.spacingLg
             visible: Platform.useWideLayout
 
@@ -495,7 +495,7 @@ ApplicationWindow {
                     radius: Platform.radius
                     color: fmtArea.containsMouse ? Platform.surfaceAlt : "transparent"
                     AppText {
-                        anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
+                        anchors { left: parent.left; leftMargin: Platform.spacingLg; verticalCenter: parent.verticalCenter }
                         text: parent.modelData.label
                         font.pixelSize: Platform.fontBase
                     }
@@ -1366,7 +1366,7 @@ ApplicationWindow {
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    Text { Layout.fillWidth: true; text: logModel.count + " entries"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
+                    Text { Layout.fillWidth: true; text: logModel.count + " entries"; color: Platform.textMuted; font.pixelSize: Platform.fontSmall; elide: Text.ElideRight }
                     Rectangle {
                         implicitWidth: clearText.implicitWidth + 16; implicitHeight: 24; radius: Platform.radius
                         color: clearArea.containsMouse ? Platform.surfaceAlt : Platform.bg

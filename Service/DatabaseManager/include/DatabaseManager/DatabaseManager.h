@@ -1,8 +1,8 @@
 #pragma once
 
+#include <DatabaseManager/Types.h>
 #include <DatabaseManager/Fsrs.h>
 #include <DatabaseManager/FsrsOptimizer.h>
-#include <DatabaseManager/Types.h>
 
 #include <QSqlDatabase>
 #include <QString>
@@ -94,19 +94,17 @@ public:
     Result_t<std::vector<EntryRelation_t>> GetRelationsForEntry(ID_t wordId);
 
     // Decks
-    Result_t<Deck_t> AddDeck(const std::string& name,
-                             bool               isSmart,
-                             FilterMode_t       mode,
-                             const std::string& language = {});
+    Result_t<Deck_t>              AddDeck(const std::string& name, bool isSmart, FilterMode_t mode,
+                                                  const std::string& language = {});
     // Set/clear a deck's language (empty clears).
     Result_t<bool>                SetDeckLanguage(ID_t id, const std::string& language);
     Result_t<Deck_t>              GetDeck(ID_t id);
     Result_t<std::vector<Deck_t>> GetAllDecks();
     Result_t<bool>                DeleteDeck(ID_t id);
     Result_t<bool>                SetDeckNewCardsPerDay(ID_t id, int perDay);
-    Result_t<bool> SetDeckScheduler(ID_t id, const std::string& scheduler, double retention);
+    Result_t<bool>                SetDeckScheduler(ID_t id, const std::string& scheduler, double retention);
     // Persist optimized FSRS weights (JSON array of 19 numbers) for a deck.
-    Result_t<bool> SetDeckWeights(ID_t id, const std::string& weightsJson);
+    Result_t<bool>                SetDeckWeights(ID_t id, const std::string& weightsJson);
     // Build per-card chronological review sequences for the optimizer from
     // review_log: each inner vector is one card's events (elapsed days since the
     // card's previous review, FSRS grade 1..4, pass flag), oldest first.
@@ -124,21 +122,20 @@ public:
                                                     FilterMode_t             mode);
 
     // Reviews + analytics
-    Result_t<Review_t> InitReview(ID_t deckId, ID_t wordId);
-    Result_t<Review_t> SubmitReview(ID_t deckId, ID_t wordId, int quality, int clozeOrdinal = 0);
+    Result_t<Review_t>                        InitReview(ID_t deckId, ID_t wordId);
+    Result_t<Review_t>                        SubmitReview(ID_t deckId, ID_t wordId, int quality,
+                                                           int clozeOrdinal = 0);
     // Log a practice review for stats WITHOUT advancing the SRS schedule. Used
     // by cram / study-ahead filtered sessions. Returns the unchanged review row.
-    Result_t<Review_t> LogReviewOnly(ID_t deckId, ID_t wordId, int quality, int clozeOrdinal = 0);
-    Result_t<std::vector<Review_t>> GetDueReviews(ID_t deckId);
+    Result_t<Review_t>                        LogReviewOnly(ID_t deckId, ID_t wordId, int quality,
+                                                            int clozeOrdinal = 0);
+    Result_t<std::vector<Review_t>>           GetDueReviews(ID_t deckId);
     // Filtered queue for custom study. mode: 0=Due, 1=Ahead(<= aheadDays),
     // 2=Cram(any). tagIds/language narrow the set (empty = any). deckId -1 spans
     // all decks. Returns at most `limit` rows.
-    Result_t<std::vector<Review_t>>           GetFilteredReviews(int                      mode,
-                                                                 const std::vector<ID_t>& tagIds,
-                                                                 const std::string&       language,
-                                                                 ID_t                     deckId,
-                                                                 int                      aheadDays,
-                                                                 int                      limit);
+    Result_t<std::vector<Review_t>>           GetFilteredReviews(
+        int mode, const std::vector<ID_t>& tagIds, const std::string& language,
+        ID_t deckId, int aheadDays, int limit);
     Result_t<DeckStats_t>                     GetDeckStats(ID_t deckId);
     Result_t<DeckAnalytics_t>                 GetDeckAnalytics(ID_t deckId);
     Result_t<std::vector<EntryReviewEvent_t>> GetEntryHistory(ID_t deckId, ID_t wordId);
@@ -161,12 +158,9 @@ public:
 private:
     // Scheduler backends dispatched by SubmitReview based on deck.scheduler.
     Result_t<Review_t> submitReviewSm2(ID_t deckId, ID_t wordId, int quality, int clozeOrdinal);
-    Result_t<Review_t> submitReviewFsrs(ID_t           deckId,
-                                        ID_t           wordId,
-                                        int            quality,
-                                        double         retention,
-                                        const QString& weightsJson,
-                                        int            clozeOrdinal);
+    Result_t<Review_t> submitReviewFsrs(ID_t deckId, ID_t wordId, int quality,
+                                        double retention, const QString& weightsJson,
+                                        int clozeOrdinal);
 
     // Assigns a fresh guid to any pre-existing row that lacks one.
     void backfillGuids();

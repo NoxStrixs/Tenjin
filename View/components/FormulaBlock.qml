@@ -171,15 +171,41 @@ Rectangle {
             }
         }
 
-        // FormulaRenderer converts the LaTeX subset to Qt rich text.
-        Text {
+        // Real math typesetting via MicroTeX (stacked fractions, radicals,
+        // matrices — none of which Qt rich text can lay out).
+        FormulaView {
+            id: formulaView
             visible: !root.editMode && root.blockContent.length > 0
+                     && errorString.length === 0
             Layout.fillWidth: true
-            textFormat: Text.RichText
-            text: appVM.renderFormula(root.blockContent)
+            Layout.preferredHeight: implicitHeight
+            latex: root.blockContent
             color: Platform.textPrimary
-            font.pixelSize: Platform.fontLarge
-            wrapMode: Text.WordWrap
+            fontSize: Platform.fontLarge
+        }
+
+        // If MicroTeX can't parse the input (or its resources are unavailable),
+        // show the source plus the reason rather than a blank space.
+        ColumnLayout {
+            visible: !root.editMode && root.blockContent.length > 0
+                     && formulaView.errorString.length > 0
+            Layout.fillWidth: true
+            spacing: Platform.spacingXs
+            Text {
+                Layout.fillWidth: true
+                text: root.blockContent
+                color: Platform.textPrimary
+                font.family: Platform.fontMono
+                font.pixelSize: Platform.fontBase
+                wrapMode: Text.WrapAnywhere
+            }
+            Text {
+                Layout.fillWidth: true
+                text: formulaView.errorString
+                color: Platform.danger
+                font.pixelSize: Platform.fontSmall
+                wrapMode: Text.WordWrap
+            }
         }
 
         // Empty hint.

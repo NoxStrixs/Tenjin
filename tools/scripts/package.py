@@ -28,7 +28,7 @@ NAME = "package"
 ROOT = Path(__file__).resolve().parents[2]
 DIST = ROOT / "dist"
 
-TARGETS = ("appimage", "flatpak", "macos", "ios")
+TARGETS = ("appimage", "flatpak", "windows", "android", "macos", "ios")
 
 
 def register(subparsers) -> None:
@@ -36,15 +36,25 @@ def register(subparsers) -> None:
         NAME, help="Build distributable packages (Docker for Linux; host for Apple)")
     parser.add_argument("--target", choices=TARGETS, default="appimage",
                         help="Package format to build")
+    parser.add_argument("-D", "--define", action="append", default=[], metavar="VAR=VALUE",
+                        dest="defines",
+                        help="Extra -D cmake cache entries, forwarded to the build "
+                             "(e.g. -D TENJIN_MICROTEX_SHA=<sha>). Repeatable.")
     parser.set_defaults(func=run_cmd)
 
 
 def run_cmd(args) -> None:
     DIST.mkdir(exist_ok=True)
+    # Normalise "VAR=VALUE" into "-DVAR=VALUE" cmake args.
+    cmake_args = [a if a.startswith("-D") else f"-D{a}" for a in getattr(args, "defines", [])]
     if args.target == "appimage":
         _appimage()
     elif args.target == "flatpak":
         _flatpak()
+    elif args.target == "windows":
+        _windows(cmake_args)
+    elif args.target == "android":
+        _android(cmake_args)
     elif args.target in ("macos", "ios"):
         _apple(args.target)
 
@@ -53,6 +63,26 @@ def _appimage() -> None:
     logger.info("Building Linux AppImage via Docker (Ubuntu 22.04 / Qt 6.9.3)...")
     docker.build_image("linux-appimage")
     docker.run_packaging("linux-appimage")
+
+
+def _windows(cmake_args=None) -> None:
+    # MinGW cross-build: a local smoke test, not the release artifact. MSVC (what
+    # CI ships) can't run in a Linux container, and the two toolchains disagree
+    # often enough that a green MinGW build does not guarantee a green CI build.
+    logger.info("Building Windows .exe via Docker (MinGW-w64 cross / Qt 6.9.3)...")
+    logger.warning("MinGW build for local testing only — CI ships the MSVC build. "
+                   "MSVC-specific errors (min/max macros, C2511) will not appear here.")
+    docker.build_image("windows-mingw")
+    docker.run_packaging("windows-mingw", cmake_args or [])
+
+
+def _android(cmake_args=None) -> None:
+    # Android is cross-compiled from Linux in CI too, so this produces the real
+    # artifact — just unsigned.
+    logger.info("Building Android APK via Docker (SDK 34 / NDK 26 / Qt 6.9.3)...")
+    docker.build_image("android")
+    docker.run_packaging("android", cmake_args or [])
+    logger.info("APK is unsigned — sign with your keystore before installing.")
     logger.info("AppImage written to %s", DIST)
 
 

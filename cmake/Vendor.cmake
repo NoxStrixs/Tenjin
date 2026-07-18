@@ -50,6 +50,14 @@ function(tenjin_vendor NAME)
         ${_subdir_arg}
     )
     FetchContent_MakeAvailable(${NAME})
+
+    # FetchContent sets ${NAME}_SOURCE_DIR / _BINARY_DIR, but because that call
+    # happens inside this function they're only visible in the function's scope.
+    # Re-export them so the caller (e.g. cmake/MicroTeX.cmake) can locate the
+    # fetched tree — modules that compile vendored sources directly need this.
+    set(${NAME}_SOURCE_DIR "${${NAME}_SOURCE_DIR}" PARENT_SCOPE)
+    set(${NAME}_BINARY_DIR "${${NAME}_BINARY_DIR}" PARENT_SCOPE)
+
     message(STATUS "Vendored ${NAME} @ ${V_GIT_TAG} (${V_GIT_SHA}) [${V_LICENSE}]")
 endfunction()
 

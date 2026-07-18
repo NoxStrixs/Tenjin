@@ -86,6 +86,12 @@ include(cmake/Miniz.cmake)
 if(TENJIN_BUILD_GUI)
     include(cmake/IconFont.cmake)
     include(cmake/Assets.cmake)
+
+    # MicroTeX — LaTeX math typesetting (MIT). Only the GUI renders formulas, and
+    # the console/test builds shouldn't pay for a 2 MB resource bundle or the
+    # extra compile time. Provides MicroTeX::microtex plus
+    # tenjin_microtex_add_resources() for the res/ bundle.
+    include(cmake/MicroTeX.cmake)
 endif()
 
 # Feature compile definitions propagated to all targets

@@ -45,7 +45,7 @@ Rectangle {
                 Layout.preferredHeight: Platform.headerHeight + 12 + Platform.safeAreaTop
                 color: Platform.surface
                 RowLayout {
-                    anchors { fill: parent; leftMargin: 16; rightMargin: 16; topMargin: Platform.safeAreaTop }
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg; topMargin: Platform.safeAreaTop }
                     spacing: Platform.spacingLg
                     Rectangle {
                         Layout.preferredWidth: 36
@@ -96,7 +96,7 @@ Rectangle {
                     }
 
                     RowLayout {
-                        anchors { fill: parent; leftMargin: 20; rightMargin: 16 }
+                        anchors { fill: parent; leftMargin: 20; rightMargin: Platform.spacingLg }
                         spacing: 14
                         Text {
                             text: navItem.modelData.glyph
@@ -151,7 +151,7 @@ Rectangle {
                     }
 
                     RowLayout {
-                        anchors { fill: parent; leftMargin: 20; rightMargin: 16 }
+                        anchors { fill: parent; leftMargin: 20; rightMargin: Platform.spacingLg }
                         spacing: 14
                         Text {
                             text: utilItem.modelData.glyph
@@ -187,7 +187,7 @@ Rectangle {
                 color: themeArea.containsMouse ? Platform.surfaceAlt : "transparent"
                 Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 RowLayout {
-                    anchors { fill: parent; leftMargin: 20; rightMargin: 16 }
+                    anchors { fill: parent; leftMargin: 20; rightMargin: Platform.spacingLg }
                     spacing: 14
                     Text { text: Platform.isDark ? TenjinIcons.lightMode : TenjinIcons.darkMode; font.family: TenjinIcons.family; font.pixelSize: Platform.fontLarge; color: Platform.textMuted }
                     Text {
@@ -273,7 +273,7 @@ Rectangle {
                             anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                             spacing: Platform.spacingMd
                             Text { text: extraItem.modelData.glyph; font.family: TenjinIcons.family; color: Platform.accentDark; font.pixelSize: Platform.fontBase }
-                            Text { Layout.fillWidth: true; text: extraItem.modelData.label; color: Platform.textPrimary; font.pixelSize: Platform.fontBase }
+                            Text { Layout.fillWidth: true; text: extraItem.modelData.label; color: Platform.textPrimary; font.pixelSize: Platform.fontBase; elide: Text.ElideRight }
                             Text { text: TenjinIcons.chevronForward; font.family: TenjinIcons.family; color: Platform.textMuted; font.pixelSize: Platform.fontSmall }
                         }
                         MouseArea {
@@ -313,7 +313,7 @@ Rectangle {
                 Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                 Rectangle { anchors { left: parent.left; right: parent.right; top: parent.top } height: 1; color: Platform.border }
                 RowLayout {
-                    anchors { fill: parent; leftMargin: 20; rightMargin: 16; bottomMargin: Platform.safeAreaBottom }
+                    anchors { fill: parent; leftMargin: 20; rightMargin: Platform.spacingLg; bottomMargin: Platform.safeAreaBottom }
                     spacing: Platform.spacingMd
                     Text {
                         text: TenjinIcons.info

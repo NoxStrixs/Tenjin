@@ -2,10 +2,10 @@
 #include <DeckService/DeckService.h>
 #include <EntryService/EntryService.h>
 #include <ViewModels/DeckViewModel.h>
-#include <ViewModels/DocumentPickerService.h>
 #include <ViewModels/EntryViewModel.h>
 #include <ViewModels/ReviewViewModel.h>
 #include <ViewModels/SidebarViewModel.h>
+#include <ViewModels/DocumentPickerService.h>
 
 #include <QLocale>
 #include <QObject>
@@ -304,8 +304,8 @@ public:
     //
     //   importFromPath(path) -- imports a file by absolute path; used
     //   when the user taps a row in the picker.
-    Q_INVOKABLE QString exportToDocuments();
-    Q_INVOKABLE QString exportToDocumentsCsv();
+    Q_INVOKABLE QString      exportToDocuments();
+    Q_INVOKABLE QString      exportToDocumentsCsv();
     // Write a timestamped JSON snapshot into an arbitrary folder (used by cloud
     // sync to drop a snapshot into the user's synced folder). Returns the
     // written absolute path, or empty on failure.
@@ -383,6 +383,7 @@ public:
     Q_PROPERTY(QVariantList builtinLanguages READ builtinLanguages CONSTANT)
     QVariantList builtinLanguages() const;
 
+
     // Display version string (major.minor.patch+<git-hash>) from the generated
     // config header. Single source of truth: project(VERSION)/git describe.
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
@@ -444,8 +445,8 @@ public:
     // Injected by main.cpp (owns the platform service). AppViewModel wires
     // documentPicked -> importFromPath and drives the picker from
     // openNativeImportPicker(). Not owned.
-    void        setDocumentPicker(DocumentPickerService* picker);
-    QStringList supportedUiLanguages() const;
+    void setDocumentPicker(DocumentPickerService* picker);
+    QStringList      supportedUiLanguages() const;
 
     // Wired from main.cpp after engine construction so the VM can call
     // retranslate() on language switch.
@@ -507,6 +508,6 @@ private:
     QString                      m_uiLanguage = QStringLiteral("en");
     QStringList                  m_customLanguages;
     std::unique_ptr<QTranslator> m_uiTranslator;
-    QQmlEngine*                  m_qmlEngine      = nullptr;
-    DocumentPickerService*       m_documentPicker = nullptr; // not owned
+    QQmlEngine*                  m_qmlEngine = nullptr;
+    DocumentPickerService* m_documentPicker = nullptr; // not owned
 };

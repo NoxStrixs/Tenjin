@@ -30,6 +30,7 @@
 
 #include <ViewModels/PlatformHooks.h>
 
+
 AppViewModel::AppViewModel(QObject* parent) : QObject(parent)
 {
     const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -166,15 +167,11 @@ void AppViewModel::setDocumentPicker(DocumentPickerService* picker)
         return;
     m_documentPicker = picker;
     if (m_documentPicker) {
-        connect(m_documentPicker,
-                &DocumentPickerService::documentPicked,
-                this,
+        connect(m_documentPicker, &DocumentPickerService::documentPicked, this,
                 [this](const QString& path) { importFromPath(path); });
         // Native media picker result → relay to QML for attachment to the
         // active content block.
-        connect(m_documentPicker,
-                &DocumentPickerService::mediaPicked,
-                this,
+        connect(m_documentPicker, &DocumentPickerService::mediaPicked, this,
                 [this](const QString& path) { emit entryMediaPicked(path); });
     }
 }
@@ -489,7 +486,8 @@ bool AppViewModel::exportData(const QString& fileUrl)
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
     auto          result = m_entryService->ExportToJson(path);
     if (!result) {
-        setStatusMessage(tr("Export failed: ") + QString::fromStdString(result.error()));
+        setStatusMessage(tr("Export failed: ") +
+                         QString::fromStdString(result.error()));
         return false;
     }
     setStatusMessage(tr("Exported collection to %1").arg(path));
@@ -501,7 +499,8 @@ bool AppViewModel::exportDataCsv(const QString& fileUrl)
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
     auto          result = m_entryService->ExportToCsv(path);
     if (!result) {
-        setStatusMessage(tr("Export failed: ") + QString::fromStdString(result.error()));
+        setStatusMessage(tr("Export failed: ") +
+                         QString::fromStdString(result.error()));
         return false;
     }
     setStatusMessage(tr("Exported CSV to %1").arg(path));
@@ -513,9 +512,13 @@ bool AppViewModel::importData(const QString& fileUrl)
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
     auto          result = m_entryService->ImportFromJson(path);
     if (!result) {
-        setStatusMessage(tr("Import failed: ") + QString::fromStdString(result.error()));
+        setStatusMessage(tr("Import failed: ") +
+                         QString::fromStdString(result.error()));
         return false;
     }
+    // The word list binds to entryVM.getAllEntries(), which QML can't know is
+    // stale — reloadAfterDataChange() emits entryListChanged so views re-query.
+    m_entryVM->reloadAfterDataChange();
     m_sidebarVM->reload();
     m_deckVM->reloadDecks();
     setStatusMessage(tr("Import complete."));
@@ -541,9 +544,11 @@ bool AppViewModel::importAnki(const QString& fileUrl, const QString& intoDeck)
     const QString path   = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
     auto          result = m_entryService->ImportFromAnki(path, intoDeck);
     if (!result) {
-        setStatusMessage(tr("Anki import failed: ") + QString::fromStdString(result.error()));
+        setStatusMessage(tr("Anki import failed: ") +
+                         QString::fromStdString(result.error()));
         return false;
     }
+    m_entryVM->reloadAfterDataChange();
     m_sidebarVM->reload();
     m_deckVM->reloadDecks();
     setStatusMessage(tr("Imported %1 cards from Anki.").arg(result.value()));
@@ -594,11 +599,11 @@ void AppViewModel::autoBackupBeforeDestructive(const QString& reason)
 void AppViewModel::pruneAutoBackups(const QString& dir)
 {
     constexpr int kKeep = 5;
-    QDir          d(dir);
+    QDir d(dir);
     // Auto-backups are named "tenjin-backup-<reason>-<stamp>.json".
-    QStringList backups = d.entryList(QStringList{QStringLiteral("tenjin-backup-*.json")},
-                                      QDir::Files,
-                                      QDir::Time); // newest first
+    QStringList backups =
+        d.entryList(QStringList{ QStringLiteral("tenjin-backup-*.json") },
+                    QDir::Files, QDir::Time); // newest first
     for (int i = kKeep; i < backups.size(); ++i)
         QFile::remove(d.filePath(backups.at(i)));
 }
@@ -730,10 +735,11 @@ namespace {
 // aren't supported (matching Anki's own limitation).
 const QRegularExpression& clozeRe()
 {
-    static const QRegularExpression re(QStringLiteral("\\{\\{c(\\d+)::(.*?)(?:::(.*?))?\\}\\}"));
+    static const QRegularExpression re(
+        QStringLiteral("\\{\\{c(\\d+)::(.*?)(?:::(.*?))?\\}\\}"));
     return re;
 }
-} // namespace
+}
 
 bool AppViewModel::hasCloze(const QString& text) const
 {
@@ -742,15 +748,15 @@ bool AppViewModel::hasCloze(const QString& text) const
 
 QString AppViewModel::renderCloze(const QString& text, bool masked, int ordinal) const
 {
-    QString   out;
+    QString out;
     qsizetype last = 0;
-    auto      it   = clozeRe().globalMatch(text);
+    auto it = clozeRe().globalMatch(text);
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
         out += text.mid(last, m.capturedStart() - last).toHtmlEscaped();
-        const int     thisOrd = m.captured(1).toInt();
-        const QString answer  = m.captured(2);
-        const QString hint    = m.captured(3);
+        const int    thisOrd = m.captured(1).toInt();
+        const QString answer = m.captured(2);
+        const QString hint   = m.captured(3);
 
         // When an ordinal is given (>0), only that deletion is masked; the
         // others are shown revealed so the sentence reads normally around the
@@ -761,10 +767,9 @@ QString AppViewModel::renderCloze(const QString& text, bool masked, int ordinal)
         if (maskThis) {
             const QString shown = hint.isEmpty() ? QStringLiteral("[…]")
                                                  : QStringLiteral("[%1]").arg(hint.toHtmlEscaped());
-            out += QStringLiteral("<span style=\"color:#3498db;font-weight:bold\">%1</span>")
-                       .arg(shown);
+            out += QStringLiteral("<span style=\"color:#3498db;font-weight:bold\">%1</span>").arg(shown);
         } else {
-            const bool    isTarget = (thisOrd == ordinal);
+            const bool isTarget = (thisOrd == ordinal);
             const QString color = isTarget ? QStringLiteral("#2ecc71") : QStringLiteral("#555555");
             out += QStringLiteral("<span style=\"color:%1;font-weight:bold\">%2</span>")
                        .arg(color, answer.toHtmlEscaped());
@@ -817,8 +822,7 @@ bool AppViewModel::deleteTagAndAffectedDecks(qint64 tagId)
     // Delete the tag first; cascade handles deck_tag_filter cleanup.
     auto tagRes = m_entryService->DeleteTag(static_cast<Service::ID_t>(tagId));
     if (!tagRes) {
-        setStatusMessage(
-            tr("Could not delete tag: %1").arg(QString::fromStdString(tagRes.error())));
+        setStatusMessage(tr("Could not delete tag: %1").arg(QString::fromStdString(tagRes.error())));
         return false;
     }
 

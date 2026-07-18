@@ -29,8 +29,8 @@ namespace Service {
 namespace {
 QString tenjinMediaDir()
 {
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
-           QStringLiteral("/media");
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+           + QStringLiteral("/media");
 }
 } // namespace
 
@@ -66,18 +66,18 @@ Result_t<bool> DatabaseManager::ExportToJson(const QString& path)
             cq.bindValue(":wid", wid);
             cq.exec();
             while (cq.next()) {
-                QJsonObject   b;
-                const int     blockType    = cq.value(1).toInt();
+                QJsonObject b;
+                const int   blockType = cq.value(1).toInt();
                 const QString blockContent = cq.value(2).toString();
-                b["guid"]                  = cq.value(0).toString();
-                b["type"]                  = blockType;
-                b["content"]               = blockContent;
-                b["row"]                   = cq.value(3).toInt();
-                b["col"]                   = cq.value(4).toInt();
-                b["rowSpan"]               = cq.value(5).toInt();
-                b["colSpan"]               = cq.value(6).toInt();
-                b["pos"]                   = cq.value(7).toString();
-                b["updatedAt"]             = cq.value(8).toLongLong();
+                b["guid"]      = cq.value(0).toString();
+                b["type"]      = blockType;
+                b["content"]   = blockContent;
+                b["row"]       = cq.value(3).toInt();
+                b["col"]       = cq.value(4).toInt();
+                b["rowSpan"]   = cq.value(5).toInt();
+                b["colSpan"]   = cq.value(6).toInt();
+                b["pos"]       = cq.value(7).toString();
+                b["updatedAt"] = cq.value(8).toLongLong();
 
                 // Media blocks (type 1) store a filename under the managed media
                 // dir; the file itself lives outside the DB. Embed its bytes as
@@ -85,10 +85,11 @@ Result_t<bool> DatabaseManager::ExportToJson(const QString& path)
                 // another device. Oversized files are skipped (path-only) to
                 // keep the JSON manageable — a warning is not fatal.
                 if (blockType == 1 && !blockContent.isEmpty()) {
-                    const QString    mpath = tenjinMediaDir() + "/" + blockContent;
-                    QFile            mf(mpath);
+                    const QString mpath = tenjinMediaDir() + "/" + blockContent;
+                    QFile mf(mpath);
                     constexpr qint64 kMaxEmbed = 25 * 1024 * 1024; // 25 MB/file
-                    if (mf.exists() && mf.size() <= kMaxEmbed && mf.open(QIODevice::ReadOnly)) {
+                    if (mf.exists() && mf.size() <= kMaxEmbed
+                        && mf.open(QIODevice::ReadOnly)) {
                         b["mediaData"]     = QString::fromLatin1(mf.readAll().toBase64());
                         b["mediaEncoding"] = "base64";
                         mf.close();
@@ -208,12 +209,12 @@ Result_t<bool> DatabaseManager::ExportToCsv(const QString& path)
     QSqlQuery eq(m_db);
     eq.exec("SELECT id, title, language FROM entry ORDER BY title;");
     while (eq.next()) {
-        const qlonglong eid   = eq.value(0).toLongLong();
-        const QString   title = eq.value(1).toString();
-        const QString   lang  = eq.value(2).toString();
+        const qlonglong eid = eq.value(0).toLongLong();
+        const QString    title = eq.value(1).toString();
+        const QString    lang  = eq.value(2).toString();
 
         QStringList tags;
-        QSqlQuery   tq(m_db);
+        QSqlQuery tq(m_db);
         tq.prepare("SELECT t.name FROM tag t JOIN entry_tag et ON et.tag_id = t.id "
                    "WHERE et.entry_id = :eid ORDER BY t.name;");
         tq.bindValue(":eid", eid);
@@ -222,7 +223,7 @@ Result_t<bool> DatabaseManager::ExportToCsv(const QString& path)
             tags << tq.value(0).toString();
 
         QStringList blocks;
-        QSqlQuery   cq(m_db);
+        QSqlQuery cq(m_db);
         cq.prepare("SELECT content FROM entry_content WHERE entry_id = :eid "
                    "ORDER BY row, col;");
         cq.bindValue(":eid", eid);
@@ -233,8 +234,10 @@ Result_t<bool> DatabaseManager::ExportToCsv(const QString& path)
                 blocks << c;
         }
 
-        out << csvEscape(title) << ',' << csvEscape(lang) << ',' << csvEscape(tags.join("; "))
-            << ',' << csvEscape(blocks.join(" | ")) << "\r\n";
+        out << csvEscape(title) << ','
+            << csvEscape(lang) << ','
+            << csvEscape(tags.join("; ")) << ','
+            << csvEscape(blocks.join(" | ")) << "\r\n";
     }
 
     f.close();

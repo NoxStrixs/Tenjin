@@ -222,7 +222,7 @@ ColumnLayout {
                 height: Platform.touchTarget + 24
                 color: Qt.rgba(0, 0, 0, 0.6)
                 RowLayout {
-                    anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
+                    anchors { fill: parent; leftMargin: Platform.spacingLg; rightMargin: Platform.spacingLg }
                     spacing: Platform.spacingLg
                     Rectangle {
                         implicitWidth: Platform.touchTarget; implicitHeight: Platform.touchTarget

@@ -21,20 +21,20 @@ namespace Fsrs {
 // sequence. `elapsedDays` is days since that card's previous review (0 for the
 // first). `grade` is FSRS 1..4. `passed` is grade >= 2.
 struct ReviewEvent {
-    double elapsedDays = 0.0;
-    int    grade       = 3;
-    bool   passed      = true;
+    double  elapsedDays = 0.0;
+    int     grade       = 3;
+    bool    passed      = true;
 };
 
 // A single card's full review history, oldest first.
 using CardHistory = std::vector<ReviewEvent>;
 
 struct OptimizeResult {
-    std::array<double, 19> weights     = kDefaultWeights;
-    double                 initialLoss = 0.0;   // log-loss with default weights
-    double                 finalLoss   = 0.0;   // log-loss with fitted weights
-    int                    reviewCount = 0;     // total events considered
-    bool                   optimized   = false; // false if below the min-review guard
+    std::array<double, 19> weights = kDefaultWeights;
+    double  initialLoss = 0.0;   // log-loss with default weights
+    double  finalLoss   = 0.0;   // log-loss with fitted weights
+    int     reviewCount = 0;     // total events considered
+    bool    optimized   = false; // false if below the min-review guard
 };
 
 namespace detail {
@@ -49,7 +49,8 @@ inline double clampProb(double p)
 // Compute mean log-loss of the given weights over all card histories. For each
 // review we predict retrievability from the running memory state (using the
 // SAME schedule() math the scheduler uses) and score it against pass/fail.
-inline double logLoss(const std::array<double, 19>& w, const std::vector<CardHistory>& data)
+inline double logLoss(const std::array<double, 19>& w,
+                      const std::vector<CardHistory>& data)
 {
     Params p;
     p.w = w;
@@ -69,7 +70,7 @@ inline double logLoss(const std::array<double, 19>& w, const std::vector<CardHis
             }
             // Advance the memory state with the actual grade.
             const Schedule s = schedule(p, st, ev.elapsedDays, ev.grade);
-            st               = s.state;
+            st = s.state;
         }
     }
     return count > 0 ? totalLoss / static_cast<double>(count) : 0.0;
@@ -80,7 +81,8 @@ inline double logLoss(const std::array<double, 19>& w, const std::vector<CardHis
 // Fit weights to `data`. Decks with fewer than `minReviews` scored events keep
 // the default weights (returns optimized=false) — fitting on too little history
 // overfits and can be worse than defaults.
-inline OptimizeResult optimize(const std::vector<CardHistory>& data, int minReviews = 400)
+inline OptimizeResult optimize(const std::vector<CardHistory>& data,
+                               int minReviews = 400)
 {
     OptimizeResult out;
 
@@ -99,62 +101,31 @@ inline OptimizeResult optimize(const std::vector<CardHistory>& data, int minRevi
 
     // Coordinate descent: for each weight, try +/- step; keep improvements.
     // Shrink the step and repeat. Bounds keep weights physically sensible.
-    std::array<double, 19> w        = kDefaultWeights;
-    double                 bestLoss = out.initialLoss;
+    std::array<double, 19> w = kDefaultWeights;
+    double bestLoss = out.initialLoss;
 
     // Per-weight lower/upper bounds (loose but prevent degenerate values).
-    constexpr std::array<double, 19> lo = {0.01,
-                                           0.01,
-                                           0.01,
-                                           0.01,
-                                           1.0,
-                                           0.001,
-                                           0.001,
-                                           0.0,
-                                           0.0,
-                                           0.0,
-                                           0.01,
-                                           0.01,
-                                           0.001,
-                                           0.001,
-                                           0.01,
-                                           0.0,
-                                           1.0,
-                                           0.0,
-                                           0.0};
-    constexpr std::array<double, 19> hi = {100.0,
-                                           100.0,
-                                           100.0,
-                                           100.0,
-                                           10.0,
-                                           4.0,
-                                           4.0,
-                                           0.75,
-                                           4.5,
-                                           0.8,
-                                           3.5,
-                                           5.0,
-                                           0.25,
-                                           0.9,
-                                           4.0,
-                                           1.0,
-                                           6.0,
-                                           2.0,
-                                           2.0};
+    constexpr std::array<double, 19> lo = {
+        0.01, 0.01, 0.01, 0.01, 1.0, 0.001, 0.001, 0.0,
+        0.0, 0.0, 0.01, 0.01, 0.001, 0.001, 0.01, 0.0, 1.0, 0.0, 0.0
+    };
+    constexpr std::array<double, 19> hi = {
+        100.0, 100.0, 100.0, 100.0, 10.0, 4.0, 4.0, 0.75,
+        4.5, 0.8, 3.5, 5.0, 0.25, 0.9, 4.0, 1.0, 6.0, 2.0, 2.0
+    };
 
     double step = 0.5;
     for (int iter = 0; iter < 60 && step > 1e-3; ++iter) {
         bool improved = false;
         for (size_t i = 0; i < w.size(); ++i) {
             const double original = w[i];
-            const double span     = hi[i] - lo[i];
-            const double delta    = step * span * 0.1;
+            const double span = hi[i] - lo[i];
+            const double delta = step * span * 0.1;
 
             for (const double cand : {original + delta, original - delta}) {
                 const double clamped = (std::min)(hi[i], (std::max)(lo[i], cand));
-                if (clamped == original)
-                    continue;
-                w[i]              = clamped;
+                if (clamped == original) continue;
+                w[i] = clamped;
                 const double loss = detail::logLoss(w, data);
                 if (loss < bestLoss) {
                     bestLoss = loss;

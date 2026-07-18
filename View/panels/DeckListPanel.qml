@@ -94,7 +94,9 @@ Rectangle {
                         }
                     }
                     Text {
-                        text: "✦"; color: Platform.accent
+                        text: TenjinIcons.autoAwesome
+                        font.family: TenjinIcons.family
+                        color: Platform.accent
                         font.pixelSize: Platform.fontBase; visible: model.isSmart
                     }
                 }

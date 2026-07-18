@@ -18,19 +18,19 @@ void vibrateOneShot(int ms)
     if (!context.isValid())
         return;
 
-    QJniObject vibratorSvc = QJniObject::getStaticObjectField(
-        "android/content/Context", "VIBRATOR_SERVICE", "Ljava/lang/String;");
+    QJniObject vibratorSvc =
+        QJniObject::getStaticObjectField("android/content/Context", "VIBRATOR_SERVICE",
+                                         "Ljava/lang/String;");
     QJniObject vibrator = context.callObjectMethod(
         "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;", vibratorSvc.object());
     if (!vibrator.isValid())
         return;
 
     // VibrationEffect.createOneShot(long ms, int amplitude=DEFAULT_AMPLITUDE=-1)
-    QJniObject effect = QJniObject::callStaticObjectMethod("android/os/VibrationEffect",
-                                                           "createOneShot",
-                                                           "(JI)Landroid/os/VibrationEffect;",
-                                                           static_cast<jlong>(ms),
-                                                           static_cast<jint>(-1));
+    QJniObject effect = QJniObject::callStaticObjectMethod(
+        "android/os/VibrationEffect", "createOneShot",
+        "(JI)Landroid/os/VibrationEffect;",
+        static_cast<jlong>(ms), static_cast<jint>(-1));
     if (!effect.isValid())
         return;
 

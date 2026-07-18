@@ -1,7 +1,7 @@
-#include <DatabaseManager/DatabaseManager.h>
-#include <DatabaseManager/Schema.h>
 #include <QRegularExpression>
 #include <set>
+#include <DatabaseManager/DatabaseManager.h>
+#include <DatabaseManager/Schema.h>
 
 #include <QDate>
 #include <QDateTime>
@@ -24,15 +24,16 @@ namespace Service {
 namespace {
 // Extract distinct cloze numbers ({{cN::...}}) from an entry's cloze blocks,
 // sorted ascending. Empty => the entry has no cloze deletions.
-std::vector<int> clozeOrdinalsFromBlocks(const std::vector<ContentBlock_t>& blocks)
+std::vector<int> clozeOrdinalsFromBlocks(
+    const std::vector<ContentBlock_t>& blocks)
 {
     static const QRegularExpression re(QStringLiteral("\\{\\{c(\\d+)::"));
-    std::set<int>                   found;
+    std::set<int> found;
     for (const auto& b : blocks) {
         if (b.type != ContentType_t::Cloze)
             continue;
         const QString text = QString::fromStdString(b.content);
-        auto          it   = re.globalMatch(text);
+        auto it = re.globalMatch(text);
         while (it.hasNext()) {
             const int n = it.next().captured(1).toInt();
             if (n > 0)
@@ -91,8 +92,8 @@ Result_t<Review_t> DatabaseManager::InitReview(ID_t deckId, ID_t wordId)
                     .lastReviewDate = q.value(10).toString().toStdString()};
 }
 
-Result_t<Review_t>
-DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int quality, int clozeOrdinal)
+Result_t<Review_t> DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int quality,
+                                                 int clozeOrdinal)
 {
     // Determine the deck's scheduler. Default 'sm2' keeps existing behaviour.
     QString scheduler = QStringLiteral("sm2");
@@ -113,13 +114,12 @@ DatabaseManager::SubmitReview(ID_t deckId, ID_t wordId, int quality, int clozeOr
     return submitReviewSm2(deckId, wordId, quality, clozeOrdinal);
 }
 
-Result_t<Review_t>
-DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, int quality, int clozeOrdinal)
+Result_t<Review_t> DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, int quality,
+                                                    int clozeOrdinal)
 {
     QSqlQuery q(m_db);
-    q.prepare(
-        "SELECT id, ease_factor, interval_days, repetitions, lapses, is_leech "
-        "FROM review WHERE deck_id = :deckId AND entry_id = :wordId AND cloze_ordinal = :ord;");
+    q.prepare("SELECT id, ease_factor, interval_days, repetitions, lapses, is_leech "
+              "FROM review WHERE deck_id = :deckId AND entry_id = :wordId AND cloze_ordinal = :ord;");
     q.bindValue(":deckId", QVariant::fromValue(deckId));
     q.bindValue(":wordId", QVariant::fromValue(wordId));
     q.bindValue(":ord", clozeOrdinal);
@@ -217,32 +217,30 @@ DatabaseManager::submitReviewSm2(ID_t deckId, ID_t wordId, int quality, int cloz
                     .repetitions    = static_cast<uint16_t>(repetitions),
                     .lapses         = static_cast<uint16_t>(lapses),
                     .isLeech        = isLeech,
+                    .clozeOrdinal   = 0,
                     .nextReviewDate = nextDate.toStdString(),
                     .lastReviewDate = today.toStdString()};
 }
 
-Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t           deckId,
-                                                     ID_t           wordId,
-                                                     int            quality,
-                                                     double         retention,
+Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t deckId, ID_t wordId,
+                                                     int quality, double retention,
                                                      const QString& weightsJson,
-                                                     int            clozeOrdinal)
+                                                     int clozeOrdinal)
 {
     QSqlQuery q(m_db);
-    q.prepare(
-        "SELECT id, stability, difficulty, lapses, is_leech, last_review_date "
-        "FROM review WHERE deck_id = :deckId AND entry_id = :wordId AND cloze_ordinal = :ord;");
+    q.prepare("SELECT id, stability, difficulty, lapses, is_leech, last_review_date "
+              "FROM review WHERE deck_id = :deckId AND entry_id = :wordId AND cloze_ordinal = :ord;");
     q.bindValue(":deckId", QVariant::fromValue(deckId));
     q.bindValue(":wordId", QVariant::fromValue(wordId));
     q.bindValue(":ord", clozeOrdinal);
     if (!q.exec() || !q.next())
         return std::unexpected("Review not found. Call initReview first.");
 
-    const ID_t    reviewId = q.value(0).toLongLong();
-    Fsrs::State   st{.stability = q.value(1).toDouble(), .difficulty = q.value(2).toDouble()};
-    int           lapses   = q.value(3).toInt();
-    bool          isLeech  = q.value(4).toInt() != 0;
-    const QString lastDate = q.value(5).toString();
+    const ID_t reviewId = q.value(0).toLongLong();
+    Fsrs::State st{.stability = q.value(1).toDouble(), .difficulty = q.value(2).toDouble()};
+    int           lapses    = q.value(3).toInt();
+    bool          isLeech   = q.value(4).toInt() != 0;
+    const QString lastDate  = q.value(5).toString();
 
     // UI grade 0..3 (Forgot/Hard/Good/Easy) -> FSRS 1..4 (Again/Hard/Good/Easy).
     const int fsrsGrade = std::clamp(quality, 0, 3) + 1;
@@ -278,9 +276,8 @@ Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t           deckId,
             isLeech = true;
     }
 
-    const QString today = QDate::currentDate().toString("yyyy-MM-dd");
-    const QString nextDate =
-        QDate::currentDate().addDays(sched.intervalDays).toString("yyyy-MM-dd");
+    const QString today    = QDate::currentDate().toString("yyyy-MM-dd");
+    const QString nextDate  = QDate::currentDate().addDays(sched.intervalDays).toString("yyyy-MM-dd");
 
     QSqlQuery up(m_db);
     up.prepare("UPDATE review SET stability = :s, difficulty = :d, "
@@ -324,12 +321,13 @@ Result_t<Review_t> DatabaseManager::submitReviewFsrs(ID_t           deckId,
                     .repetitions    = 0,
                     .lapses         = static_cast<uint16_t>(lapses),
                     .isLeech        = isLeech,
+                    .clozeOrdinal   = 0,
                     .nextReviewDate = nextDate.toStdString(),
                     .lastReviewDate = today.toStdString()};
 }
 
-Result_t<Review_t>
-DatabaseManager::LogReviewOnly(ID_t deckId, ID_t wordId, int quality, int clozeOrdinal)
+Result_t<Review_t> DatabaseManager::LogReviewOnly(ID_t deckId, ID_t wordId, int quality,
+                                                  int clozeOrdinal)
 {
     // Read the current review row (for the ease/interval snapshot in the log)
     // without modifying it.
@@ -363,16 +361,11 @@ DatabaseManager::LogReviewOnly(ID_t deckId, ID_t wordId, int quality, int clozeO
 
     // Return a minimal row; the schedule is unchanged so callers shouldn't rely
     // on updated fields here.
-    return Review_t{.id             = -1,
-                    .deckId         = deckId,
-                    .wordId         = wordId,
-                    .easeFactor     = ef,
-                    .intervalDays   = static_cast<uint16_t>(iv),
-                    .repetitions    = 0,
-                    .lapses         = 0,
-                    .isLeech        = false,
-                    .nextReviewDate = {},
-                    .lastReviewDate = {}};
+    return Review_t{.id = -1, .deckId = deckId, .wordId = wordId,
+                    .easeFactor = ef, .intervalDays = static_cast<uint16_t>(iv),
+                    .repetitions = 0, .lapses = 0, .isLeech = false,
+                    .clozeOrdinal = 0,
+                    .nextReviewDate = {}, .lastReviewDate = {}};
 }
 
 Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
@@ -454,20 +447,17 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetDueReviews(ID_t deckId)
     return reviews;
 }
 
-Result_t<std::vector<Review_t>> DatabaseManager::GetFilteredReviews(int                      mode,
-                                                                    const std::vector<ID_t>& tagIds,
-                                                                    const std::string& language,
-                                                                    ID_t               deckId,
-                                                                    int                aheadDays,
-                                                                    int                limit)
+Result_t<std::vector<Review_t>> DatabaseManager::GetFilteredReviews(
+    int mode, const std::vector<ID_t>& tagIds, const std::string& language,
+    ID_t deckId, int aheadDays, int limit)
 {
     // Build a query over review r joined to entry e, applying the filters. Mode
     // controls the schedule predicate: Due = due today; Ahead = due within
     // aheadDays; Cram = no schedule predicate (any matching card).
-    QString sql = "SELECT DISTINCT r.id, r.deck_id, r.entry_id, r.ease_factor, r.interval_days, "
-                  "r.repetitions, r.lapses, r.is_leech, r.cloze_ordinal, r.next_review_date, "
-                  "r.last_review_date "
-                  "FROM review r JOIN entry e ON e.id = r.entry_id ";
+    QString sql =
+        "SELECT DISTINCT r.id, r.deck_id, r.entry_id, r.ease_factor, r.interval_days, "
+        "r.repetitions, r.lapses, r.is_leech, r.cloze_ordinal, r.next_review_date, r.last_review_date "
+        "FROM review r JOIN entry e ON e.id = r.entry_id ";
 
     if (!tagIds.empty())
         sql += "JOIN entry_tag et ON et.entry_id = e.id ";
@@ -480,9 +470,9 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetFilteredReviews(int         
         sql += "AND e.language = :lang ";
 
     // Schedule predicate by mode.
-    if (mode == 0) // Due
+    if (mode == 0)          // Due
         sql += "AND r.next_review_date <= date('now', 'localtime') ";
-    else if (mode == 1) // Ahead
+    else if (mode == 1)     // Ahead
         sql += "AND r.next_review_date <= date('now', 'localtime', :ahead) ";
     // mode == 2 (Cram): no schedule predicate.
 
@@ -512,17 +502,18 @@ Result_t<std::vector<Review_t>> DatabaseManager::GetFilteredReviews(int         
 
     std::vector<Review_t> reviews;
     while (q.next()) {
-        reviews.push_back(Review_t{.id             = q.value(0).toLongLong(),
-                                   .deckId         = q.value(1).toLongLong(),
-                                   .wordId         = q.value(2).toLongLong(),
-                                   .easeFactor     = q.value(3).toFloat(),
-                                   .intervalDays   = static_cast<uint16_t>(q.value(4).toInt()),
-                                   .repetitions    = static_cast<uint16_t>(q.value(5).toInt()),
-                                   .lapses         = static_cast<uint16_t>(q.value(6).toInt()),
-                                   .isLeech        = q.value(7).toInt() != 0,
-                                   .clozeOrdinal   = q.value(8).toInt(),
-                                   .nextReviewDate = q.value(9).toString().toStdString(),
-                                   .lastReviewDate = q.value(10).toString().toStdString()});
+        reviews.push_back(Review_t{
+            .id             = q.value(0).toLongLong(),
+            .deckId         = q.value(1).toLongLong(),
+            .wordId         = q.value(2).toLongLong(),
+            .easeFactor     = q.value(3).toFloat(),
+            .intervalDays   = static_cast<uint16_t>(q.value(4).toInt()),
+            .repetitions    = static_cast<uint16_t>(q.value(5).toInt()),
+            .lapses         = static_cast<uint16_t>(q.value(6).toInt()),
+            .isLeech        = q.value(7).toInt() != 0,
+            .clozeOrdinal   = q.value(8).toInt(),
+            .nextReviewDate = q.value(9).toString().toStdString(),
+            .lastReviewDate = q.value(10).toString().toStdString()});
     }
     return reviews;
 }

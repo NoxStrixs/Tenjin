@@ -1,6 +1,7 @@
+#include <algorithm>
+#include <utility>
 #include <DatabaseManager/DatabaseManager.h>
 #include <DatabaseManager/Schema.h>
-#include <algorithm>
 
 #include <QDate>
 #include <QDateTime>
@@ -18,10 +19,8 @@
 
 namespace Service {
 
-Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name,
-                                          bool               isSmart,
-                                          FilterMode_t       mode,
-                                          const std::string& language)
+Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name, bool isSmart, FilterMode_t mode,
+                                         const std::string& language)
 {
     const QString filterMode = (mode == FilterMode_t::And) ? "AND" : "OR";
 
@@ -36,19 +35,21 @@ Result_t<Deck_t> DatabaseManager::AddDeck(const std::string& name,
     if (!q.exec())
         return std::unexpected(q.lastError().text().toStdString());
 
-    return Deck_t{.id         = q.lastInsertId().toLongLong(),
-                  .name       = name,
-                  .bIsSmart   = isSmart,
-                  .filterMode = mode,
-                  .createdAt  = {},
-                  .language   = language};
+    Deck_t d;
+    d.id         = q.lastInsertId().toLongLong();
+    d.name       = name;
+    d.bIsSmart   = isSmart;
+    d.filterMode = mode;
+    d.language   = language;
+    // createdAt and the scheduler/FSRS fields keep their Deck_t defaults; the DB
+    // row was just inserted with the schema defaults, so this matches it.
+    return d;
 }
 
 Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, "
-              "fsrs_retention, fsrs_weights, language "
+    q.prepare("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention, fsrs_weights, language "
               "FROM deck WHERE id = :id;");
     q.bindValue(":id", QVariant::fromValue(id));
 
@@ -77,8 +78,7 @@ Result_t<Deck_t> DatabaseManager::GetDeck(ID_t id)
 Result_t<std::vector<Deck_t>> DatabaseManager::GetAllDecks()
 {
     QSqlQuery q(m_db);
-    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, "
-                "fsrs_retention, fsrs_weights, language "
+    if (!q.exec("SELECT id, name, is_smart, filter_mode, created_at, new_cards_per_day, scheduler, fsrs_retention, fsrs_weights, language "
                 "FROM deck ORDER BY name ASC;"))
         return std::unexpected(q.lastError().text().toStdString());
 
@@ -133,12 +133,12 @@ Result_t<bool> DatabaseManager::SetDeckNewCardsPerDay(ID_t id, int perDay)
     return true;
 }
 
-Result_t<bool>
-DatabaseManager::SetDeckScheduler(ID_t id, const std::string& scheduler, double retention)
+Result_t<bool> DatabaseManager::SetDeckScheduler(ID_t id, const std::string& scheduler,
+                                                 double retention)
 {
     const std::string sched = (scheduler == "fsrs") ? "fsrs" : "sm2";
-    const double      ret   = std::clamp(retention, 0.70, 0.97);
-    QSqlQuery         q(m_db);
+    const double ret = std::clamp(retention, 0.70, 0.97);
+    QSqlQuery q(m_db);
     q.prepare("UPDATE deck SET scheduler = :s, fsrs_retention = :r WHERE id = :id;");
     q.bindValue(":s", QString::fromStdString(sched));
     q.bindValue(":r", ret);
@@ -200,7 +200,7 @@ Result_t<std::vector<Fsrs::CardHistory>> DatabaseManager::GetReviewSequences(ID_
 
     while (q.next()) {
         const ID_t   entry = q.value(0).toLongLong();
-        const int    ui    = q.value(1).toInt(); // 0..3
+        const int    ui    = q.value(1).toInt();          // 0..3
         const qint64 ms    = q.value(2).toLongLong();
 
         if (entry != currentEntry) {
@@ -217,9 +217,10 @@ Result_t<std::vector<Fsrs::CardHistory>> DatabaseManager::GetReviewSequences(ID_
 
         // UI grade 0..3 (Forgot/Hard/Good/Easy) -> FSRS 1..4.
         const int grade = std::clamp(ui, 0, 3) + 1;
-        current.push_back(Fsrs::ReviewEvent{.elapsedDays = elapsedDays < 0.0 ? 0.0 : elapsedDays,
-                                            .grade       = grade,
-                                            .passed      = grade >= 2});
+        current.push_back(Fsrs::ReviewEvent{
+            .elapsedDays = elapsedDays < 0.0 ? 0.0 : elapsedDays,
+            .grade       = grade,
+            .passed      = grade >= 2});
     }
     flush();
 
@@ -401,7 +402,7 @@ Result_t<std::vector<Entry_t>> DatabaseManager::GetEntriesByTags(const std::vect
 Result_t<std::vector<Deck_t>> DatabaseManager::GetSmartDecksUsingTag(ID_t tagId)
 {
     QSqlQuery q(m_db);
-    q.prepare("SELECT DISTINCT d.id, d.name, d.is_smart, d.filter_mode, d.created_at "
+    q.prepare("SELECT DISTINCT d.id, d.name, d.is_smart, d.filter_mode, d.created_at, d.language "
               "FROM deck d "
               "JOIN deck_tag_filter f ON f.deck_id = d.id "
               "WHERE f.tag_id = :tag AND d.is_smart = 1 "
@@ -412,12 +413,17 @@ Result_t<std::vector<Deck_t>> DatabaseManager::GetSmartDecksUsingTag(ID_t tagId)
 
     std::vector<Deck_t> out;
     while (q.next()) {
-        out.push_back(Deck_t{.id         = q.value(0).toLongLong(),
-                             .name       = q.value(1).toString().toStdString(),
-                             .bIsSmart   = q.value(2).toBool(),
-                             .filterMode = q.value(3).toString() == "OR" ? FilterMode_t::Or
-                                                                         : FilterMode_t::And,
-                             .createdAt  = q.value(4).toString().toStdString()});
+        Deck_t d;
+        // Only these columns are SELECTed; the rest keep their Deck_t defaults
+        // (assigning by name avoids both the missing-initializer warning and
+        // duplicating the struct's default values here).
+        d.id         = q.value(0).toLongLong();
+        d.name       = q.value(1).toString().toStdString();
+        d.bIsSmart   = q.value(2).toBool();
+        d.filterMode = q.value(3).toString() == "OR" ? FilterMode_t::Or : FilterMode_t::And;
+        d.createdAt  = q.value(4).toString().toStdString();
+        d.language   = q.value(5).toString().toStdString();
+        out.push_back(std::move(d));
     }
     return out;
 }

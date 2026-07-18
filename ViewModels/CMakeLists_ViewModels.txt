@@ -4,28 +4,70 @@
 # Stateless free-function hooks (Motion/Share, see PlatformHooks.h) select their
 # single TU the same way.
 if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_ios.mm)
+    set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_apple.mm)
     set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_ios.mm)
     set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_ios.mm)
     set(_TENJIN_TIME_BACKEND     src/TimePickerService_ios.mm)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_ios.mm)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_ios.mm)
+    set(_TENJIN_CLOUDSYNC_BACKEND src/CloudSyncService_apple.mm)
 elseif(ANDROID)
     set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_android.cpp)
     set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_android.cpp)
-    # Android document picking (Storage Access Framework) and share (FileProvider)
-    # are not yet implemented; the default backends keep the in-app fallbacks.
-    set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_default.cpp)
+    # Android media/import picking: Photo Picker + camera + SAF, with results
+    # routed through an ActivityResultListener (see the .cpp).
+    set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_android.cpp)
     set(_TENJIN_TIME_BACKEND     src/TimePickerService_android.cpp)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_android.cpp)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
-else()
-    set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_default.cpp)
+    set(_TENJIN_CLOUDSYNC_BACKEND src/CloudSyncService_android.cpp)
+elseif(APPLE)
+    # macOS: shares the Apple UserNotifications backend with iOS. Other native
+    # backends (haptics/picker/time/motion/share) aren't macOS-specialized yet,
+    # so they use the desktop defaults.
+    set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_apple.mm)
     set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_default.cpp)
     set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_default.cpp)
     set(_TENJIN_TIME_BACKEND     src/TimePickerService_default.cpp)
     set(_TENJIN_MOTION_BACKEND   src/MotionService_default.cpp)
     set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
+    set(_TENJIN_CLOUDSYNC_BACKEND src/CloudSyncService_apple.mm)
+else()
+    # Windows and Linux now have native closed-app daily-reminder backends
+    # (Scheduled Task / systemd user timer). Other desktop OSes fall back to
+    # the in-app default.
+    if(WIN32)
+        set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_windows.cpp)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_linux.cpp)
+    else()
+        set(_TENJIN_NOTIFY_BACKEND   src/NotificationService_default.cpp)
+    endif()
+    set(_TENJIN_HAPTICS_BACKEND  src/HapticsService_default.cpp)
+    set(_TENJIN_PICKER_BACKEND   src/DocumentPickerService_default.cpp)
+    set(_TENJIN_TIME_BACKEND     src/TimePickerService_default.cpp)
+    set(_TENJIN_MOTION_BACKEND   src/MotionService_default.cpp)
+    set(_TENJIN_SHARE_BACKEND    src/ShareService_default.cpp)
+    if(WIN32)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    else()
+    endif()
+    # Desktop cloud sync: the user points at a folder their cloud client syncs.
+    set(_TENJIN_CLOUDSYNC_BACKEND src/CloudSyncService_desktop.cpp)
+endif()
+
+# Math typesetting (MicroTeX + a QQuickPaintedItem) only exists in GUI builds:
+# the headless test build has neither Qt6::Quick nor the MicroTeX target, and
+# doesn't render formulas.
+set(_TENJIN_FORMULA_SOURCES "")
+set(_TENJIN_FORMULA_HEADERS "")
+if(TENJIN_BUILD_GUI)
+    set(_TENJIN_FORMULA_SOURCES
+        src/FormulaItem.cpp
+        src/MicroTexGraphics_qt.cpp)
+    set(_TENJIN_FORMULA_HEADERS
+        include/ViewModels/FormulaItem.h
+        include/ViewModels/MicroTexGraphics_qt.h)
 endif()
 
 qt_add_library(TenjinViewModels STATIC
@@ -43,6 +85,7 @@ qt_add_library(TenjinViewModels STATIC
     src/SidebarViewModel.cpp
     src/ReviewViewModel.cpp
     src/FormulaRenderer.cpp
+    ${_TENJIN_FORMULA_SOURCES}
 
     # Platform services: shared base + selected backend TU.
     src/NotificationService.cpp
@@ -53,6 +96,8 @@ qt_add_library(TenjinViewModels STATIC
     ${_TENJIN_PICKER_BACKEND}
     src/TimePickerService.cpp
     ${_TENJIN_TIME_BACKEND}
+    src/CloudSyncService.cpp
+    ${_TENJIN_CLOUDSYNC_BACKEND}
     src/CloudService.cpp
 
     # Stateless platform hooks (free functions; one TU each).
@@ -66,11 +111,13 @@ qt_add_library(TenjinViewModels STATIC
     include/ViewModels/SidebarViewModel.h
     include/ViewModels/LogViewModel.h
     include/ViewModels/FormulaRenderer.h
+    ${_TENJIN_FORMULA_HEADERS}
     include/ViewModels/NotificationService.h
     include/ViewModels/HapticsService.h
     include/ViewModels/DocumentPickerService.h
     include/ViewModels/TimePickerService.h
     include/ViewModels/CloudService.h
+    include/ViewModels/CloudSyncService.h
     include/ViewModels/PlatformHooks.h
 )
 
@@ -86,6 +133,7 @@ target_compile_definitions(TenjinViewModels
 target_link_libraries(TenjinViewModels
     PUBLIC
         Qt6::Core
+        Qt6::Concurrent
         Qt6::Gui
         Qt6::Qml
         Qt6::Network
@@ -96,6 +144,33 @@ target_link_libraries(TenjinViewModels
         tenjin_sanitizers
 )
 
+# GUI-only deps: FormulaItem is a QQuickPaintedItem (real math typesetting needs
+# a painter, not rich text) and MicroTeX does the layout. PRIVATE so MicroTeX's
+# headers don't leak past this layer — FormulaItem PIMPLs it away.
+if(TENJIN_BUILD_GUI)
+    target_link_libraries(TenjinViewModels
+        PUBLIC  Qt6::Quick
+        PRIVATE MicroTeX::microtex)
+    tenjin_microtex_add_resources(TenjinViewModels)
+
+    # FormulaItem.cpp and MicroTexGraphics_qt.cpp #include MicroTeX headers, whose
+    # include chain (graphic.h -> graphic_basic.h -> common.h -> string_utils.h)
+    # uses a std::not1/unary_negate idiom removed from the C++23 standard library.
+    # The rest of Tenjin builds at C++23; compile just these two MicroTeX-facing
+    # TUs at C++17 so that header is valid. Their public interface
+    # (FormulaItem.h — no MicroTeX headers, PIMPL'd) stays C++23-clean, so the
+    # rest of the app is unaffected.
+    if(MSVC)
+        set_source_files_properties(
+            src/FormulaItem.cpp src/MicroTexGraphics_qt.cpp
+            PROPERTIES COMPILE_OPTIONS "/std:c++17")
+    else()
+        set_source_files_properties(
+            src/FormulaItem.cpp src/MicroTexGraphics_qt.cpp
+            PROPERTIES COMPILE_OPTIONS "-std=c++17")
+    endif()
+endif()
+
 # iOS frameworks: notifications (UserNotifications), share/picker (UIKit),
 # document types (UniformTypeIdentifiers).
 if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
@@ -104,7 +179,15 @@ if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
         "-framework UIKit"
         "-framework UniformTypeIdentifiers"
         "-framework PhotosUI"
-        "-framework Photos")
+        "-framework Photos"
+        "-framework AVFoundation")
+elseif(APPLE)
+    # macOS: the shared Apple notification backend needs UserNotifications
+    # (available on macOS 10.14+) and Foundation.
+    target_link_libraries(TenjinViewModels PRIVATE
+        "-framework UserNotifications"
+        "-framework Foundation"
+        "-framework AVFoundation")
 endif()
 
 # Android: runtime notification permission + JNI use QtAndroidPrivate/CorePrivate.
@@ -112,3 +195,4 @@ if(ANDROID)
     find_package(Qt6 6.9 REQUIRED COMPONENTS CorePrivate)
     target_link_libraries(TenjinViewModels PRIVATE Qt6::CorePrivate)
 endif()
+

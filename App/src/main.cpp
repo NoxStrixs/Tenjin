@@ -10,6 +10,7 @@
 #include <QPixmap>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQmlEngine>   // qmlRegisterType
 #include <QQmlError>
 #include <QQuickStyle>
 #include <QQuickWindow>
@@ -57,11 +58,12 @@ Q_IMPORT_QML_PLUGIN(TenjinViewPlugin)
 #include <TenjinConfig.h>
 #include <ViewModels/AppViewModel.h>
 #include <ViewModels/CloudService.h>
+#include <ViewModels/FormulaItem.h>
 #include <ViewModels/CloudSyncService.h>
-#include <ViewModels/DocumentPickerService.h>
 #include <ViewModels/HapticsService.h>
 #include <ViewModels/LogViewModel.h>
 #include <ViewModels/NotificationService.h>
+#include <ViewModels/DocumentPickerService.h>
 #include <ViewModels/TimePickerService.h>
 
 static LogViewModel*    g_logModel        = nullptr;
@@ -241,18 +243,18 @@ int main(int argc, char* argv[])
     // Standalone services (compile-time platform factories)
     // create() returns the platform-appropriate subclass; only the target
     // platform's backend TU is compiled in (see ViewModels/CMakeLists.txt).
-    auto                   notifServicePtr = NotificationService::create();
-    auto                   cloudServicePtr = CloudService::create();
-    auto                   cloudSyncPtr    = CloudSyncService::create();
-    auto                   hapticsPtr      = HapticsService::create();
-    auto                   pickerPtr       = DocumentPickerService::create();
-    auto                   timePickerPtr   = TimePickerService::create();
-    NotificationService&   notifService    = *notifServicePtr;
-    CloudService&          cloudService    = *cloudServicePtr;
-    CloudSyncService&      cloudSync       = *cloudSyncPtr;
-    HapticsService&        haptics         = *hapticsPtr;
-    DocumentPickerService& picker          = *pickerPtr;
-    TimePickerService&     timePicker      = *timePickerPtr;
+    auto notifServicePtr = NotificationService::create();
+    auto cloudServicePtr = CloudService::create();
+    auto cloudSyncPtr    = CloudSyncService::create();
+    auto hapticsPtr      = HapticsService::create();
+    auto pickerPtr       = DocumentPickerService::create();
+    auto timePickerPtr   = TimePickerService::create();
+    NotificationService&   notifService = *notifServicePtr;
+    CloudService&          cloudService = *cloudServicePtr;
+    CloudSyncService&      cloudSync    = *cloudSyncPtr;
+    HapticsService&        haptics      = *hapticsPtr;
+    DocumentPickerService& picker       = *pickerPtr;
+    TimePickerService&     timePicker   = *timePickerPtr;
 
     // Inject the picker so AppViewModel can drive native import and receive the
     // async documentPicked() result.
@@ -278,6 +280,10 @@ int main(int argc, char* argv[])
     appVM.setQmlEngine(&engine);
 
     // Context properties — all services accessible from any QML file.
+    // Real math typesetting: FormulaView paints LaTeX via MicroTeX. ViewModels
+    // is a plain static lib rather than a QML module, so register explicitly.
+    qmlRegisterType<Tenjin::FormulaItem>("TenjinView", 1, 0, "FormulaView");
+
     engine.rootContext()->setContextProperty(QStringLiteral("appVM"), &appVM);
     engine.rootContext()->setContextProperty(QStringLiteral("logModel"), &logModel);
     engine.rootContext()->setContextProperty(QStringLiteral("notifService"), &notifService);

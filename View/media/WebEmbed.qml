@@ -294,7 +294,8 @@ Item {
 
         Text {
             anchors.centerIn: parent
-            text: "✕"
+            text: TenjinIcons.close
+            font.family: TenjinIcons.family
             color: Platform.textOnDark
             font.pixelSize: Platform.fontBase
             font.bold: true

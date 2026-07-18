@@ -59,11 +59,11 @@ void EntryViewModel::rebuildSearchResults()
                 if (m_searchInContent && !QString::fromStdString(w.word).toLower().contains(ql)) {
                     if (auto blocks = m_entryService->GetContentForEntry(w.id)) {
                         for (const auto& b : *blocks) {
-                            const QString   c   = QString::fromStdString(b.content);
+                            const QString c   = QString::fromStdString(b.content);
                             const qsizetype idx = c.toLower().indexOf(ql);
                             if (idx >= 0) {
                                 const qsizetype start = std::max<qsizetype>(0, idx - 20);
-                                snippet = (start > 0 ? QStringLiteral("…") : QString()) +
+                                snippet         = (start > 0 ? QStringLiteral("…") : QString()) +
                                           c.mid(start, 60).simplified() +
                                           (c.size() > start + 60 ? QStringLiteral("…") : QString());
                                 break;

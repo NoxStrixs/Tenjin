@@ -16,23 +16,23 @@ struct ReviewSession_t {
     // When false, SubmitCard logs the review for stats but does NOT advance the
     // SRS schedule — used by cram / study-ahead filtered sessions so practice
     // doesn't disturb real scheduling. Normal due sessions leave this true.
-    bool reschedule = true;
+    bool                  reschedule = true;
 };
 
 // Custom-study filter. Mode selects which cards; tag/language narrow them.
 enum class StudyMode_t {
-    Due   = 0, // normally-due cards (default review)
-    Ahead = 1, // cards due within the next few days, pulled early
-    Cram  = 2  // any matching cards regardless of schedule (pure practice)
+    Due = 0,      // normally-due cards (default review)
+    Ahead = 1,    // cards due within the next few days, pulled early
+    Cram = 2      // any matching cards regardless of schedule (pure practice)
 };
 
 struct StudyFilter_t {
-    StudyMode_t       mode = StudyMode_t::Due;
-    std::vector<ID_t> tagIds;          // empty = any tag
-    std::string       language;        // empty = any language
-    ID_t              deckId    = -1;  // -1 = all decks
-    int               aheadDays = 3;   // for Ahead mode
-    int               limit     = 100; // cap the queue
+    StudyMode_t          mode = StudyMode_t::Due;
+    std::vector<ID_t>    tagIds;          // empty = any tag
+    std::string          language;        // empty = any language
+    ID_t                 deckId = -1;     // -1 = all decks
+    int                  aheadDays = 3;   // for Ahead mode
+    int                  limit = 100;     // cap the queue
 };
 
 // Result of an FSRS weight-optimization run for one deck.
@@ -50,20 +50,18 @@ public:
     explicit DeckService(std::shared_ptr<DatabaseManager> db);
 
     // Deck
-    Result_t<Deck_t>              CreateDeck(const std::string& name,
-                                             bool               isSmart,
-                                             FilterMode_t       mode,
-                                             const std::string& language = {});
-    Result_t<bool>                SetLanguage(ID_t deckId, const std::string& language);
-    Result_t<Deck_t>              GetDeck(ID_t deckId) const;
+    Result_t<Deck_t> CreateDeck(const std::string& name, bool isSmart, FilterMode_t mode,
+                                const std::string& language = {});
+    Result_t<bool>   SetLanguage(ID_t deckId, const std::string& language);
+    Result_t<Deck_t> GetDeck(ID_t deckId) const;
     Result_t<std::vector<Deck_t>> GetAllDecks() const;
     Result_t<bool>                DeleteDeck(ID_t deckId);
     Result_t<bool>                SetNewCardsPerDay(ID_t deckId, int perDay);
-    Result_t<bool> SetScheduler(ID_t deckId, const std::string& scheduler, double retention);
+    Result_t<bool>                SetScheduler(ID_t deckId, const std::string& scheduler, double retention);
     // Optimizer split so DB access stays on the caller's thread: read sequences,
     // run the pure Fsrs::optimize on a worker, then save the weights here.
     Result_t<std::vector<Fsrs::CardHistory>> GetReviewSequencesFor(ID_t deckId);
-    Result_t<bool> SaveDeckWeights(ID_t deckId, const std::array<double, 19>& weights);
+    Result_t<bool>                SaveDeckWeights(ID_t deckId, const std::array<double, 19>& weights);
 
     // Bulk wipe + tag-impact query. Used by the Settings danger zone and
     // by the tag-delete confirmation popup (which warns the user when

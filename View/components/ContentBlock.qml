@@ -107,7 +107,9 @@ Rectangle {
     clip: true
 
     implicitWidth: parent ? parent.width : 0
-    implicitHeight: layout.implicitHeight + 12
+    // Chrome is deliberately thin: blocks stack, so every pixel of padding is
+    // multiplied down the entry. Content drives the height.
+    implicitHeight: layout.implicitHeight + Platform.spacingMd
 
     Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
 
@@ -116,8 +118,8 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: Platform.spacingLg
-        spacing: 8
+        anchors.margins: Platform.spacingMd
+        spacing: Platform.spacingSm
 
         // Header: drag handle, type chip, remove button.
         RowLayout {
@@ -141,7 +143,7 @@ Rectangle {
                 implicitWidth: root.isNote && root.editMode
                                ? Math.max(noteLabelEdit.implicitWidth + 24, 110)
                                : typeLabel.implicitWidth + 16
-                implicitHeight: Platform.isMobile ? 28 : 22
+                implicitHeight: Platform.isMobile ? 24 : 22
                 radius: height / 2
                 color: Platform.surfaceAlt
                 border.color: root.isNote && root.editMode && noteLabelEdit.activeFocus
@@ -198,7 +200,7 @@ Rectangle {
                 id: posCombo
                 visible: root.isDefinition && root.editMode
                 Layout.alignment: Qt.AlignVCenter
-                implicitHeight: Platform.isMobile ? 28 : 22
+                implicitHeight: Platform.isMobile ? 24 : 22
                 implicitWidth: Platform.isMobile ? 160 : 130
                 font.pixelSize: Platform.fontBase - 2
                 model: root.posOptions
@@ -274,7 +276,7 @@ Rectangle {
                 visible: root.isDefinition && !root.editMode && root.blockPos.length > 0
                 Layout.alignment: Qt.AlignVCenter
                 implicitWidth: posChip.implicitWidth + 14
-                implicitHeight: Platform.isMobile ? 28 : 22
+                implicitHeight: Platform.isMobile ? 24 : 22
                 radius: height / 2
                 color: Platform.bg
                 border.color: Platform.accent
@@ -355,7 +357,8 @@ Rectangle {
                     Behavior on color { ColorAnimation { duration: Platform.effDurationFast } }
                     Text {
                         anchors.centerIn: parent
-                        text: "+"
+                        text: TenjinIcons.add
+                        font.family: TenjinIcons.family
                         color: spanPlusArea.containsMouse ? Platform.textOnDark : Platform.textPrimary
                         font.pixelSize: Platform.fontBase
                         font.bold: true
@@ -407,6 +410,10 @@ Rectangle {
         Loader {
             id: contentLoader
             Layout.fillWidth: true
+            // Anchor to the top of the cell: in a grid row sized by the tallest
+            // block, shorter text/formula content would otherwise be centered
+            // vertically and look like it sank to the middle/bottom.
+            Layout.alignment: Qt.AlignTop
             sourceComponent: {
                 if (root.isMedia)    return mediaArea
                 if (root.isDivider)  return dividerArea
@@ -788,6 +795,10 @@ Rectangle {
                         placeholderTextColor: Platform.textMuted
                         font.pixelSize: Platform.fontBase
                         wrapMode: TextEdit.WordWrap
+                        // Anchor content to the top; inside a taller ScrollView
+                        // (the container has a min height of touchTarget*2) the
+                        // default centers a single line, making it look sunken.
+                        verticalAlignment: TextEdit.AlignTop
                         background: null
                         selectByMouse: true
                         persistentSelection: true

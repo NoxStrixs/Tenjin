@@ -1,7 +1,7 @@
+#include <QtConcurrent>
+#include <QFutureWatcher>
 #include <DeckService/DeckService.h>
 #include <EntryService/EntryService.h>
-#include <QFutureWatcher>
-#include <QtConcurrent>
 #include <ViewModels/DeckViewModel.h>
 
 DeckViewModel::DeckViewModel(std::shared_ptr<Service::DeckService>  deckService,
@@ -27,7 +27,7 @@ void DeckViewModel::reloadDecks()
         m_deckModel->setDecks(*result);
         return;
     }
-    const std::string            want = m_deckLanguageFilter.toStdString();
+    const std::string want = m_deckLanguageFilter.toStdString();
     std::vector<Service::Deck_t> filtered;
     filtered.reserve(result->size());
     for (const auto& d : *result) {
@@ -84,14 +84,12 @@ void DeckViewModel::clearSelection()
     emit tagFiltersChanged();
 }
 
-bool DeckViewModel::createDeck(const QString& name,
-                               bool           isSmart,
-                               int            filterMode,
+bool DeckViewModel::createDeck(const QString& name, bool isSmart, int filterMode,
                                const QString& language)
 {
-    auto mode = (filterMode == 1) ? Service::FilterMode_t::Or : Service::FilterMode_t::And;
-    auto result =
-        m_deckService->CreateDeck(name.toStdString(), isSmart, mode, language.toStdString());
+    auto mode   = (filterMode == 1) ? Service::FilterMode_t::Or : Service::FilterMode_t::And;
+    auto result = m_deckService->CreateDeck(name.toStdString(), isSmart, mode,
+                                            language.toStdString());
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -100,14 +98,12 @@ bool DeckViewModel::createDeck(const QString& name,
     return true;
 }
 
-bool DeckViewModel::createSmartDeck(const QString&      name,
-                                    int                 filterMode,
-                                    const QVariantList& tagIds,
-                                    const QString&      language)
+bool DeckViewModel::createSmartDeck(const QString& name, int filterMode, const QVariantList& tagIds,
+                                    const QString& language)
 {
     auto mode   = (filterMode == 1) ? Service::FilterMode_t::Or : Service::FilterMode_t::And;
-    auto result = m_deckService->CreateDeck(
-        name.toStdString(), /*isSmart=*/true, mode, language.toStdString());
+    auto result = m_deckService->CreateDeck(name.toStdString(), /*isSmart=*/true, mode,
+                                            language.toStdString());
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -253,8 +249,8 @@ bool DeckViewModel::setNewCardsPerDay(qint64 deckId, int perDay)
 
 bool DeckViewModel::setScheduler(qint64 deckId, const QString& scheduler, double retention)
 {
-    auto result = m_deckService->SetScheduler(
-        static_cast<Service::ID_t>(deckId), scheduler.toStdString(), retention);
+    auto result = m_deckService->SetScheduler(static_cast<Service::ID_t>(deckId),
+                                              scheduler.toStdString(), retention);
     if (!result) {
         emit errorOccurred(QString::fromStdString(result.error()));
         return false;
@@ -278,39 +274,41 @@ void DeckViewModel::optimizeDeck(qint64 deckId)
     }
 
     auto* watcher = new QFutureWatcher<Fsrs::OptimizeResult>(this);
-    connect(
-        watcher, &QFutureWatcher<Fsrs::OptimizeResult>::finished, this, [this, watcher, deckId]() {
-            const Fsrs::OptimizeResult r = watcher->result();
-            QString                    msg;
-            bool                       ok = r.optimized;
-            if (!r.optimized) {
-                msg = tr("Not enough review history yet to optimize "
-                         "(need ~400 reviews). Keeping default weights.");
-            } else {
-                // Persist the fitted weights (main thread).
-                auto saved =
-                    m_deckService->SaveDeckWeights(static_cast<Service::ID_t>(deckId), r.weights);
-                if (!saved) {
-                    ok  = false;
-                    msg = QString::fromStdString(saved.error());
+    connect(watcher, &QFutureWatcher<Fsrs::OptimizeResult>::finished, this,
+            [this, watcher, deckId]() {
+                const Fsrs::OptimizeResult r = watcher->result();
+                QString msg;
+                bool ok = r.optimized;
+                if (!r.optimized) {
+                    msg = tr("Not enough review history yet to optimize "
+                             "(need ~400 reviews). Keeping default weights.");
                 } else {
-                    const double pct = r.initialLoss > 0.0
-                                           ? 100.0 * (r.initialLoss - r.finalLoss) / r.initialLoss
-                                           : 0.0;
-                    msg = tr("Optimized from %1 reviews — prediction error down %2%.")
-                              .arg(r.reviewCount)
-                              .arg(QString::number(pct, 'f', 1));
+                    // Persist the fitted weights (main thread).
+                    auto saved = m_deckService->SaveDeckWeights(
+                        static_cast<Service::ID_t>(deckId), r.weights);
+                    if (!saved) {
+                        ok = false;
+                        msg = QString::fromStdString(saved.error());
+                    } else {
+                        const double pct = r.initialLoss > 0.0
+                            ? 100.0 * (r.initialLoss - r.finalLoss) / r.initialLoss
+                            : 0.0;
+                        msg = tr("Optimized from %1 reviews — prediction error down %2%.")
+                                  .arg(r.reviewCount)
+                                  .arg(QString::number(pct, 'f', 1));
+                    }
                 }
-            }
-            emit optimizeFinished(ok, msg);
-            if (ok)
-                reloadDecks();
-            watcher->deleteLater();
-        });
+                emit optimizeFinished(ok, msg);
+                if (ok)
+                    reloadDecks();
+                watcher->deleteLater();
+            });
 
     // Move the sequences into the worker; only pure computation runs there.
     auto data = std::make_shared<std::vector<Fsrs::CardHistory>>(std::move(*sequences));
-    watcher->setFuture(QtConcurrent::run([data]() { return Fsrs::optimize(*data); }));
+    watcher->setFuture(QtConcurrent::run([data]() {
+        return Fsrs::optimize(*data);
+    }));
 }
 
 bool DeckViewModel::addWordToDeck(qint64 deckId, qint64 wordId)

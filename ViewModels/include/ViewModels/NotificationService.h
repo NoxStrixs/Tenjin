@@ -82,8 +82,8 @@ protected:
     // are desktop behaviour: no OS delivery, permission auto-granted.
     // Return true from deliverNative() if a real OS notification was posted;
     // false falls back to an in-app toast.
-    virtual bool
-    deliverNative(const QString& title, const QString& body, const QVariantMap& payload);
+    virtual bool deliverNative(const QString& title, const QString& body,
+                               const QVariantMap& payload);
     virtual bool requestPermissionNative();
 
     // Schedule a repeating daily OS notification at hour:minute. Returns true if
@@ -92,8 +92,8 @@ protected:
     // AlarmManager). Returns false on desktop, where the base falls back to an
     // in-process QTimer (only fires while running). cancelDailyNative() clears
     // any OS-scheduled daily reminder.
-    virtual bool
-    scheduleDailyNative(int hour, int minute, const QString& title, const QString& body);
+    virtual bool scheduleDailyNative(int hour, int minute, const QString& title,
+                                     const QString& body);
     virtual void cancelDailyNative();
 
 private:

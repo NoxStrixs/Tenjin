@@ -76,7 +76,8 @@ Rectangle {
             Text {
                 id: removeText
                 anchors.centerIn: parent
-                text: "✕"
+                text: TenjinIcons.close
+                font.family: TenjinIcons.family
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Remove tag %1").arg(chip.tagName)
                 color: chip.active ? Platform.textOnDark : Platform.danger

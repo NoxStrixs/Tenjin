@@ -19,8 +19,7 @@ public:
     using NotificationService::NotificationService;
 
 protected:
-    bool deliverNative(const QString& title,
-                       const QString& body,
+    bool deliverNative(const QString& title, const QString& body,
                        const QVariantMap& /*payload*/) override
     {
         QJniObject jTitle = QJniObject::fromString(title);
@@ -59,8 +58,8 @@ protected:
 
     // Schedule the repeating daily reminder with AlarmManager (via the
     // AlarmScheduler Java helper) so it fires even when the app is not running.
-    bool
-    scheduleDailyNative(int hour, int minute, const QString& title, const QString& body) override
+    bool scheduleDailyNative(int hour, int minute, const QString& title,
+                             const QString& body) override
     {
         QJniObject context = QNativeInterface::QAndroidApplication::context();
         if (!context.isValid())
@@ -86,10 +85,11 @@ protected:
         QJniObject context = QNativeInterface::QAndroidApplication::context();
         if (!context.isValid())
             return;
-        QJniObject::callStaticMethod<void>("app/tenjin/Tenjin/AlarmScheduler",
-                                           "cancel",
-                                           "(Landroid/content/Context;)V",
-                                           context.object());
+        QJniObject::callStaticMethod<void>(
+            "app/tenjin/Tenjin/AlarmScheduler",
+            "cancel",
+            "(Landroid/content/Context;)V",
+            context.object());
     }
 };
 

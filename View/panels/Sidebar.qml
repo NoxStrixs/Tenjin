@@ -281,7 +281,8 @@ Rectangle {
                             elide: Text.ElideRight
                         }
                         Text {
-                            text: "✦"
+                            text: TenjinIcons.autoAwesome
+                            font.family: TenjinIcons.family
                             font.pixelSize: 9
                             color: Platform.textMuted
                             visible: model.isSmart

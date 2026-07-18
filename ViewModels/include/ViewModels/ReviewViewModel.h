@@ -64,18 +64,14 @@ public:
     int     currentClozeOrdinal() const;
     // Reverse study: show the definition and recall the word. Per-session,
     // toggled from the review UI. Front/back swap happens in the view.
-    bool reverseMode() const
-    {
-        return m_reverseMode;
-    }
+    bool reverseMode() const { return m_reverseMode; }
     void setReverseMode(bool on)
     {
-        if (m_reverseMode == on)
-            return;
+        if (m_reverseMode == on) return;
         m_reverseMode = on;
         emit reverseModeChanged();
     }
-    bool showingAnswer() const
+    bool    showingAnswer() const
     {
         return m_showingAnswer;
     }
@@ -99,15 +95,12 @@ public slots:
     void startSession(qint64 deckId);
     // Custom study. mode: 0=Due, 1=Ahead, 2=Cram. tagIds/language narrow the
     // queue; deckId -1 = all decks. Cram/Ahead are pure practice (no reschedule).
-    Q_INVOKABLE void startFilteredSession(int                 mode,
-                                          const QVariantList& tagIds,
-                                          const QString&      language,
-                                          qint64              deckId,
-                                          int                 aheadDays,
-                                          int                 limit);
-    void             stopSession();
-    void             revealAnswer();
-    void             submitQuality(int quality);
+    Q_INVOKABLE void startFilteredSession(int mode, const QVariantList& tagIds,
+                                          const QString& language, qint64 deckId,
+                                          int aheadDays, int limit);
+    void stopSession();
+    void revealAnswer();
+    void submitQuality(int quality);
 
     // Typed-answer mode. Compares the user's typed guess against the current
     // word, normalized (trim, case-fold, strip accents/diacritics and
@@ -129,7 +122,7 @@ private:
     std::shared_ptr<Service::EntryService> m_entryService;
 
     std::optional<Service::ReviewSession_t> m_session;
-    bool                                    m_reverseMode   = false;
+    bool                                    m_reverseMode = false;
     bool                                    m_showingAnswer = false;
 
     // Per-session summary counters (reset in startSession).

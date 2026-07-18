@@ -90,7 +90,8 @@ Popup {
                 Layout.preferredWidth: 96
             }
             Button {
-                text: "+"
+                text: TenjinIcons.add
+                font.family: TenjinIcons.family
                 implicitWidth: Platform.touchTarget
                 implicitHeight: Platform.touchTarget
                 onClicked: if (root.birthYear < root.thisYear) root.birthYear++
