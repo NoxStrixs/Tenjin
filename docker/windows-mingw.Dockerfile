@@ -16,6 +16,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV QT_VERSION=6.9.3
 ENV QT_ROOT=/opt/qt
 
+# Wine needs the i386 architecture enabled BEFORE install, even for a 64-bit-
+# only workload — several of its own support packages are still multiarch.
+# Skipping this is what makes `wine64` install "succeed" while leaving no
+# actually-invokable `wine`/`wine64` binary on the PATH.
+RUN dpkg --add-architecture i386
+
 # MinGW-w64 cross toolchain + the host tools Qt's build needs. cmake/ninja drive
 # the build; python3 + aqtinstall fetch the matching Qt kits.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -32,10 +38,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxkbcommon0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
         libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
         libxcb-xinerama0 libxcb-xkb1 \
-        # nsis is a native Linux binary, so CPack -G NSIS can build the Windows
-        # installer here with no Wine. (DLL bundling is done by walking the PE
-        # import table with the mingw objdump, which ships with mingw-w64.)
-        nsis \
+        # Wine runs the Windows windeployqt.exe — the OFFICIAL Qt deployment tool
+        # — in-container. windeployqt is the correct, well-tested way to collect a
+        # Qt app's DLLs, plugins and QML imports (it drives qmlimportscanner);
+        # this replaces the hand-rolled dependency walking that kept missing
+        # transitive DLLs and the QtQuick.Controls style plugin. The package is
+        # `wine` (NOT `wine64` — that package alone leaves no invokable `wine`
+        # binary on Ubuntu 24.04; `wine` is the metapackage that actually
+        # provides the `wine`/`wine64` executables). nsis lets CPack build the
+        # installer natively (no Wine needed for that part).
+        wine wine64 nsis \
     && rm -rf /var/lib/apt/lists/*
 
 # aqtinstall needs a venv on 24.04 (PEP 668 externally-managed environment).
@@ -75,6 +87,36 @@ RUN set -eu; \
 ENV QT_TARGET=${QT_ROOT}/${QT_VERSION}/mingw_64
 ENV QT_HOST=${QT_ROOT}/${QT_VERSION}/gcc_64
 ENV PATH="${QT_HOST}/bin:${PATH}"
+
+# Wine setup for running the Windows windeployqt.exe. A prefix is initialised at
+# build time so the first real run doesn't pay that cost, and WINEDEBUG is
+# silenced so its chatter doesn't drown the build log.
+ENV WINEPREFIX=/opt/wine-prefix
+ENV WINEARCH=win64
+ENV WINEDEBUG=-all
+ENV WINEDLLOVERRIDES="mscoree,mshtml="
+
+# Fail the IMAGE BUILD (not a later container run) if `wine` didn't actually
+# land on the PATH. This is the exact failure we hit before: `wine64` looked
+# installed but no invokable binary existed, and it only surfaced as a cryptic
+# "not found" deep inside the packaging script. Checking now turns that into an
+# immediate, loud image-build failure with a clear cause.
+RUN command -v wine >/dev/null 2>&1 || { echo "FATAL: 'wine' binary not on PATH after apt install" >&2; exit 1; }
+RUN wineboot --init && wineserver -w
+
+# windeployqt wrapper: runs the TARGET kit's windeployqt.exe under Wine. It reads
+# the .exe's imports and (with --qmldir) drives qmlimportscanner to pull the QML
+# modules, plugins and DLLs — the whole reason we no longer hand-roll bundling.
+# The target kit's bin is put on Wine's PATH so windeployqt finds its sibling
+# tools (qmlimportscanner.exe) and the Qt DLLs. Uses `wine` (not `wine64`) — see
+# the apt-get comment above for why that distinction matters on Ubuntu 24.04.
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    '# Run Windows windeployqt.exe under Wine. Usage mirrors native windeployqt.' \
+    'export WINEPATH="$(winepath -w "$QT_TARGET/bin" 2>/dev/null)"' \
+    'exec wine "$QT_TARGET/bin/windeployqt.exe" "$@"' \
+    > /usr/local/bin/windeployqt \
+    && chmod +x /usr/local/bin/windeployqt
 
 WORKDIR /src
 COPY build-windows.sh /usr/local/bin/build-windows.sh

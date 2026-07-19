@@ -1,5 +1,17 @@
+# WIN32 makes this a GUI-subsystem app (no console). That's correct for release,
+# but it means startup errors — a missing platform plugin, a failed QML import —
+# vanish silently instead of printing. Configure with -DTENJIN_WIN_CONSOLE=ON to
+# build a console-subsystem exe that prints qWarning/qDebug and Qt's own plugin
+# diagnostics to the terminal, which is how you find out why a silent build won't
+# launch. Release builds leave it OFF.
+option(TENJIN_WIN_CONSOLE "Windows: console subsystem for startup diagnostics" OFF)
+set(_tenjin_win32 WIN32)
+if(TENJIN_WIN_CONSOLE)
+    set(_tenjin_win32 "")
+endif()
+
 qt_add_executable(Tenjin
-    WIN32
+    ${_tenjin_win32}
     MANUAL_FINALIZATION
     src/main.cpp
 )

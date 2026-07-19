@@ -169,6 +169,62 @@ Rectangle {
                     }
                 }
             }
+
+            // "More symbols" — opens the categorized + searchable picker for the
+            // full catalog (Greek, operators, relations, arrows, calculus,
+            // structures) beyond the quick-access row above.
+            Rectangle {
+                id: moreBtn
+                height: Platform.isMobile ? 34 : 26
+                implicitWidth: moreLabel.implicitWidth + 18
+                radius: Platform.radius - 2
+                color: moreArea.containsMouse ? Platform.accent : Platform.surfaceAlt
+                border.color: Platform.accent
+                border.width: 1
+
+                Row {
+                    id: moreLabel
+                    anchors.centerIn: parent
+                    spacing: 4
+                    Text {
+                        text: TenjinIcons.formula
+                        font.family: TenjinIcons.family
+                        font.pixelSize: Platform.fontBase
+                        color: moreArea.containsMouse ? Platform.textOnDark : Platform.accent
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        text: qsTr("More\u2026")
+                        font.pixelSize: Platform.fontBase
+                        font.bold: true
+                        color: moreArea.containsMouse ? Platform.textOnDark : Platform.accent
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+                MouseArea {
+                    id: moreArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onPressed: (m) => m.accepted = true
+                    onClicked: {
+                        if (symbolPicker.opened) symbolPicker.close()
+                        else symbolPicker.open()
+                    }
+                }
+            }
+        }
+
+        // The picker inserts at the caret (reusing insertSnippet) and stays open
+        // so multiple symbols can be added before dismissing. Parented to the
+        // block so it overlays the editor; positioned just under the palette.
+        MathSymbolPicker {
+            id: symbolPicker
+            parent: root
+            x: Platform.spacingLg
+            y: Math.min(moreBtn.mapToItem(root, 0, 0).y + moreBtn.height + 4,
+                        root.height - implicitHeight)
+            onPicked: (snippet) => root.insertSnippet(snippet)
         }
 
         // Real math typesetting via MicroTeX (stacked fractions, radicals,

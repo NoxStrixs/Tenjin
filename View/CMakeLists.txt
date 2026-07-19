@@ -7,6 +7,9 @@ set_source_files_properties(TenjinIcons.qml PROPERTIES
 set_source_files_properties(LanguageFlags.qml PROPERTIES
     QT_QML_SINGLETON_TYPE TRUE
 )
+set_source_files_properties(MathSymbols.qml PROPERTIES
+    QT_QML_SINGLETON_TYPE TRUE
+)
 
 set(_TENJIN_MEDIA_QML "")
 if(MEDIA_SUPPORT)
@@ -122,11 +125,13 @@ qt_add_qml_module(TenjinView
         Platform.qml
         TenjinIcons.qml
         LanguageFlags.qml
+        MathSymbols.qml
         # ── components ──
         components/ActionButton.qml
         components/AppText.qml
         components/StyledComboBox.qml
         components/LanguageFlagRow.qml
+        components/MathSymbolPicker.qml
         components/LoadingState.qml
         components/ErrorState.qml
         components/PressScale.qml

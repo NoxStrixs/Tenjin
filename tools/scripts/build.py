@@ -20,6 +20,9 @@ def register(subparsers) -> None:
     add_jobs(parser)
     parser.add_argument("--clean", action="store_true",
                         help="Remove the preset build dir before configuring")
+    parser.add_argument("--lint", action="store_true",
+                        help="Run qmllint (all_qmllint target) after building to "
+                             "catch QML type/property errors before runtime")
     parser.set_defaults(func=run_cmd)
 
 
@@ -58,5 +61,18 @@ def run_cmd(args) -> None:
         ["cmake", "--build", "--preset", preset, "--parallel", str(args.jobs)],
         cwd=ROOT, env=env, check=True,
     )
+
+    if args.lint:
+        # qt_add_qml_module auto-generates an `all_qmllint` target (Qt 6.x).
+        # Running it catches the class of error that only surfaced at runtime
+        # before — e.g. a property named `onFoo` colliding with signal-handler
+        # syntax, or a referenced type that isn't a registered QML type. Failing
+        # the build here turns a Windows-only "not a type" crash into a local,
+        # immediate error with a file and line.
+        logger.info("Running qmllint (all_qmllint)")
+        subprocess.run(
+            ["cmake", "--build", "--preset", preset, "--target", "all_qmllint"],
+            cwd=ROOT, env=env, check=True,
+        )
 
     state.save(args.target)

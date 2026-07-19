@@ -105,6 +105,13 @@ jobs:
           ccache --max-size=$CCACHE_MAXSIZE
           cmake --build build --config Release
 
+      - name: Lint QML (qmllint)
+        run: |
+          # Catches QML type/property errors at CI time — e.g. a component that
+          # fails to register as a type ("X is not a type"), which otherwise only
+          # surfaces at runtime. Categories tuned in .qmllint.ini at repo root.
+          cmake --build build --config Release --target all_qmllint
+
       - name: Locate built binary
         run: |
           BIN=$(find build -name "$TENJIN_APP_NAME" -type f -executable | head -n1)
